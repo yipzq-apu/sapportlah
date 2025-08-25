@@ -3,17 +3,25 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import MapLocationPicker from '@/app/components/MapLocationPicker';
 
 export default function RegisterPage() {
   const [formData, setFormData] = useState({
-    name: '',
+    firstName: '',
+    lastName: '',
     email: '',
+    phone: '',
+    dateOfBirth: '',
+    idType: 'ic' as 'ic' | 'passport',
+    idNumber: '',
+    address: '',
     password: '',
     confirmPassword: '',
     role: 'donor' as 'donor' | 'creator',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showMap, setShowMap] = useState(false);
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -36,23 +44,53 @@ export default function RegisterPage() {
     }
 
     try {
-      // Add registration logic here
-      console.log('Registration attempt:', formData);
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed');
+      }
+
+      // Store token if provided
+      if (data.token) {
+        localStorage.setItem('token', data.token);
+      }
 
       // Redirect to login or dashboard
       window.location.href = '/login';
-    } catch (err) {
-      setError('Registration failed. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Registration failed. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
+  const handleLocationSelect = (location: {
+    address: string;
+    lat: number;
+    lng: number;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  }) => {
+    setFormData({
+      ...formData,
+      address: location.address, // This will now be human-readable
+    });
+    setShowMap(false);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
-      <div className="sm:mx-auto sm:w-full sm:max-w-md">
+      <div className="sm:mx-auto sm:w-full sm:max-w-2xl">
         <div className="flex justify-center">
           <Link href="/">
             <Image
@@ -78,7 +116,7 @@ export default function RegisterPage() {
         </p>
       </div>
 
-      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
+      <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-2xl">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
@@ -87,109 +125,283 @@ export default function RegisterPage() {
               </div>
             )}
 
+            {/* Personal Information */}
             <div>
-              <label
-                htmlFor="name"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Full Name
-              </label>
-              <div className="mt-1">
-                <input
-                  id="name"
-                  name="name"
-                  type="text"
-                  required
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter your full name"
-                />
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Personal Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="firstName"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    First Name
+                  </label>
+                  <input
+                    id="firstName"
+                    name="firstName"
+                    type="text"
+                    required
+                    value={formData.firstName}
+                    onChange={handleChange}
+                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder="Enter your first name"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="lastName"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Last Name
+                  </label>
+                  <input
+                    id="lastName"
+                    name="lastName"
+                    type="text"
+                    required
+                    value={formData.lastName}
+                    onChange={handleChange}
+                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder="Enter your last name"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="dateOfBirth"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Date of Birth
+                  </label>
+                  <input
+                    id="dateOfBirth"
+                    name="dateOfBirth"
+                    type="date"
+                    required
+                    value={formData.dateOfBirth}
+                    onChange={handleChange}
+                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="idType"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    ID Type
+                  </label>
+                  <select
+                    id="idType"
+                    name="idType"
+                    value={formData.idType}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="ic">IC (Identity Card)</option>
+                    <option value="passport">Passport</option>
+                  </select>
+                </div>
+
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="idNumber"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    {formData.idType === 'ic' ? 'IC Number' : 'Passport Number'}
+                  </label>
+                  <input
+                    id="idNumber"
+                    name="idNumber"
+                    type="text"
+                    required
+                    value={formData.idNumber}
+                    onChange={handleChange}
+                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder={`Enter your ${
+                      formData.idType === 'ic' ? 'IC' : 'passport'
+                    } number`}
+                  />
+                </div>
               </div>
             </div>
 
+            {/* Contact Information */}
             <div>
-              <label
-                htmlFor="email"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Email address
-              </label>
-              <div className="mt-1">
-                <input
-                  id="email"
-                  name="email"
-                  type="email"
-                  autoComplete="email"
-                  required
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Enter your email"
-                />
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Contact Information
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label
+                    htmlFor="email"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Email Address
+                  </label>
+                  <input
+                    id="email"
+                    name="email"
+                    type="email"
+                    autoComplete="email"
+                    required
+                    value={formData.email}
+                    onChange={handleChange}
+                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder="Enter your email"
+                  />
+                </div>
+
+                <div>
+                  <label
+                    htmlFor="phone"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Phone Number
+                  </label>
+                  <input
+                    id="phone"
+                    name="phone"
+                    type="tel"
+                    required
+                    value={formData.phone}
+                    onChange={handleChange}
+                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    placeholder="Enter your phone number"
+                  />
+                </div>
               </div>
             </div>
 
+            {/* Address Information */}
             <div>
-              <label
-                htmlFor="role"
-                className="block text-sm font-medium text-gray-700"
-              >
-                I want to
-              </label>
-              <div className="mt-1">
-                <select
-                  id="role"
-                  name="role"
-                  value={formData.role}
-                  onChange={handleChange}
-                  className="block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                >
-                  <option value="donor">Support campaigns (Donor)</option>
-                  <option value="creator">Create campaigns (Creator)</option>
-                </select>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Address Information
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="address"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Street Address
+                  </label>
+                  <div className="mt-1 flex">
+                    <input
+                      id="address"
+                      name="address"
+                      type="text"
+                      required
+                      value={formData.address}
+                      onChange={handleChange}
+                      className="flex-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-l-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      placeholder="Enter your address or use map to select"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowMap(true)}
+                      className="px-4 py-2 bg-blue-600 text-white border border-blue-600 rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                    >
+                      📍 Map
+                    </button>
+                  </div>
+                  <p className="mt-1 text-xs text-gray-500">
+                    Click the map button to select your location visually
+                  </p>
+                </div>
+
+                {showMap && (
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-4 max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-medium text-gray-900">
+                          Select Your Location
+                        </h3>
+                        <button
+                          type="button"
+                          onClick={() => setShowMap(false)}
+                          className="text-gray-400 hover:text-gray-600"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <MapLocationPicker
+                        onLocationSelect={handleLocationSelect}
+                        initialLocation={undefined}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 
+            {/* Account Information */}
             <div>
-              <label
-                htmlFor="password"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Password
-              </label>
-              <div className="mt-1">
-                <input
-                  id="password"
-                  name="password"
-                  type="password"
-                  required
-                  value={formData.password}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Create a password"
-                />
-              </div>
-            </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Account Information
+              </h3>
+              <div className="space-y-4">
+                <div>
+                  <label
+                    htmlFor="role"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    I want to
+                  </label>
+                  <select
+                    id="role"
+                    name="role"
+                    value={formData.role}
+                    onChange={handleChange}
+                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  >
+                    <option value="donor">Support campaigns (Donor)</option>
+                    <option value="creator">Create campaigns (Creator)</option>
+                  </select>
+                </div>
 
-            <div>
-              <label
-                htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700"
-              >
-                Confirm Password
-              </label>
-              <div className="mt-1">
-                <input
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  type="password"
-                  required
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
-                  placeholder="Confirm your password"
-                />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label
+                      htmlFor="password"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Password
+                    </label>
+                    <input
+                      id="password"
+                      name="password"
+                      type="password"
+                      required
+                      value={formData.password}
+                      onChange={handleChange}
+                      className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      placeholder="Create a password"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="confirmPassword"
+                      className="block text-sm font-medium text-gray-700"
+                    >
+                      Confirm Password
+                    </label>
+                    <input
+                      id="confirmPassword"
+                      name="confirmPassword"
+                      type="password"
+                      required
+                      value={formData.confirmPassword}
+                      onChange={handleChange}
+                      className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      placeholder="Confirm your password"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 

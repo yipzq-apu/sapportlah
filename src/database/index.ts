@@ -2,11 +2,11 @@ import DatabaseConnection from './connection';
 import { QueryService } from './queries';
 
 const dbConfig = {
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'sapportlah',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'password',
+  host: process.env.DATABASE_HOST || 'localhost',
+  port: parseInt(process.env.DATABASE_PORT || '3306'),
+  database: process.env.DATABASE_NAME || 'sapportlah',
+  user: process.env.DATABASE_USER || 'root',
+  password: process.env.DATABASE_PASSWORD || '',
 };
 
 const dbConnection = new DatabaseConnection(dbConfig);
