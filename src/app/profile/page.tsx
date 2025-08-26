@@ -31,26 +31,51 @@ export default function ProfilePage() {
 
   useEffect(() => {
     const fetchProfile = async () => {
-      // Get user data from localStorage for testing
-      const token = localStorage.getItem('authToken');
-      const userData = localStorage.getItem('userData');
+      try {
+        const token = localStorage.getItem('authToken');
 
-      if (token && userData) {
-        const user = JSON.parse(userData);
+        if (!token) {
+          // Redirect to login if no token
+          window.location.href = '/login?returnUrl=/profile';
+          return;
+        }
 
-        // Mock complete profile data based on logged in user
-        const mockProfile: UserProfile = {
-          id: user.id,
-          name: user.name,
+        // Fetch user data from API
+        const response = await fetch('/api/auth/me', {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          if (response.status === 401) {
+            // Token is invalid or expired, redirect to login
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userData');
+            window.location.href = '/login?returnUrl=/profile';
+            return;
+          }
+          throw new Error('Failed to fetch user data');
+        }
+
+        const data = await response.json();
+        const user = data.user;
+
+        // Create complete profile data
+        const userProfile: UserProfile = {
+          id: user.id.toString(),
+          name: `${user.first_name} ${user.last_name}`,
           email: user.email,
           role: user.role,
-          avatar: user.avatar || '/api/placeholder/150/150',
-          location: 'Singapore',
-          bio: 'Passionate about supporting education and environmental causes. Love seeing how technology can make a positive impact on communities.',
-          phone: '+65 9123 4567',
-          joinDate: '2023-08-15',
-          totalDonations: 925,
-          campaignsSupported: 8,
+          avatar: user.profile_image || '/api/placeholder/150/150',
+          location: user.address || 'Not provided',
+          bio: user.bio || 'No bio provided',
+          phone: user.phone,
+          joinDate: user.created_at,
+          totalDonations: 0, // This would come from donations table
+          campaignsSupported: 0, // This would come from donations/campaigns data
           settings: {
             emailNotifications: true,
             publicProfile: true,
@@ -58,11 +83,15 @@ export default function ProfilePage() {
           },
         };
 
-        setUser(mockProfile);
-        setFormData(mockProfile);
+        setUser(userProfile);
+        setFormData(userProfile);
+      } catch (error) {
+        console.error('Error fetching profile:', error);
+        // Handle error - maybe show error message or redirect to login
+        alert('Failed to load profile. Please try again.');
+      } finally {
+        setLoading(false);
       }
-
-      setLoading(false);
     };
 
     fetchProfile();

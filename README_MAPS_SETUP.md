@@ -16,7 +16,7 @@
 Add your Google Maps API key to `.env.local`:
 
 ```
-NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=AIzaSyCD04KSrEyOH869l3RXAZMxwTglgNAYb_I
+NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
 ```
 
 ## Step 3: Features

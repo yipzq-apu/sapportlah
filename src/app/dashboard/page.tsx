@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import ProtectedRoute from '@/app/components/ProtectedRoute';
 
 interface Campaign {
   id: string;
@@ -24,7 +25,7 @@ interface DashboardStats {
   pendingQuestions: number;
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const [user, setUser] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
@@ -33,16 +34,73 @@ export default function DashboardPage() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        // Get user data
         const token = localStorage.getItem('authToken');
-        const userData = localStorage.getItem('userData');
+        console.log(
+          'Dashboard: Checking token...',
+          token ? 'Token exists' : 'No token'
+        );
 
-        if (token && userData) {
-          const user = JSON.parse(userData);
-          setUser(user);
+        if (!token) {
+          console.log('Dashboard: No token found, redirecting to login');
+          window.location.href = '/login?returnUrl=/dashboard';
+          return;
         }
 
-        // Mock campaigns data
+        console.log('Dashboard: Making API call to /api/auth/me');
+
+        // Fetch user data from API
+        const response = await fetch('/api/auth/me', {
+          method: 'GET',
+          headers: {
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
+
+        console.log('Dashboard: API response status:', response.status);
+
+        if (!response.ok) {
+          console.log('Dashboard: API call failed');
+          if (response.status === 401) {
+            console.log(
+              'Dashboard: Unauthorized, clearing token and redirecting'
+            );
+            setTimeout(() => {
+              console.log('Hello after 2 seconds!');
+            }, 2000); // 2000 ms = 2 seconds
+
+            localStorage.removeItem('authToken');
+            localStorage.removeItem('userData');
+            window.location.href = '/login?returnUrl=/dashboard';
+            return;
+          }
+          throw new Error('Failed to fetch user data');
+        }
+
+        const data = await response.json();
+        const user = data.user;
+        console.log('Dashboard: User data received:', user.role);
+
+        // Check if user has creator role
+        if (user.role !== 'creator' && user.role !== 'admin') {
+          console.log('Dashboard: User role not allowed:', user.role);
+          window.location.href = '/unauthorized';
+          return;
+        }
+
+        // Set user data
+        setUser({
+          id: user.id,
+          name: `${user.first_name} ${user.last_name}`,
+          email: user.email,
+          role: user.role,
+          avatar: user.profile_image || '/api/placeholder/150/150',
+        });
+
+        console.log('Dashboard: User data set successfully');
+
+        // TODO: Replace with actual API calls to fetch campaigns and stats
+        // For now, using mock data until campaigns table is created
         const mockCampaigns: Campaign[] = [
           {
             id: '1',
@@ -440,5 +498,13 @@ export default function DashboardPage() {
 
       <Footer />
     </div>
+  );
+}
+
+export default function DashboardPage() {
+  return (
+    // <ProtectedRoute allowedRoles={['creator', 'admin']}>
+    <DashboardContent />
+    // </ProtectedRoute>
   );
 }

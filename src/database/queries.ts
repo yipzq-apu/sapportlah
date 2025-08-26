@@ -62,7 +62,12 @@ export class QueryService {
   }
 
   async customQuery(query: string, params?: any[]) {
-    const result = await this.db.query(query, params);
+    // Ensure parameters are properly formatted
+    const cleanParams =
+      params && Array.isArray(params)
+        ? params.filter((p) => p !== undefined && p !== null)
+        : [];
+    const result = await this.db.query(query, cleanParams);
     return result.rows;
   }
 }

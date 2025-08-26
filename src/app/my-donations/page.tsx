@@ -24,82 +24,69 @@ export default function MyDonationsPage() {
   const [donations, setDonations] = useState<Donation[]>([]);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
+  const [stats, setStats] = useState({
+    totalDonated: 0,
+    campaignsSupported: 0,
+    averageDonation: 0,
+    totalDonations: 0,
+  });
 
   useEffect(() => {
     const fetchData = async () => {
-      // Check authentication
-      const token = localStorage.getItem('authToken');
-      const userData = localStorage.getItem('userData');
+      setLoading(true);
+      try {
+        // Check authentication
+        const token = localStorage.getItem('authToken');
 
-      if (token && userData) {
-        const user = JSON.parse(userData);
-        setUser(user);
+        if (!token) {
+          window.location.href = '/login?returnUrl=/my-donations';
+          return;
+        }
+
+        // Fetch user data
+        const userResponse = await fetch('/api/auth/me', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (userResponse.ok) {
+          const userData = await userResponse.json();
+          setUser(userData.user);
+        } else {
+          throw new Error('Failed to fetch user data');
+        }
+
+        // Fetch donations
+        const donationsResponse = await fetch('/api/donations/my-donations', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (donationsResponse.ok) {
+          const data = await donationsResponse.json();
+          setDonations(data.donations || []);
+          setStats(
+            data.stats || {
+              totalDonated: 0,
+              campaignsSupported: 0,
+              averageDonation: 0,
+              totalDonations: 0,
+            }
+          );
+        } else if (donationsResponse.status === 401) {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userData');
+          window.location.href = '/login?returnUrl=/my-donations';
+          return;
+        } else {
+          throw new Error('Failed to fetch donations');
+        }
+      } catch (error) {
+        console.error('Error fetching data:', error);
+        setError('Failed to load donations. Please try again.');
+      } finally {
+        setLoading(false);
       }
-
-      // Mock donations data
-      const mockDonations: Donation[] = [
-        {
-          id: '1',
-          campaignId: '1',
-          campaignTitle: 'Clean Water for Rural Communities',
-          campaignImage: '/api/placeholder/300/200',
-          amount: 500,
-          date: '2024-04-20T10:30:00Z',
-          message:
-            'This is such an important cause. Hope this helps reach the goal!',
-          anonymous: false,
-          campaignStatus: 'active',
-          campaignProgress: 65,
-          campaignGoal: 50000,
-          campaignRaised: 32500,
-        },
-        {
-          id: '2',
-          campaignId: '3',
-          campaignTitle: 'Emergency Medical Equipment',
-          campaignImage: '/api/placeholder/300/200',
-          amount: 250,
-          date: '2024-04-15T14:20:00Z',
-          message: 'Every contribution matters for healthcare!',
-          anonymous: false,
-          campaignStatus: 'successful',
-          campaignProgress: 100,
-          campaignGoal: 75000,
-          campaignRaised: 75000,
-        },
-        {
-          id: '3',
-          campaignId: '2',
-          campaignTitle: 'Education Technology for Schools',
-          campaignImage: '/api/placeholder/300/200',
-          amount: 100,
-          date: '2024-04-10T09:15:00Z',
-          message: '',
-          anonymous: true,
-          campaignStatus: 'active',
-          campaignProgress: 75,
-          campaignGoal: 25000,
-          campaignRaised: 18750,
-        },
-        {
-          id: '4',
-          campaignId: '6',
-          campaignTitle: 'Community Garden Project',
-          campaignImage: '/api/placeholder/300/200',
-          amount: 75,
-          date: '2024-03-28T16:45:00Z',
-          message: 'Love this initiative for the community!',
-          anonymous: false,
-          campaignStatus: 'failed',
-          campaignProgress: 45,
-          campaignGoal: 15000,
-          campaignRaised: 6750,
-        },
-      ];
-
-      setDonations(mockDonations);
-      setLoading(false);
     };
 
     fetchData();
@@ -154,6 +141,26 @@ export default function MyDonationsPage() {
     );
   }
 
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar user={user} />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-xl text-gray-600 mb-4">{error}</div>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
   // Stats calculations
   const totalDonated = getTotalDonated();
   const campaignsSupported = donations.length;
@@ -202,9 +209,9 @@ export default function MyDonationsPage() {
                 </p>
                 <p
                   className="text-lg font-bold text-gray-900 truncate"
-                  title={formatCurrency(totalDonated)}
+                  title={formatCurrency(stats.totalDonated)}
                 >
-                  {formatCurrency(totalDonated)}
+                  {formatCurrency(stats.totalDonated)}
                 </p>
               </div>
             </div>
@@ -232,7 +239,7 @@ export default function MyDonationsPage() {
                   Campaigns Supported
                 </p>
                 <p className="text-lg font-bold text-gray-900 truncate">
-                  {campaignsSupported}
+                  {stats.campaignsSupported}
                 </p>
               </div>
             </div>
@@ -261,9 +268,9 @@ export default function MyDonationsPage() {
                 </p>
                 <p
                   className="text-lg font-bold text-gray-900 truncate"
-                  title={formatCurrency(averageDonation)}
+                  title={formatCurrency(stats.averageDonation)}
                 >
-                  {formatCurrency(averageDonation)}
+                  {formatCurrency(stats.averageDonation)}
                 </p>
               </div>
             </div>

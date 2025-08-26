@@ -25,7 +25,15 @@ class DatabaseConnection {
   }
 
   async query(text: string, params?: any[]) {
-    const [rows] = await this.pool.execute(text, params);
+    // Ensure params is always an array and filter out undefined values
+    const cleanParams =
+      params && Array.isArray(params)
+        ? params.filter((p) => p !== undefined && p !== null)
+        : [];
+    console.log('Executing query:', text);
+    console.log('With clean params:', cleanParams);
+
+    const [rows] = await this.pool.execute(text, cleanParams);
     return { rows };
   }
 

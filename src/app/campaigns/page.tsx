@@ -6,17 +6,28 @@ import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
 interface Campaign {
-  id: string;
+  id: number;
+  user_id: number;
+  category_id: number;
   title: string;
   description: string;
-  image: string;
-  goal: number;
-  raised: number;
-  donorCount: number;
-  category: string;
-  creator: string;
-  endDate: string;
-  featured: boolean;
+  short_description: string;
+  goal_amount: number;
+  current_amount: number;
+  end_date: string;
+  featured_image?: string;
+  video_url?: string;
+  status: string;
+  is_featured: boolean;
+  backers_count: number;
+  creator_name?: string;
+  creator_email?: string;
+  category_name?: string;
+}
+
+interface Category {
+  id: number;
+  name: string;
 }
 
 export default function CampaignsPage() {
@@ -24,132 +35,99 @@ export default function CampaignsPage() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const [user, setUser] = useState<any>(null);
+  const [campaigns, setCampaigns] = useState<Campaign[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCampaigns, setTotalCampaigns] = useState(0);
   const campaignsPerPage = 6;
 
   // Check if user is logged in
   useEffect(() => {
-    const checkAuth = () => {
+    const checkAuth = async () => {
       const token = localStorage.getItem('authToken');
       if (token) {
-        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-        setUser(userData);
+        try {
+          const response = await fetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setUser(data.user);
+          }
+        } catch (error) {
+          console.error('Auth check failed:', error);
+        }
       }
     };
 
     checkAuth();
   }, []);
 
-  // Mock data - replace with actual API call
-  const campaigns: Campaign[] = [
-    {
-      id: '1',
-      title: 'Clean Water for Rural Communities',
-      description:
-        'Help us bring clean drinking water to underserved rural areas. This project will install water purification systems in 5 villages.',
-      image: '/api/placeholder/400/250',
-      goal: 50000,
-      raised: 32500,
-      donorCount: 245,
-      category: 'Environment',
-      creator: 'Water For All Foundation',
-      endDate: '2024-06-15',
-      featured: true,
-    },
-    {
-      id: '2',
-      title: 'Education Technology for Schools',
-      description:
-        'Providing tablets and internet access to students in need. Every child deserves access to digital learning tools.',
-      image: '/api/placeholder/400/250',
-      goal: 25000,
-      raised: 18750,
-      donorCount: 156,
-      category: 'Education',
-      creator: 'Digital Learning Initiative',
-      endDate: '2024-05-30',
-      featured: false,
-    },
-    {
-      id: '3',
-      title: 'Emergency Medical Equipment',
-      description:
-        'Supporting local hospitals with essential medical equipment including ventilators and monitoring devices.',
-      image: '/api/placeholder/400/250',
-      goal: 75000,
-      raised: 45000,
-      donorCount: 320,
-      category: 'Healthcare',
-      creator: 'Medical Aid Society',
-      endDate: '2024-07-20',
-      featured: true,
-    },
-    {
-      id: '4',
-      title: 'Community Food Garden',
-      description:
-        'Creating sustainable food sources for low-income families through community gardens and farming education.',
-      image: '/api/placeholder/400/250',
-      goal: 15000,
-      raised: 8900,
-      donorCount: 78,
-      category: 'Community',
-      creator: 'Green Communities Project',
-      endDate: '2024-08-10',
-      featured: false,
-    },
-    {
-      id: '5',
-      title: 'Wildlife Conservation Initiative',
-      description:
-        'Protecting endangered species and their habitats through conservation efforts and research programs.',
-      image: '/api/placeholder/400/250',
-      goal: 100000,
-      raised: 67500,
-      donorCount: 445,
-      category: 'Environment',
-      creator: 'Wildlife Protection Fund',
-      endDate: '2024-09-15',
-      featured: true,
-    },
-    {
-      id: '6',
-      title: 'Tech Skills Training Program',
-      description:
-        'Providing coding and digital skills training to unemployed youth to improve their job prospects.',
-      image: '/api/placeholder/400/250',
-      goal: 35000,
-      raised: 22100,
-      donorCount: 189,
-      category: 'Education',
-      creator: 'Future Skills Academy',
-      endDate: '2024-06-30',
-      featured: false,
-    },
-  ];
+  // Fetch categories
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const response = await fetch('/api/campaigns/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data.categories || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+      }
+    };
 
-  const categories = [
-    'all',
-    'Education',
-    'Healthcare',
-    'Environment',
-    'Community',
-    'Technology',
-  ];
+    fetchCategories();
+  }, []);
 
-  const filteredCampaigns = campaigns.filter((campaign) => {
-    const matchesSearch =
-      campaign.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      campaign.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategory =
-      selectedCategory === 'all' || campaign.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+  // Fetch campaigns
+  useEffect(() => {
+    const fetchCampaigns = async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({
+          page: currentPage.toString(),
+          limit: campaignsPerPage.toString(),
+        });
+
+        if (searchTerm) params.append('search', searchTerm);
+        if (selectedCategory !== 'all')
+          params.append('category_id', selectedCategory);
+
+        console.log('Fetching campaigns with URL:', `/api/campaigns?${params}`);
+
+        const response = await fetch(`/api/campaigns?${params}`);
+
+        console.log('Response status:', response.status);
+        console.log('Response ok:', response.ok);
+
+        if (response.ok) {
+          const data = await response.json();
+          console.log('Campaigns data:', data);
+          setCampaigns(data.campaigns || []);
+          setTotalPages(data.pagination?.totalPages || 1);
+          setTotalCampaigns(data.pagination?.total || 0);
+        } else {
+          const errorText = await response.text();
+          console.error('Failed to fetch campaigns. Status:', response.status);
+          console.error('Error response:', errorText);
+          setCampaigns([]);
+        }
+      } catch (error) {
+        console.error('Error fetching campaigns:', error);
+        setCampaigns([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchCampaigns();
+  }, [searchTerm, selectedCategory, currentPage]);
 
   // Pagination calculations
-  const totalPages = Math.ceil(filteredCampaigns.length / campaignsPerPage);
   const startIndex = (currentPage - 1) * campaignsPerPage;
   const endIndex = startIndex + campaignsPerPage;
-  const currentCampaigns = filteredCampaigns.slice(startIndex, endIndex);
 
   // Reset to first page when filters change
   const handleSearchChange = (value: string) => {
@@ -250,9 +228,10 @@ export default function CampaignsPage() {
                 onChange={(e) => handleCategoryChange(e.target.value)}
                 className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
               >
+                <option value="all">All Categories</option>
                 {categories.map((category) => (
-                  <option key={category} value={category}>
-                    {category === 'all' ? 'All Categories' : category}
+                  <option key={category.id} value={category.id.toString()}>
+                    {category.name}
                   </option>
                 ))}
               </select>
@@ -263,9 +242,9 @@ export default function CampaignsPage() {
         {/* Results Count */}
         <div className="mb-6 flex justify-between items-center">
           <p className="text-gray-600">
-            Showing {startIndex + 1}-
-            {Math.min(endIndex, filteredCampaigns.length)} of{' '}
-            {filteredCampaigns.length} campaigns
+            Showing {(currentPage - 1) * campaignsPerPage + 1}-
+            {Math.min(currentPage * campaignsPerPage, totalCampaigns)} of{' '}
+            {totalCampaigns} campaigns
           </p>
           {totalPages > 1 && (
             <p className="text-gray-600">
@@ -274,97 +253,109 @@ export default function CampaignsPage() {
           )}
         </div>
 
+        {/* Loading State */}
+        {loading && (
+          <div className="text-center py-12">
+            <div className="text-gray-600 text-xl">Loading campaigns...</div>
+          </div>
+        )}
+
         {/* Campaigns Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {currentCampaigns.map((campaign) => {
-            const percentage = calculatePercentage(
-              campaign.raised,
-              campaign.goal
-            );
-            const daysLeft = getDaysLeft(campaign.endDate);
+        {!loading && campaigns.length > 0 && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {campaigns.map((campaign) => {
+              const percentage = calculatePercentage(
+                campaign.current_amount,
+                campaign.goal_amount
+              );
+              const daysLeft = getDaysLeft(campaign.end_date);
 
-            return (
-              <div
-                key={campaign.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300"
-              >
-                {/* Campaign Image */}
-                <div className="relative">
-                  <img
-                    src={campaign.image}
-                    alt={campaign.title}
-                    className="w-full h-48 object-cover"
-                  />
-                  {campaign.featured && (
-                    <div className="absolute top-3 left-3 bg-blue-600 text-white px-2 py-1 text-xs font-semibold rounded">
-                      Featured
-                    </div>
-                  )}
-                  <div className="absolute top-3 right-3 bg-black bg-opacity-50 text-white px-2 py-1 text-xs rounded">
-                    {campaign.category}
-                  </div>
-                </div>
-
-                <div className="p-6">
-                  {/* Title and Creator */}
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2">
-                    {campaign.title}
-                  </h3>
-                  <p className="text-sm text-gray-500 mb-3">
-                    by {campaign.creator}
-                  </p>
-
-                  {/* Description */}
-                  <p className="text-gray-600 mb-4 line-clamp-3">
-                    {campaign.description}
-                  </p>
-
-                  {/* Progress */}
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Raised: {formatCurrency(campaign.raised)}</span>
-                      <span>Goal: {formatCurrency(campaign.goal)}</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${percentage}%` }}
-                      ></div>
-                    </div>
-                    <div className="flex justify-between text-sm">
-                      <span className="font-semibold text-blue-600">
-                        {percentage.toFixed(1)}% funded
-                      </span>
-                      <span className="text-gray-600">
-                        {daysLeft} days left
-                      </span>
-                    </div>
+              return (
+                <div
+                  key={campaign.id}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300"
+                >
+                  {/* Campaign Image */}
+                  <div className="relative">
+                    <img
+                      src={
+                        campaign.featured_image || '/api/placeholder/400/250'
+                      }
+                      alt={campaign.title}
+                      className="w-full h-48 object-cover"
+                    />
+                    {campaign.is_featured && (
+                      <div className="absolute top-3 left-3 bg-blue-600 text-white px-2 py-1 text-xs font-semibold rounded">
+                        Featured
+                      </div>
+                    )}
                   </div>
 
-                  {/* Donor Count */}
-                  <div className="flex items-center text-sm text-gray-600 mb-4">
-                    <svg
-                      className="w-4 h-4 mr-1"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
+                  <div className="p-6">
+                    {/* Title and Creator */}
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                      {campaign.title}
+                    </h3>
+                    <p className="text-sm text-gray-500 mb-3">
+                      by {campaign.creator_name}
+                    </p>
+
+                    {/* Description */}
+                    <p className="text-gray-600 mb-4 line-clamp-3">
+                      {campaign.short_description || campaign.description}
+                    </p>
+
+                    {/* Progress */}
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm text-gray-600 mb-1">
+                        <span>
+                          Raised: {formatCurrency(campaign.current_amount)}
+                        </span>
+                        <span>
+                          Goal: {formatCurrency(campaign.goal_amount)}
+                        </span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="font-semibold text-blue-600">
+                          {percentage.toFixed(1)}% funded
+                        </span>
+                        <span className="text-gray-600">
+                          {daysLeft} days left
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Donor Count */}
+                    <div className="flex items-center text-sm text-gray-600 mb-4">
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{campaign.backers_count} backers</span>
+                    </div>
+
+                    {/* Action Button */}
+                    <Link
+                      href={`/campaigns/${campaign.id}`}
+                      className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-medium"
                     >
-                      <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>{campaign.donorCount} donors</span>
+                      View Campaign
+                    </Link>
                   </div>
-
-                  {/* Action Button */}
-                  <Link
-                    href={`/campaigns/${campaign.id}`}
-                    className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-medium"
-                  >
-                    View Campaign
-                  </Link>
                 </div>
-              </div>
-            );
-          })}
-        </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Pagination */}
         {totalPages > 1 && (
@@ -422,7 +413,7 @@ export default function CampaignsPage() {
         )}
 
         {/* No Results */}
-        {filteredCampaigns.length === 0 && (
+        {!loading && campaigns.length === 0 && (
           <div className="text-center py-12">
             <div className="text-gray-400 text-6xl mb-4">🔍</div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
