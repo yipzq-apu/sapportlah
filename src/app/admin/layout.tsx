@@ -16,24 +16,17 @@ export default function AdminLayout({
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('userData');
-
-    if (token && userData) {
-      const user = JSON.parse(userData);
-      if (user.role !== 'admin') {
-        router.push('/');
-        return;
-      }
-      setUser(user);
-    } else {
-      router.push('/login');
-    }
-  }, [router]);
+    // Set temporary admin user for testing - NO AUTHENTICATION REQUIRED
+    setUser({
+      id: 'temp-admin',
+      name: 'Temporary Admin',
+      email: 'admin@temp.com',
+      role: 'admin',
+      avatar: '/api/placeholder/40/40',
+    });
+  }, []);
 
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
     router.push('/');
   };
 
@@ -41,10 +34,12 @@ export default function AdminLayout({
     { name: 'Dashboard', href: '/admin', icon: '📊' },
     { name: 'Campaign Reviews', href: '/admin/campaigns', icon: '📋' },
     { name: 'User Management', href: '/admin/users', icon: '👥' },
+    { name: 'Contact Messages', href: '/admin/messages', icon: '💬' },
     { name: 'Reports', href: '/admin/reports', icon: '📈' },
     { name: 'Settings', href: '/admin/settings', icon: '⚙️' },
   ];
 
+  // Add null check for user
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">

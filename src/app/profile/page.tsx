@@ -30,71 +30,33 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      try {
-        const token = localStorage.getItem('authToken');
+    const loadProfile = () => {
+      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
+      const userProfile: UserProfile = {
+        id: 'temp-user',
+        name: 'Temporary User',
+        email: 'user@temp.com',
+        role: 'donor',
+        avatar: '/api/placeholder/150/150',
+        location: 'Singapore',
+        bio: 'This is a temporary user profile for testing.',
+        phone: '+65 1234 5678',
+        joinDate: '2024-01-01',
+        totalDonations: 1500,
+        campaignsSupported: 5,
+        settings: {
+          emailNotifications: true,
+          publicProfile: true,
+          anonymousDonations: false,
+        },
+      };
 
-        if (!token) {
-          // Redirect to login if no token
-          window.location.href = '/login?returnUrl=/profile';
-          return;
-        }
-
-        // Fetch user data from API
-        const response = await fetch('/api/auth/me', {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          if (response.status === 401) {
-            // Token is invalid or expired, redirect to login
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('userData');
-            window.location.href = '/login?returnUrl=/profile';
-            return;
-          }
-          throw new Error('Failed to fetch user data');
-        }
-
-        const data = await response.json();
-        const user = data.user;
-
-        // Create complete profile data
-        const userProfile: UserProfile = {
-          id: user.id.toString(),
-          name: `${user.first_name} ${user.last_name}`,
-          email: user.email,
-          role: user.role,
-          avatar: user.profile_image || '/api/placeholder/150/150',
-          location: user.address || 'Not provided',
-          bio: user.bio || 'No bio provided',
-          phone: user.phone,
-          joinDate: user.created_at,
-          totalDonations: 0, // This would come from donations table
-          campaignsSupported: 0, // This would come from donations/campaigns data
-          settings: {
-            emailNotifications: true,
-            publicProfile: true,
-            anonymousDonations: false,
-          },
-        };
-
-        setUser(userProfile);
-        setFormData(userProfile);
-      } catch (error) {
-        console.error('Error fetching profile:', error);
-        // Handle error - maybe show error message or redirect to login
-        alert('Failed to load profile. Please try again.');
-      } finally {
-        setLoading(false);
-      }
+      setUser(userProfile);
+      setFormData(userProfile);
+      setLoading(false);
     };
 
-    fetchProfile();
+    loadProfile();
   }, []);
 
   const handleInputChange = (

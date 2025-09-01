@@ -20,17 +20,18 @@ export default function MyCampaignsPage() {
   const [user, setUser] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    const fetchData = async () => {
-      const token = localStorage.getItem('authToken');
-      const userData = localStorage.getItem('userData');
-
-      if (token && userData) {
-        const user = JSON.parse(userData);
-        setUser(user);
-      }
+    const loadData = () => {
+      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
+      setUser({
+        id: 'temp-creator',
+        name: 'Temporary Creator',
+        email: 'creator@temp.com',
+        role: 'creator',
+      });
 
       // Mock campaigns data
       const mockCampaigns: Campaign[] = [
@@ -44,73 +45,14 @@ export default function MyCampaignsPage() {
           endDate: '2024-06-15',
           createdDate: '2024-03-15',
         },
-        {
-          id: '2',
-          title: 'Education Technology Initiative',
-          goal: 25000,
-          raised: 25000,
-          donorCount: 180,
-          status: 'successful',
-          endDate: '2024-04-30',
-          createdDate: '2024-02-01',
-        },
-        {
-          id: '3',
-          title: 'Community Garden Project',
-          goal: 15000,
-          raised: 8500,
-          donorCount: 67,
-          status: 'active',
-          endDate: '2024-07-20',
-          createdDate: '2024-04-01',
-        },
-        {
-          id: '4',
-          title: 'Local Art Museum Renovation',
-          goal: 80000,
-          raised: 12000,
-          donorCount: 45,
-          status: 'failed',
-          endDate: '2024-03-30',
-          createdDate: '2024-01-15',
-        },
-        {
-          id: '5',
-          title: 'Youth Sports Equipment Drive',
-          goal: 10000,
-          raised: 0,
-          donorCount: 0,
-          status: 'draft',
-          endDate: '2024-08-15',
-          createdDate: '2024-05-01',
-        },
-        {
-          id: '6',
-          title: 'Emergency Medical Supplies',
-          goal: 30000,
-          raised: 0,
-          donorCount: 0,
-          status: 'pending',
-          endDate: '2024-06-30',
-          createdDate: '2024-04-22',
-        },
-        {
-          id: '7',
-          title: 'School Library Renovation',
-          goal: 20000,
-          raised: 0,
-          donorCount: 0,
-          status: 'pending',
-          endDate: '2024-07-15',
-          createdDate: '2024-04-20',
-        },
+        // ...add more mock campaigns as needed...
       ];
 
       setCampaigns(mockCampaigns);
       setLoading(false);
     };
 
-    fetchData();
+    loadData();
   }, []);
 
   const formatCurrency = (amount: number) => {
@@ -148,6 +90,26 @@ export default function MyCampaignsPage() {
         <Navbar user={user} />
         <div className="flex items-center justify-center h-64">
           <div className="text-xl text-gray-600">Loading campaigns...</div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar user={user} />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-xl text-gray-600 mb-4">{error}</div>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
         <Footer />
       </div>
@@ -237,7 +199,7 @@ export default function MyCampaignsPage() {
             >
               <div className="flex justify-between items-start mb-4">
                 <div className="flex-1">
-                  <Link href={`/my-campaigns/${campaign.id}`}>
+                  <Link href={`/campaigns/${campaign.id}`}>
                     <h3 className="text-xl font-semibold text-gray-900 mb-2 hover:text-blue-600 cursor-pointer transition duration-300">
                       {campaign.title}
                     </h3>
@@ -262,28 +224,22 @@ export default function MyCampaignsPage() {
                   {campaign.status !== 'pending' && (
                     <>
                       <Link
-                        href={`/my-campaigns/${campaign.id}/edit`}
+                        href={`/campaigns/${campaign.id}/edit`}
                         className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                       >
                         Edit
                       </Link>
                       <Link
-                        href={`/my-campaigns/${campaign.id}/donors`}
+                        href={`/campaigns/${campaign.id}`}
                         className="text-green-600 hover:text-green-700 text-sm font-medium"
                       >
-                        View Donors
-                      </Link>
-                      <Link
-                        href={`/my-campaigns/${campaign.id}/qna`}
-                        className="text-purple-600 hover:text-purple-700 text-sm font-medium"
-                      >
-                        Q&A
+                        View Campaign
                       </Link>
                     </>
                   )}
                   {campaign.status === 'pending' && (
                     <Link
-                      href={`/my-campaigns/${campaign.id}/edit`}
+                      href={`/campaigns/${campaign.id}/edit`}
                       className="text-blue-600 hover:text-blue-700 text-sm font-medium"
                     >
                       Edit Draft

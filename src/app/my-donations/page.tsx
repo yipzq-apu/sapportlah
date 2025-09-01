@@ -34,62 +34,46 @@ export default function MyDonationsPage() {
   });
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
-      try {
-        // Check authentication
-        const token = localStorage.getItem('authToken');
+    const loadData = () => {
+      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
+      setUser({
+        id: 'temp-donor',
+        name: 'Temporary Donor',
+        email: 'donor@temp.com',
+        role: 'donor',
+      });
 
-        if (!token) {
-          window.location.href = '/login?returnUrl=/my-donations';
-          return;
-        }
+      // Mock donations data
+      const mockDonations: Donation[] = [
+        {
+          id: '1',
+          campaignId: '1',
+          campaignTitle: 'Clean Water for Rural Communities',
+          campaignImage: '/api/placeholder/300/200',
+          amount: 500,
+          date: '2024-04-20T10:30:00Z',
+          message:
+            'This is such an important cause. Hope this helps reach the goal!',
+          anonymous: false,
+          campaignStatus: 'active',
+          campaignProgress: 65,
+          campaignGoal: 50000,
+          campaignRaised: 32500,
+        },
+        // ...add more mock donations as needed...
+      ];
 
-        // Fetch user data
-        const userResponse = await fetch('/api/auth/me', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (userResponse.ok) {
-          const userData = await userResponse.json();
-          setUser(userData.user);
-        } else {
-          throw new Error('Failed to fetch user data');
-        }
-
-        // Fetch donations
-        const donationsResponse = await fetch('/api/donations/my-donations', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-
-        if (donationsResponse.ok) {
-          const data = await donationsResponse.json();
-          setDonations(data.donations || []);
-          setStats(
-            data.stats || {
-              totalDonated: 0,
-              campaignsSupported: 0,
-              averageDonation: 0,
-              totalDonations: 0,
-            }
-          );
-        } else if (donationsResponse.status === 401) {
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('userData');
-          window.location.href = '/login?returnUrl=/my-donations';
-          return;
-        } else {
-          throw new Error('Failed to fetch donations');
-        }
-      } catch (error) {
-        console.error('Error fetching data:', error);
-        setError('Failed to load donations. Please try again.');
-      } finally {
-        setLoading(false);
-      }
+      setDonations(mockDonations);
+      setStats({
+        totalDonated: 1000,
+        campaignsSupported: 3,
+        averageDonation: 333,
+        totalDonations: 3,
+      });
+      setLoading(false);
     };
 
-    fetchData();
+    loadData();
   }, []);
 
   const formatCurrency = (amount: number) => {
@@ -128,6 +112,99 @@ export default function MyDonationsPage() {
     filter === 'all'
       ? donations
       : donations.filter((donation) => donation.campaignStatus === filter);
+
+  const generateReceipt = (donation: Donation) => {
+    // Create receipt content
+    const receiptContent = `
+DONATION RECEIPT
+================
+
+Receipt ID: ${donation.id}
+Date: ${formatDate(donation.date)}
+Donor: ${user?.name || 'Anonymous'}
+Email: ${user?.email}
+
+Campaign: ${donation.campaignTitle}
+Donation Amount: ${formatCurrency(donation.amount)}
+${donation.message ? `Message: ${donation.message}` : ''}
+
+Thank you for your generous donation!
+
+SapportLah Platform
+Generated on: ${new Date().toLocaleDateString()}
+    `.trim();
+
+    // Create and download file
+    const blob = new Blob([receiptContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `receipt_${donation.id}_${
+      new Date().toISOString().split('T')[0]
+    }.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const generatePDFReceipt = (donation: Donation) => {
+    // Simple HTML content for PDF generation
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Donation Receipt</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; }
+            .content { margin: 20px 0; }
+            .field { margin: 10px 0; }
+            .amount { font-size: 18px; font-weight: bold; color: #2563eb; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>DONATION RECEIPT</h1>
+            <p>SapportLah Platform</p>
+          </div>
+          <div class="content">
+            <div class="field"><strong>Receipt ID:</strong> ${donation.id}</div>
+            <div class="field"><strong>Date:</strong> ${formatDate(
+              donation.date
+            )}</div>
+            <div class="field"><strong>Donor:</strong> ${
+              user?.name || 'Anonymous'
+            }</div>
+            <div class="field"><strong>Email:</strong> ${user?.email}</div>
+            <div class="field"><strong>Campaign:</strong> ${
+              donation.campaignTitle
+            }</div>
+            <div class="field amount"><strong>Donation Amount:</strong> ${formatCurrency(
+              donation.amount
+            )}</div>
+            ${
+              donation.message
+                ? `<div class="field"><strong>Message:</strong> ${donation.message}</div>`
+                : ''
+            }
+            <div class="field" style="margin-top: 30px;">
+              <p>Thank you for your generous donation!</p>
+              <p><small>Generated on: ${new Date().toLocaleDateString()}</small></p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Open in new window for printing/saving as PDF
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
 
   if (loading) {
     return (
@@ -230,7 +307,7 @@ export default function MyDonationsPage() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth="2"
-                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2H5a2 2 0 00-2 2v2M7 7h10"
                   />
                 </svg>
               </div>
@@ -392,6 +469,26 @@ export default function MyDonationsPage() {
                         </Link>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                {/* Receipt and PDF buttons */}
+                <div className="flex justify-end items-center">
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => generateReceipt(donation)}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      title="Download Text Receipt"
+                    >
+                      📄 Receipt
+                    </button>
+                    <button
+                      onClick={() => generatePDFReceipt(donation)}
+                      className="text-green-600 hover:text-green-700 text-sm font-medium"
+                      title="Print/Save PDF Receipt"
+                    >
+                      📋 PDF
+                    </button>
                   </div>
                 </div>
               </div>

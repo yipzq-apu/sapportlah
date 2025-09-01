@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import ProtectedRoute from '@/app/components/ProtectedRoute';
 
 interface Campaign {
   id: string;
@@ -32,127 +31,66 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const token = localStorage.getItem('authToken');
-        console.log(
-          'Dashboard: Checking token...',
-          token ? 'Token exists' : 'No token'
-        );
+    const loadData = () => {
+      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
+      setUser({
+        id: 'temp-creator',
+        name: 'Temporary Creator',
+        email: 'creator@temp.com',
+        role: 'creator',
+        avatar: '/api/placeholder/150/150',
+      });
 
-        if (!token) {
-          console.log('Dashboard: No token found, redirecting to login');
-          window.location.href = '/login?returnUrl=/dashboard';
-          return;
-        }
+      // TODO: Replace with actual API calls to fetch campaigns and stats
+      // For now, using mock data until campaigns table is created
+      const mockCampaigns: Campaign[] = [
+        {
+          id: '1',
+          title: 'Clean Water for Rural Communities',
+          goal: 50000,
+          raised: 32500,
+          donorCount: 245,
+          status: 'active',
+          endDate: '2024-06-15',
+          createdDate: '2024-03-15',
+        },
+        {
+          id: '2',
+          title: 'Education Technology Initiative',
+          goal: 25000,
+          raised: 25000,
+          donorCount: 180,
+          status: 'successful',
+          endDate: '2024-04-30',
+          createdDate: '2024-02-01',
+        },
+        {
+          id: '3',
+          title: 'Community Garden Project',
+          goal: 15000,
+          raised: 8500,
+          donorCount: 67,
+          status: 'active',
+          endDate: '2024-07-20',
+          createdDate: '2024-04-01',
+        },
+      ];
 
-        console.log('Dashboard: Making API call to /api/auth/me');
+      const mockStats: DashboardStats = {
+        totalCampaigns: mockCampaigns.length,
+        activeCampaigns: mockCampaigns.filter((c) => c.status === 'active')
+          .length,
+        totalRaised: mockCampaigns.reduce((sum, c) => sum + c.raised, 0),
+        totalDonors: mockCampaigns.reduce((sum, c) => sum + c.donorCount, 0),
+        pendingQuestions: 5,
+      };
 
-        // Fetch user data from API
-        const response = await fetch('/api/auth/me', {
-          method: 'GET',
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        console.log('Dashboard: API response status:', response.status);
-
-        if (!response.ok) {
-          console.log('Dashboard: API call failed');
-          if (response.status === 401) {
-            console.log(
-              'Dashboard: Unauthorized, clearing token and redirecting'
-            );
-            setTimeout(() => {
-              console.log('Hello after 2 seconds!');
-            }, 2000); // 2000 ms = 2 seconds
-
-            localStorage.removeItem('authToken');
-            localStorage.removeItem('userData');
-            window.location.href = '/login?returnUrl=/dashboard';
-            return;
-          }
-          throw new Error('Failed to fetch user data');
-        }
-
-        const data = await response.json();
-        const user = data.user;
-        console.log('Dashboard: User data received:', user.role);
-
-        // Check if user has creator role
-        if (user.role !== 'creator' && user.role !== 'admin') {
-          console.log('Dashboard: User role not allowed:', user.role);
-          window.location.href = '/unauthorized';
-          return;
-        }
-
-        // Set user data
-        setUser({
-          id: user.id,
-          name: `${user.first_name} ${user.last_name}`,
-          email: user.email,
-          role: user.role,
-          avatar: user.profile_image || '/api/placeholder/150/150',
-        });
-
-        console.log('Dashboard: User data set successfully');
-
-        // TODO: Replace with actual API calls to fetch campaigns and stats
-        // For now, using mock data until campaigns table is created
-        const mockCampaigns: Campaign[] = [
-          {
-            id: '1',
-            title: 'Clean Water for Rural Communities',
-            goal: 50000,
-            raised: 32500,
-            donorCount: 245,
-            status: 'active',
-            endDate: '2024-06-15',
-            createdDate: '2024-03-15',
-          },
-          {
-            id: '2',
-            title: 'Education Technology Initiative',
-            goal: 25000,
-            raised: 25000,
-            donorCount: 180,
-            status: 'successful',
-            endDate: '2024-04-30',
-            createdDate: '2024-02-01',
-          },
-          {
-            id: '3',
-            title: 'Community Garden Project',
-            goal: 15000,
-            raised: 8500,
-            donorCount: 67,
-            status: 'active',
-            endDate: '2024-07-20',
-            createdDate: '2024-04-01',
-          },
-        ];
-
-        const mockStats: DashboardStats = {
-          totalCampaigns: mockCampaigns.length,
-          activeCampaigns: mockCampaigns.filter((c) => c.status === 'active')
-            .length,
-          totalRaised: mockCampaigns.reduce((sum, c) => sum + c.raised, 0),
-          totalDonors: mockCampaigns.reduce((sum, c) => sum + c.donorCount, 0),
-          pendingQuestions: 5,
-        };
-
-        setCampaigns(mockCampaigns);
-        setStats(mockStats);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
+      setCampaigns(mockCampaigns);
+      setStats(mockStats);
+      setLoading(false);
     };
 
-    fetchData();
+    loadData();
   }, []);
 
   const formatCurrency = (amount: number) => {
@@ -502,9 +440,5 @@ function DashboardContent() {
 }
 
 export default function DashboardPage() {
-  return (
-    // <ProtectedRoute allowedRoles={['creator', 'admin']}>
-    <DashboardContent />
-    // </ProtectedRoute>
-  );
+  return <DashboardContent />;
 }

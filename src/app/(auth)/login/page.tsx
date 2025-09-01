@@ -29,6 +29,8 @@ export default function LoginPage() {
     setError('');
 
     try {
+      console.log('Login attempt for:', formData.email);
+      
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -38,6 +40,7 @@ export default function LoginPage() {
       });
 
       const data = await response.json();
+      console.log('Login response:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Login failed');
@@ -46,24 +49,39 @@ export default function LoginPage() {
       // Store token and user data in localStorage
       if (data.token) {
         localStorage.setItem('authToken', data.token);
+        console.log('Token stored:', data.token.substring(0, 20) + '...');
       }
-
+      
       if (data.user) {
         localStorage.setItem('userData', JSON.stringify(data.user));
+        console.log('User data stored:', data.user);
       }
+
+      // Verify storage
+      const storedToken = localStorage.getItem('authToken');
+      const storedUser = localStorage.getItem('userData');
+      console.log('Verification - Token stored:', !!storedToken);
+      console.log('Verification - User data stored:', !!storedUser);
 
       // Small delay to ensure localStorage is written
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      await new Promise(resolve => setTimeout(resolve, 500));
 
-      // Redirect based on returnUrl or user role
-      if (returnUrl) {
-        window.location.href = returnUrl;
-      } else if (data.redirectUrl) {
-        window.location.href = data.redirectUrl;
+      console.log('Redirecting to:', data.redirectUrl);
+
+      // Force redirect based on user role
+      if (data.user.role === 'admin') {
+        console.log('Admin user - redirecting to /admin');
+        window.location.replace('/admin');
+      } else if (data.user.role === 'creator') {
+        console.log('Creator user - redirecting to /dashboard');
+        window.location.replace('/dashboard');
       } else {
-        window.location.href = '/';
+        console.log('Donor user - redirecting to /');
+        window.location.replace('/');
       }
+
     } catch (err: any) {
+      console.error('Login error:', err);
       setError(err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);

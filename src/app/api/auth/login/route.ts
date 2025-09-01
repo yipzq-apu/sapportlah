@@ -47,11 +47,21 @@ export async function POST(request: NextRequest) {
     let redirectUrl = '/';
     if (user.role === 'admin') {
       redirectUrl = '/admin';
+      console.log('Admin user detected, redirecting to:', redirectUrl);
     } else if (user.role === 'creator') {
       redirectUrl = '/dashboard';
+      console.log('Creator user detected, redirecting to:', redirectUrl);
     } else if (user.role === 'donor') {
       redirectUrl = '/';
+      console.log('Donor user detected, redirecting to:', redirectUrl);
     }
+
+    console.log(
+      'Login successful - User role:',
+      user.role,
+      'Redirect URL:',
+      redirectUrl
+    );
 
     // Return success response
     return NextResponse.json(

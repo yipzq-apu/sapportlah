@@ -1,9 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Navbar from '../components/Navbar';
-import Footer from '../components/Footer';
+import { useParams, useRouter } from 'next/navigation';
+import Link from 'next/link';
+import Navbar from '../../../components/Navbar';
+import Footer from '../../../components/Footer';
 
 interface CampaignForm {
   title: string;
@@ -14,6 +15,7 @@ interface CampaignForm {
   end_date: string;
   featured_image: string;
   video_url: string;
+  status: string;
 }
 
 interface Category {
@@ -22,15 +24,21 @@ interface Category {
 }
 
 interface CampaignImage {
+  id: number;
   url: string;
   caption: string;
 }
 
-export default function CreateCampaignPage() {
+export default function EditCampaignPage() {
+  const params = useParams();
   const router = useRouter();
+  const campaignId = params.id as string;
+  
   const [user, setUser] = useState<any>(null);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [campaignImages, setCampaignImages] = useState<CampaignImage[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState<CampaignForm>({
     title: '',
@@ -41,12 +49,12 @@ export default function CreateCampaignPage() {
     end_date: '',
     featured_image: '',
     video_url: '',
+    status: 'draft',
   });
-  const [campaignImages, setCampaignImages] = useState<CampaignImage[]>([]);
 
   useEffect(() => {
     const loadData = async () => {
-      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
+      // Set temporary user for testing
       setUser({
         id: 'temp-creator',
         name: 'Temporary Creator',
@@ -54,28 +62,50 @@ export default function CreateCampaignPage() {
         role: 'creator',
       });
 
-      // Fetch categories
-      try {
-        const response = await fetch('/api/categories');
-        if (response.ok) {
-          const data = await response.json();
-          setCategories(data.categories || []);
-        }
-      } catch (error) {
-        console.error('Failed to fetch categories:', error);
-      }
+      // Mock categories
+      const mockCategories: Category[] = [
+        { id: 1, name: 'Education' },
+        { id: 2, name: 'Healthcare' },
+        { id: 3, name: 'Environment' },
+        { id: 4, name: 'Community' },
+        { id: 5, name: 'Technology' },
+        { id: 6, name: 'Arts & Culture' },
+        { id: 7, name: 'Sports' },
+        { id: 8, name: 'Emergency' },
+      ];
+
+      // Mock existing campaign data
+      const mockCampaign: CampaignForm = {
+        title: 'Clean Water for Rural Communities',
+        description: 'We are working to provide clean and safe drinking water to rural communities that lack access to basic water infrastructure. This project will install water wells and purification systems in 5 villages, benefiting over 2,000 people. The funds will be used for equipment, installation, training local maintenance staff, and ensuring sustainable operation for years to come.',
+        short_description: 'Providing clean water access to remote villages through well installation and purification systems.',
+        goal_amount: '50000',
+        category_id: '3',
+        end_date: '2024-06-15',
+        featured_image: '/api/placeholder/600/400',
+        video_url: '',
+        status: 'active',
+      };
+
+      // Mock campaign images
+      const mockImages: CampaignImage[] = [
+        { id: 1, url: '/api/placeholder/300/200', caption: 'Current water source in the village' },
+        { id: 2, url: '/api/placeholder/300/200', caption: 'Community meeting about the project' },
+        { id: 3, url: '/api/placeholder/300/200', caption: 'Proposed well location' },
+      ];
+
+      setCategories(mockCategories);
+      setFormData(mockCampaign);
+      setCampaignImages(mockImages);
+      setLoading(false);
     };
 
     loadData();
-  }, [router]);
+  }, [campaignId]);
 
-  const handleInputChange = (
-    e: React.ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
-  ) => {
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
   const handleFileUpload = async (file: File, type: 'image' | 'video') => {
@@ -84,23 +114,16 @@ export default function CreateCampaignPage() {
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
 
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: uploadFormData,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (type === 'image') {
-          setFormData((prev) => ({ ...prev, featured_image: data.url }));
-        } else {
-          setFormData((prev) => ({ ...prev, video_url: data.url }));
-        }
-        alert('File uploaded successfully!');
+      // Mock upload
+      const mockUrl = `/api/placeholder/600/400`;
+      
+      if (type === 'image') {
+        setFormData(prev => ({ ...prev, featured_image: mockUrl }));
       } else {
-        const errorData = await response.json();
-        alert(errorData.error || 'Failed to upload file');
+        setFormData(prev => ({ ...prev, video_url: mockUrl }));
       }
+      
+      alert('File uploaded successfully!');
     } catch (error) {
       console.error('Upload error:', error);
       alert('Failed to upload file. Please try again.');
@@ -123,7 +146,7 @@ export default function CreateCampaignPage() {
     }
   };
 
-  const handleCampaignImageUpload = async (file: File) => {
+  const addCampaignImage = async (file: File) => {
     if (campaignImages.length >= 5) {
       alert('Maximum 5 campaign images allowed');
       return;
@@ -131,22 +154,15 @@ export default function CreateCampaignPage() {
 
     setUploading(true);
     try {
-      const uploadFormData = new FormData();
-      uploadFormData.append('file', file);
-
-      const response = await fetch('/api/upload', {
-        method: 'POST',
-        body: uploadFormData,
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        setCampaignImages((prev) => [...prev, { url: data.url, caption: '' }]);
-        alert('Campaign image uploaded successfully!');
-      } else {
-        const errorData = await response.json();
-        alert(errorData.error || 'Failed to upload image');
-      }
+      // Mock upload
+      const newImage: CampaignImage = {
+        id: Date.now(),
+        url: '/api/placeholder/300/200',
+        caption: '',
+      };
+      
+      setCampaignImages(prev => [...prev, newImage]);
+      alert('Campaign image uploaded successfully!');
     } catch (error) {
       console.error('Upload error:', error);
       alert('Failed to upload image. Please try again.');
@@ -155,91 +171,61 @@ export default function CreateCampaignPage() {
     }
   };
 
-  const handleCampaignImageChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ) => {
+  const handleCampaignImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      handleCampaignImageUpload(file);
+      addCampaignImage(file);
     }
-    // Reset input value to allow uploading the same file again
     e.target.value = '';
   };
 
-  const updateImageCaption = (index: number, caption: string) => {
-    setCampaignImages((prev) =>
-      prev.map((img, i) => (i === index ? { ...img, caption } : img))
+  const updateImageCaption = (imageId: number, caption: string) => {
+    setCampaignImages(prev => 
+      prev.map(img => 
+        img.id === imageId ? { ...img, caption } : img
+      )
     );
   };
 
-  const removeImage = (index: number) => {
-    setCampaignImages((prev) => prev.filter((_, i) => i !== index));
+  const removeImage = (imageId: number) => {
+    setCampaignImages(prev => prev.filter(img => img.id !== imageId));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
+    setSaving(true);
 
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
-        router.push('/login?returnUrl=/create-campaign');
-        return;
-      }
-
-      // Create campaign first
-      const response = await fetch('/api/campaigns/create', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(formData),
-      });
-
-      if (response.ok) {
-        const campaignData = await response.json();
-        const campaignId = campaignData.campaignId;
-
-        // Upload campaign images if any
-        if (campaignImages.length > 0 && campaignId) {
-          for (let i = 0; i < campaignImages.length; i++) {
-            const image = campaignImages[i];
-            await fetch(`/api/campaigns/${campaignId}/images`, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
-              },
-              body: JSON.stringify({
-                image_url: image.url,
-                caption: image.caption,
-                sort_order: i + 1,
-              }),
-            });
-          }
-        }
-
-        alert('Campaign created successfully!');
-        router.push('/dashboard');
-      } else {
-        const data = await response.json();
-        alert(data.error || 'Failed to create campaign');
-      }
+      // Mock saving
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      alert('Campaign updated successfully!');
+      router.push(`/campaigns/${campaignId}`);
     } catch (error) {
-      console.error('Error creating campaign:', error);
-      alert('Failed to create campaign. Please try again.');
+      console.error('Error updating campaign:', error);
+      alert('Failed to update campaign. Please try again.');
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  // Calculate minimum end date (30 days from now)
   const getMinEndDate = () => {
     const date = new Date();
-    date.setDate(date.getDate() + 30);
+    date.setDate(date.getDate() + 1);
     return date.toISOString().split('T')[0];
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar user={user} />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-xl text-gray-600">Loading campaign...</div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -247,13 +233,29 @@ export default function CreateCampaignPage() {
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-4">
-            Create New Campaign
-          </h1>
-          <p className="text-lg text-gray-600">
-            Launch your fundraising campaign and bring your project to life.
-          </p>
+        <div className="flex justify-between items-center mb-8">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">
+              Edit Campaign
+            </h1>
+            <p className="text-lg text-gray-600">
+              Update your campaign details and settings.
+            </p>
+          </div>
+          <div className="flex space-x-4">
+            <Link
+              href={`/campaigns/${campaignId}`}
+              className="px-4 py-2 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              View Campaign
+            </Link>
+            <Link
+              href={`/campaigns/${campaignId}/updates`}
+              className="px-4 py-2 bg-green-600 text-white rounded-md text-sm font-medium hover:bg-green-700"
+            >
+              Manage Updates
+            </Link>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -274,7 +276,7 @@ export default function CreateCampaignPage() {
                   required
                   value={formData.title}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
                   placeholder="Enter a compelling campaign title"
                 />
               </div>
@@ -289,7 +291,7 @@ export default function CreateCampaignPage() {
                   rows={3}
                   value={formData.short_description}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
                   placeholder="Brief description of your campaign (150 characters max)"
                   maxLength={150}
                 />
@@ -317,6 +319,27 @@ export default function CreateCampaignPage() {
                   ))}
                 </select>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Campaign Status
+                </label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                >
+                  <option value="draft">Draft</option>
+                  <option value="active">Active</option>
+                  <option value="paused">Paused</option>
+                </select>
+                <p className="text-sm text-gray-600 mt-1">
+                  {formData.status === 'draft' && 'Campaign is not visible to public'}
+                  {formData.status === 'active' && 'Campaign is live and accepting donations'}
+                  {formData.status === 'paused' && 'Campaign is visible but not accepting donations'}
+                </p>
+              </div>
             </div>
           </div>
 
@@ -337,7 +360,7 @@ export default function CreateCampaignPage() {
                   rows={8}
                   value={formData.description}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
                   placeholder="Tell your story. Explain what you're raising money for, why it matters, and how the funds will be used..."
                 />
               </div>
@@ -365,7 +388,7 @@ export default function CreateCampaignPage() {
                         className="w-full h-32 object-cover rounded-md"
                       />
                       <p className="text-sm text-green-700 mt-1 font-medium">
-                        ✓ Featured image uploaded successfully
+                        ✓ Featured image set
                       </p>
                     </div>
                   )}
@@ -393,7 +416,7 @@ export default function CreateCampaignPage() {
                         className="w-full h-32 rounded-md"
                       />
                       <p className="text-sm text-green-700 mt-1 font-medium">
-                        ✓ Video uploaded successfully
+                        ✓ Video uploaded
                       </p>
                     </div>
                   )}
@@ -413,22 +436,17 @@ export default function CreateCampaignPage() {
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 file:text-white file:bg-blue-600 file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4 file:hover:bg-blue-700 file:cursor-pointer disabled:file:bg-gray-400 disabled:file:cursor-not-allowed"
                 />
                 <p className="text-sm text-gray-600 mt-1">
-                  Upload up to 5 additional images to showcase your campaign (
-                  {campaignImages.length}/5)
+                  Upload up to 5 additional images ({campaignImages.length}/5)
                 </p>
 
-                {/* Display uploaded campaign images */}
                 {campaignImages.length > 0 && (
                   <div className="mt-4 space-y-4">
-                    {campaignImages.map((image, index) => (
-                      <div
-                        key={index}
-                        className="border border-gray-200 rounded-md p-4"
-                      >
+                    {campaignImages.map((image) => (
+                      <div key={image.id} className="border border-gray-200 rounded-md p-4">
                         <div className="flex items-start space-x-4">
                           <img
                             src={image.url}
-                            alt={`Campaign image ${index + 1}`}
+                            alt={`Campaign image ${image.id}`}
                             className="w-24 h-24 object-cover rounded-md"
                           />
                           <div className="flex-1">
@@ -438,10 +456,8 @@ export default function CreateCampaignPage() {
                             <input
                               type="text"
                               value={image.caption}
-                              onChange={(e) =>
-                                updateImageCaption(index, e.target.value)
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
+                              onChange={(e) => updateImageCaption(image.id, e.target.value)}
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
                               placeholder="Describe this image..."
                               maxLength={100}
                             />
@@ -451,7 +467,7 @@ export default function CreateCampaignPage() {
                           </div>
                           <button
                             type="button"
-                            onClick={() => removeImage(index)}
+                            onClick={() => removeImage(image.id)}
                             className="text-red-600 hover:text-red-800 text-sm font-medium"
                           >
                             Remove
@@ -465,9 +481,7 @@ export default function CreateCampaignPage() {
 
               {uploading && (
                 <div className="text-center py-4">
-                  <div className="text-blue-700 font-medium">
-                    Uploading file... Please wait.
-                  </div>
+                  <div className="text-blue-700 font-medium">Uploading file... Please wait.</div>
                 </div>
               )}
             </div>
@@ -493,7 +507,7 @@ export default function CreateCampaignPage() {
                     step="0.01"
                     value={formData.goal_amount}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
                     placeholder="e.g. 10000"
                   />
                 </div>
@@ -512,7 +526,7 @@ export default function CreateCampaignPage() {
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   />
                   <p className="text-sm text-gray-600 mt-1">
-                    Minimum 30 days from today
+                    Must be at least 1 day from today
                   </p>
                 </div>
               </div>
@@ -521,19 +535,18 @@ export default function CreateCampaignPage() {
 
           {/* Submit Button */}
           <div className="flex justify-end space-x-4">
-            <button
-              type="button"
-              onClick={() => router.back()}
+            <Link
+              href={`/campaigns/${campaignId}`}
               className="px-6 py-3 border border-gray-300 rounded-md text-sm font-medium text-gray-700 hover:bg-gray-50 transition duration-300"
             >
               Cancel
-            </button>
+            </Link>
             <button
               type="submit"
-              disabled={loading || uploading}
+              disabled={saving || uploading}
               className="px-6 py-3 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition duration-300"
             >
-              {loading ? 'Creating Campaign...' : 'Create Campaign'}
+              {saving ? 'Saving Changes...' : 'Save Changes'}
             </button>
           </div>
         </form>
