@@ -40,6 +40,7 @@ export default function CampaignsPage() {
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCampaigns, setTotalCampaigns] = useState(0);
+  const [favorites, setFavorites] = useState<number[]>([]);
   const campaignsPerPage = 6;
 
   // Check if user is logged in (simplified - no token auth)
@@ -122,6 +123,25 @@ export default function CampaignsPage() {
     fetchCampaigns();
   }, [searchTerm, selectedCategory, currentPage]);
 
+  // Fetch user favorites
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (user) {
+        try {
+          const response = await fetch(`/api/favorites?userId=${user.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            setFavorites(data.favorites || []);
+          }
+        } catch (error) {
+          console.error('Failed to fetch favorites:', error);
+        }
+      }
+    };
+
+    fetchFavorites();
+  }, [user]);
+
   // Pagination calculations
   const startIndex = (currentPage - 1) * campaignsPerPage;
   const endIndex = startIndex + campaignsPerPage;
@@ -190,6 +210,54 @@ export default function CampaignsPage() {
     const diffTime = end.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays > 0 ? diffDays : 0;
+  };
+
+  const toggleFavorite = async (campaignId: number) => {
+    if (!user) {
+      alert('Please log in to add favorites');
+      return;
+    }
+
+    const isFavorited = favorites.includes(campaignId);
+
+    try {
+      if (isFavorited) {
+        // Remove from favorites
+        const response = await fetch(
+          `/api/favorites?userId=${user.id}&campaignId=${campaignId}`,
+          {
+            method: 'DELETE',
+          }
+        );
+
+        if (response.ok) {
+          setFavorites(favorites.filter((id) => id !== campaignId));
+        } else {
+          alert('Failed to remove from favorites');
+        }
+      } else {
+        // Add to favorites
+        const response = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            campaignId: campaignId,
+          }),
+        });
+
+        if (response.ok) {
+          setFavorites([...favorites, campaignId]);
+        } else {
+          alert('Failed to add to favorites');
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      alert('Something went wrong. Please try again.');
+    }
   };
 
   return (
@@ -267,6 +335,7 @@ export default function CampaignsPage() {
                 campaign.goal_amount
               );
               const daysLeft = getDaysLeft(campaign.end_date);
+              const isFavorited = favorites.includes(campaign.id);
 
               return (
                 <div
@@ -287,6 +356,37 @@ export default function CampaignsPage() {
                         Featured
                       </div>
                     )}
+                    {/* Heart Icon for Favorites */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        toggleFavorite(campaign.id);
+                      }}
+                      className="absolute top-3 right-3 p-2 rounded-full bg-white/80 hover:bg-white transition duration-200"
+                      title={
+                        isFavorited
+                          ? 'Remove from favorites'
+                          : 'Add to favorites'
+                      }
+                    >
+                      <svg
+                        className={`w-5 h-5 transition duration-200 ${
+                          isFavorited
+                            ? 'text-red-500 fill-current'
+                            : 'text-gray-400 hover:text-red-500'
+                        }`}
+                        fill={isFavorited ? 'currentColor' : 'none'}
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                        />
+                      </svg>
+                    </button>
                   </div>
 
                   <div className="p-6">

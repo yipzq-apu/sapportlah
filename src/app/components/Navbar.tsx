@@ -10,6 +10,7 @@ interface User {
   lastName: string;
   role: 'donor' | 'creator' | 'admin';
   email?: string;
+  avatar?: string;
 }
 
 interface NavbarProps {
