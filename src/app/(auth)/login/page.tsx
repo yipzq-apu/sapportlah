@@ -29,53 +29,60 @@ export default function LoginPage() {
     setError('');
 
     try {
-      // Mock login logic - check email for different user types
-      console.log('Login attempt:', formData);
+      console.log('Login attempt for:', formData.email);
+      
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(formData),
+      });
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      const data = await response.json();
+      console.log('Login response:', data);
 
-      // Mock user data for testing
-      let mockUserData;
-
-      if (formData.email === 'admin@sapportlah.com') {
-        // Admin user
-        mockUserData = {
-          id: '1',
-          name: 'Admin User',
-          email: formData.email,
-          role: 'admin',
-          avatar: '/api/placeholder/150/150',
-        };
-      } else {
-        // Regular creator user
-        mockUserData = {
-          id: '1',
-          name: 'John Smith',
-          email: formData.email,
-          role: 'creator',
-          avatar: '/api/placeholder/150/150',
-        };
+      if (!response.ok) {
+        throw new Error(data.error || 'Login failed');
       }
 
-      const mockToken = 'mock-jwt-token-123';
-
-      // Store in localStorage for testing
-      localStorage.setItem('authToken', mockToken);
-      localStorage.setItem('userData', JSON.stringify(mockUserData));
-
-      // Redirect based on role
-      if (returnUrl) {
-        router.push(returnUrl);
-      } else if (mockUserData.role === 'admin') {
-        window.location.href = '/admin';
-      } else if (mockUserData.role === 'creator') {
-        window.location.href = '/dashboard';
-      } else {
-        window.location.href = '/';
+      // Store token and user data in localStorage
+      if (data.token) {
+        localStorage.setItem('authToken', data.token);
+        console.log('Token stored:', data.token.substring(0, 20) + '...');
       }
-    } catch (err) {
-      setError('Invalid email or password');
+      
+      if (data.user) {
+        localStorage.setItem('userData', JSON.stringify(data.user));
+        console.log('User data stored:', data.user);
+      }
+
+      // Verify storage
+      const storedToken = localStorage.getItem('authToken');
+      const storedUser = localStorage.getItem('userData');
+      console.log('Verification - Token stored:', !!storedToken);
+      console.log('Verification - User data stored:', !!storedUser);
+
+      // Small delay to ensure localStorage is written
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      console.log('Redirecting to:', data.redirectUrl);
+
+      // Force redirect based on user role
+      if (data.user.role === 'admin') {
+        console.log('Admin user - redirecting to /admin');
+        window.location.replace('/admin');
+      } else if (data.user.role === 'creator') {
+        console.log('Creator user - redirecting to /dashboard');
+        window.location.replace('/dashboard');
+      } else {
+        console.log('Donor user - redirecting to /');
+        window.location.replace('/');
+      }
+
+    } catch (err: any) {
+      console.error('Login error:', err);
+      setError(err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -134,7 +141,7 @@ export default function LoginPage() {
                   required
                   value={formData.email}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   placeholder="Enter your email"
                 />
               </div>
@@ -156,7 +163,7 @@ export default function LoginPage() {
                   required
                   value={formData.password}
                   onChange={handleChange}
-                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                   placeholder="Enter your password"
                 />
               </div>

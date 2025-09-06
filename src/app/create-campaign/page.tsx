@@ -8,51 +8,66 @@ import Footer from '../components/Footer';
 interface CampaignForm {
   title: string;
   description: string;
-  story: string;
-  goal: string;
-  category: string;
-  location: string;
-  type: 'all-or-nothing' | 'keep-it-all';
-  duration: string;
-  image: File | null;
+  short_description: string;
+  goal_amount: string;
+  category_id: string;
+  end_date: string;
+  featured_image: string;
+  video_url: string;
+}
+
+interface Category {
+  id: number;
+  name: string;
+}
+
+interface CampaignImage {
+  url: string;
+  caption: string;
 }
 
 export default function CreateCampaignPage() {
   const router = useRouter();
   const [user, setUser] = useState<any>(null);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [formData, setFormData] = useState<CampaignForm>({
     title: '',
     description: '',
-    story: '',
-    goal: '',
-    category: '',
-    location: '',
-    type: 'all-or-nothing',
-    duration: '30',
-    image: null,
+    short_description: '',
+    goal_amount: '',
+    category_id: '',
+    end_date: '',
+    featured_image: '',
+    video_url: '',
   });
-
-  const categories = [
-    'Education',
-    'Healthcare',
-    'Environment',
-    'Community',
-    'Technology',
-    'Arts & Culture',
-    'Sports',
-    'Emergency',
-  ];
+  const [campaignImages, setCampaignImages] = useState<CampaignImage[]>([]);
 
   useEffect(() => {
-    const token = localStorage.getItem('authToken');
-    const userData = localStorage.getItem('userData');
+    const loadData = async () => {
+      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
+      setUser({
+        id: 'temp-creator',
+        name: 'Temporary Creator',
+        email: 'creator@temp.com',
+        role: 'creator',
+      });
 
-    if (token && userData) {
-      const user = JSON.parse(userData);
-      setUser(user);
-    }
-  }, []);
+      // Fetch categories
+      try {
+        const response = await fetch('/api/categories');
+        if (response.ok) {
+          const data = await response.json();
+          setCategories(data.categories || []);
+        }
+      } catch (error) {
+        console.error('Failed to fetch categories:', error);
+      }
+    };
+
+    loadData();
+  }, [router]);
 
   const handleInputChange = (
     e: React.ChangeEvent<
@@ -63,9 +78,102 @@ export default function CreateCampaignPage() {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setFormData((prev) => ({ ...prev, image: file }));
+  const handleFileUpload = async (file: File, type: 'image' | 'video') => {
+    setUploading(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: uploadFormData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (type === 'image') {
+          setFormData((prev) => ({ ...prev, featured_image: data.url }));
+        } else {
+          setFormData((prev) => ({ ...prev, video_url: data.url }));
+        }
+        alert('File uploaded successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to upload file');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload file. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file, 'image');
+    }
+  };
+
+  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file, 'video');
+    }
+  };
+
+  const handleCampaignImageUpload = async (file: File) => {
+    if (campaignImages.length >= 5) {
+      alert('Maximum 5 campaign images allowed');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: uploadFormData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCampaignImages((prev) => [...prev, { url: data.url, caption: '' }]);
+        alert('Campaign image uploaded successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to upload image');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload image. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleCampaignImageChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleCampaignImageUpload(file);
+    }
+    // Reset input value to allow uploading the same file again
+    e.target.value = '';
+  };
+
+  const updateImageCaption = (index: number, caption: string) => {
+    setCampaignImages((prev) =>
+      prev.map((img, i) => (i === index ? { ...img, caption } : img))
+    );
+  };
+
+  const removeImage = (index: number) => {
+    setCampaignImages((prev) => prev.filter((_, i) => i !== index));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -73,19 +181,64 @@ export default function CreateCampaignPage() {
     setLoading(true);
 
     try {
-      // Handle campaign creation
-      console.log('Creating campaign:', formData);
+      const token = localStorage.getItem('authToken');
+      if (!token) {
+        router.push('/login?returnUrl=/create-campaign');
+        return;
+      }
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      // Create campaign first
+      const response = await fetch('/api/campaigns/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(formData),
+      });
 
-      alert('Campaign created successfully!');
-      router.push('/my-campaigns');
+      if (response.ok) {
+        const campaignData = await response.json();
+        const campaignId = campaignData.campaignId;
+
+        // Upload campaign images if any
+        if (campaignImages.length > 0 && campaignId) {
+          for (let i = 0; i < campaignImages.length; i++) {
+            const image = campaignImages[i];
+            await fetch(`/api/campaigns/${campaignId}/images`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`,
+              },
+              body: JSON.stringify({
+                image_url: image.url,
+                caption: image.caption,
+                sort_order: i + 1,
+              }),
+            });
+          }
+        }
+
+        alert('Campaign created successfully!');
+        router.push('/dashboard');
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to create campaign');
+      }
     } catch (error) {
+      console.error('Error creating campaign:', error);
       alert('Failed to create campaign. Please try again.');
     } finally {
       setLoading(false);
     }
+  };
+
+  // Calculate minimum end date (30 days from now)
+  const getMinEndDate = () => {
+    const date = new Date();
+    date.setDate(date.getDate() + 30);
+    return date.toISOString().split('T')[0];
   };
 
   return (
@@ -121,7 +274,7 @@ export default function CreateCampaignPage() {
                   required
                   value={formData.title}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
                   placeholder="Enter a compelling campaign title"
                 />
               </div>
@@ -131,55 +284,38 @@ export default function CreateCampaignPage() {
                   Short Description *
                 </label>
                 <textarea
-                  name="description"
+                  name="short_description"
                   required
                   rows={3}
-                  value={formData.description}
+                  value={formData.short_description}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
                   placeholder="Brief description of your campaign (150 characters max)"
                   maxLength={150}
                 />
-                <p className="text-sm text-gray-500 mt-1">
-                  {formData.description.length}/150 characters
+                <p className="text-sm text-gray-600 mt-1">
+                  {formData.short_description.length}/150 characters
                 </p>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category *
-                  </label>
-                  <select
-                    name="category"
-                    required
-                    value={formData.category}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="">Select a category</option>
-                    {categories.map((category) => (
-                      <option key={category} value={category}>
-                        {category}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location *
-                  </label>
-                  <input
-                    type="text"
-                    name="location"
-                    required
-                    value={formData.location}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Where is your project located?"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Category *
+                </label>
+                <select
+                  name="category_id"
+                  required
+                  value={formData.category_id}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                >
+                  <option value="">Select a category</option>
+                  {categories.map((category) => (
+                    <option key={category.id} value={category.id}>
+                      {category.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -193,34 +329,147 @@ export default function CreateCampaignPage() {
             <div className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Campaign Story *
+                  Detailed Description *
                 </label>
                 <textarea
-                  name="story"
+                  name="description"
                   required
                   rows={8}
-                  value={formData.story}
+                  value={formData.description}
                   onChange={handleInputChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
                   placeholder="Tell your story. Explain what you're raising money for, why it matters, and how the funds will be used..."
                 />
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Featured Image *
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif"
+                    onChange={handleImageChange}
+                    disabled={uploading}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 file:text-white file:bg-blue-600 file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4 file:hover:bg-blue-700 file:cursor-pointer"
+                  />
+                  <p className="text-sm text-gray-600 mt-1">
+                    Main campaign image (JPEG, PNG, GIF, max 10MB)
+                  </p>
+                  {formData.featured_image && (
+                    <div className="mt-2">
+                      <img
+                        src={formData.featured_image}
+                        alt="Featured Preview"
+                        className="w-full h-32 object-cover rounded-md"
+                      />
+                      <p className="text-sm text-green-700 mt-1 font-medium">
+                        ✓ Featured image uploaded successfully
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Campaign Video (Optional)
+                  </label>
+                  <input
+                    type="file"
+                    accept="video/mp4,video/webm,video/ogg"
+                    onChange={handleVideoChange}
+                    disabled={uploading}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 file:text-white file:bg-blue-600 file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4 file:hover:bg-blue-700 file:cursor-pointer"
+                  />
+                  <p className="text-sm text-gray-600 mt-1">
+                    Upload a video (MP4, WebM, OGG, max 10MB)
+                  </p>
+                  {formData.video_url && (
+                    <div className="mt-2">
+                      <video
+                        src={formData.video_url}
+                        controls
+                        className="w-full h-32 rounded-md"
+                      />
+                      <p className="text-sm text-green-700 mt-1 font-medium">
+                        ✓ Video uploaded successfully
+                      </p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Campaign Images */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Campaign Image *
+                  Additional Campaign Images (Optional)
                 </label>
                 <input
                   type="file"
-                  accept="image/*"
-                  onChange={handleFileChange}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  accept="image/jpeg,image/png,image/gif"
+                  onChange={handleCampaignImageChange}
+                  disabled={uploading || campaignImages.length >= 5}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 file:text-white file:bg-blue-600 file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4 file:hover:bg-blue-700 file:cursor-pointer disabled:file:bg-gray-400 disabled:file:cursor-not-allowed"
                 />
-                <p className="text-sm text-gray-500 mt-1">
-                  Upload a high-quality image that represents your campaign
-                  (JPG, PNG, max 5MB)
+                <p className="text-sm text-gray-600 mt-1">
+                  Upload up to 5 additional images to showcase your campaign (
+                  {campaignImages.length}/5)
                 </p>
+
+                {/* Display uploaded campaign images */}
+                {campaignImages.length > 0 && (
+                  <div className="mt-4 space-y-4">
+                    {campaignImages.map((image, index) => (
+                      <div
+                        key={index}
+                        className="border border-gray-200 rounded-md p-4"
+                      >
+                        <div className="flex items-start space-x-4">
+                          <img
+                            src={image.url}
+                            alt={`Campaign image ${index + 1}`}
+                            className="w-24 h-24 object-cover rounded-md"
+                          />
+                          <div className="flex-1">
+                            <label className="block text-sm font-medium text-gray-700 mb-1">
+                              Caption (Optional)
+                            </label>
+                            <input
+                              type="text"
+                              value={image.caption}
+                              onChange={(e) =>
+                                updateImageCaption(index, e.target.value)
+                              }
+                              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
+                              placeholder="Describe this image..."
+                              maxLength={100}
+                            />
+                            <p className="text-xs text-gray-600 mt-1">
+                              {image.caption.length}/100 characters
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            className="text-red-600 hover:text-red-800 text-sm font-medium"
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
+
+              {uploading && (
+                <div className="text-center py-4">
+                  <div className="text-blue-700 font-medium">
+                    Uploading file... Please wait.
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -238,77 +487,33 @@ export default function CreateCampaignPage() {
                   </label>
                   <input
                     type="number"
-                    name="goal"
+                    name="goal_amount"
                     required
                     min="100"
-                    value={formData.goal}
+                    step="0.01"
+                    value={formData.goal_amount}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
                     placeholder="e.g. 10000"
                   />
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Campaign Duration (days) *
+                    Campaign End Date *
                   </label>
-                  <select
-                    name="duration"
+                  <input
+                    type="date"
+                    name="end_date"
                     required
-                    value={formData.duration}
+                    min={getMinEndDate()}
+                    value={formData.end_date}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                  >
-                    <option value="30">30 days</option>
-                    <option value="45">45 days</option>
-                    <option value="60">60 days</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-4">
-                  Campaign Type *
-                </label>
-                <div className="space-y-3">
-                  <label className="flex items-start">
-                    <input
-                      type="radio"
-                      name="type"
-                      value="all-or-nothing"
-                      checked={formData.type === 'all-or-nothing'}
-                      onChange={handleInputChange}
-                      className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                    />
-                    <div className="ml-3">
-                      <span className="text-sm font-medium text-gray-900">
-                        All-or-Nothing
-                      </span>
-                      <p className="text-sm text-gray-500">
-                        You only receive funds if you reach your goal. If not,
-                        all money is returned to donors.
-                      </p>
-                    </div>
-                  </label>
-                  <label className="flex items-start">
-                    <input
-                      type="radio"
-                      name="type"
-                      value="keep-it-all"
-                      checked={formData.type === 'keep-it-all'}
-                      onChange={handleInputChange}
-                      className="mt-1 h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300"
-                    />
-                    <div className="ml-3">
-                      <span className="text-sm font-medium text-gray-900">
-                        Keep-it-All
-                      </span>
-                      <p className="text-sm text-gray-500">
-                        You keep whatever amount you raise, regardless of
-                        whether you reach your goal.
-                      </p>
-                    </div>
-                  </label>
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  />
+                  <p className="text-sm text-gray-600 mt-1">
+                    Minimum 30 days from today
+                  </p>
                 </div>
               </div>
             </div>
@@ -325,7 +530,7 @@ export default function CreateCampaignPage() {
             </button>
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || uploading}
               className="px-6 py-3 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition duration-300"
             >
               {loading ? 'Creating Campaign...' : 'Create Campaign'}

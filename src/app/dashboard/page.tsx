@@ -24,77 +24,73 @@ interface DashboardStats {
   pendingQuestions: number;
 }
 
-export default function DashboardPage() {
+function DashboardContent() {
   const [user, setUser] = useState<any>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        // Get user data
-        const token = localStorage.getItem('authToken');
-        const userData = localStorage.getItem('userData');
+    const loadData = () => {
+      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
+      setUser({
+        id: 'temp-creator',
+        name: 'Temporary Creator',
+        email: 'creator@temp.com',
+        role: 'creator',
+        avatar: '/api/placeholder/150/150',
+      });
 
-        if (token && userData) {
-          const user = JSON.parse(userData);
-          setUser(user);
-        }
+      // TODO: Replace with actual API calls to fetch campaigns and stats
+      // For now, using mock data until campaigns table is created
+      const mockCampaigns: Campaign[] = [
+        {
+          id: '1',
+          title: 'Clean Water for Rural Communities',
+          goal: 50000,
+          raised: 32500,
+          donorCount: 245,
+          status: 'active',
+          endDate: '2024-06-15',
+          createdDate: '2024-03-15',
+        },
+        {
+          id: '2',
+          title: 'Education Technology Initiative',
+          goal: 25000,
+          raised: 25000,
+          donorCount: 180,
+          status: 'successful',
+          endDate: '2024-04-30',
+          createdDate: '2024-02-01',
+        },
+        {
+          id: '3',
+          title: 'Community Garden Project',
+          goal: 15000,
+          raised: 8500,
+          donorCount: 67,
+          status: 'active',
+          endDate: '2024-07-20',
+          createdDate: '2024-04-01',
+        },
+      ];
 
-        // Mock campaigns data
-        const mockCampaigns: Campaign[] = [
-          {
-            id: '1',
-            title: 'Clean Water for Rural Communities',
-            goal: 50000,
-            raised: 32500,
-            donorCount: 245,
-            status: 'active',
-            endDate: '2024-06-15',
-            createdDate: '2024-03-15',
-          },
-          {
-            id: '2',
-            title: 'Education Technology Initiative',
-            goal: 25000,
-            raised: 25000,
-            donorCount: 180,
-            status: 'successful',
-            endDate: '2024-04-30',
-            createdDate: '2024-02-01',
-          },
-          {
-            id: '3',
-            title: 'Community Garden Project',
-            goal: 15000,
-            raised: 8500,
-            donorCount: 67,
-            status: 'active',
-            endDate: '2024-07-20',
-            createdDate: '2024-04-01',
-          },
-        ];
+      const mockStats: DashboardStats = {
+        totalCampaigns: mockCampaigns.length,
+        activeCampaigns: mockCampaigns.filter((c) => c.status === 'active')
+          .length,
+        totalRaised: mockCampaigns.reduce((sum, c) => sum + c.raised, 0),
+        totalDonors: mockCampaigns.reduce((sum, c) => sum + c.donorCount, 0),
+        pendingQuestions: 5,
+      };
 
-        const mockStats: DashboardStats = {
-          totalCampaigns: mockCampaigns.length,
-          activeCampaigns: mockCampaigns.filter((c) => c.status === 'active')
-            .length,
-          totalRaised: mockCampaigns.reduce((sum, c) => sum + c.raised, 0),
-          totalDonors: mockCampaigns.reduce((sum, c) => sum + c.donorCount, 0),
-          pendingQuestions: 5,
-        };
-
-        setCampaigns(mockCampaigns);
-        setStats(mockStats);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
-      } finally {
-        setLoading(false);
-      }
+      setCampaigns(mockCampaigns);
+      setStats(mockStats);
+      setLoading(false);
     };
 
-    fetchData();
+    loadData();
   }, []);
 
   const formatCurrency = (amount: number) => {
@@ -441,4 +437,8 @@ export default function DashboardPage() {
       <Footer />
     </div>
   );
+}
+
+export default function DashboardPage() {
+  return <DashboardContent />;
 }

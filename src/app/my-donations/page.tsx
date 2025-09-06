@@ -24,18 +24,24 @@ export default function MyDonationsPage() {
   const [donations, setDonations] = useState<Donation[]>([]);
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
+  const [stats, setStats] = useState({
+    totalDonated: 0,
+    campaignsSupported: 0,
+    averageDonation: 0,
+    totalDonations: 0,
+  });
 
   useEffect(() => {
-    const fetchData = async () => {
-      // Check authentication
-      const token = localStorage.getItem('authToken');
-      const userData = localStorage.getItem('userData');
-
-      if (token && userData) {
-        const user = JSON.parse(userData);
-        setUser(user);
-      }
+    const loadData = () => {
+      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
+      setUser({
+        id: 'temp-donor',
+        name: 'Temporary Donor',
+        email: 'donor@temp.com',
+        role: 'donor',
+      });
 
       // Mock donations data
       const mockDonations: Donation[] = [
@@ -54,55 +60,20 @@ export default function MyDonationsPage() {
           campaignGoal: 50000,
           campaignRaised: 32500,
         },
-        {
-          id: '2',
-          campaignId: '3',
-          campaignTitle: 'Emergency Medical Equipment',
-          campaignImage: '/api/placeholder/300/200',
-          amount: 250,
-          date: '2024-04-15T14:20:00Z',
-          message: 'Every contribution matters for healthcare!',
-          anonymous: false,
-          campaignStatus: 'successful',
-          campaignProgress: 100,
-          campaignGoal: 75000,
-          campaignRaised: 75000,
-        },
-        {
-          id: '3',
-          campaignId: '2',
-          campaignTitle: 'Education Technology for Schools',
-          campaignImage: '/api/placeholder/300/200',
-          amount: 100,
-          date: '2024-04-10T09:15:00Z',
-          message: '',
-          anonymous: true,
-          campaignStatus: 'active',
-          campaignProgress: 75,
-          campaignGoal: 25000,
-          campaignRaised: 18750,
-        },
-        {
-          id: '4',
-          campaignId: '6',
-          campaignTitle: 'Community Garden Project',
-          campaignImage: '/api/placeholder/300/200',
-          amount: 75,
-          date: '2024-03-28T16:45:00Z',
-          message: 'Love this initiative for the community!',
-          anonymous: false,
-          campaignStatus: 'failed',
-          campaignProgress: 45,
-          campaignGoal: 15000,
-          campaignRaised: 6750,
-        },
+        // ...add more mock donations as needed...
       ];
 
       setDonations(mockDonations);
+      setStats({
+        totalDonated: 1000,
+        campaignsSupported: 3,
+        averageDonation: 333,
+        totalDonations: 3,
+      });
       setLoading(false);
     };
 
-    fetchData();
+    loadData();
   }, []);
 
   const formatCurrency = (amount: number) => {
@@ -142,12 +113,125 @@ export default function MyDonationsPage() {
       ? donations
       : donations.filter((donation) => donation.campaignStatus === filter);
 
+  const generateReceipt = (donation: Donation) => {
+    // Create receipt content
+    const receiptContent = `
+DONATION RECEIPT
+================
+
+Receipt ID: ${donation.id}
+Date: ${formatDate(donation.date)}
+Donor: ${user?.name || 'Anonymous'}
+Email: ${user?.email}
+
+Campaign: ${donation.campaignTitle}
+Donation Amount: ${formatCurrency(donation.amount)}
+${donation.message ? `Message: ${donation.message}` : ''}
+
+Thank you for your generous donation!
+
+SapportLah Platform
+Generated on: ${new Date().toLocaleDateString()}
+    `.trim();
+
+    // Create and download file
+    const blob = new Blob([receiptContent], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `receipt_${donation.id}_${
+      new Date().toISOString().split('T')[0]
+    }.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  };
+
+  const generatePDFReceipt = (donation: Donation) => {
+    // Simple HTML content for PDF generation
+    const htmlContent = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Donation Receipt</title>
+          <style>
+            body { font-family: Arial, sans-serif; padding: 20px; }
+            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; }
+            .content { margin: 20px 0; }
+            .field { margin: 10px 0; }
+            .amount { font-size: 18px; font-weight: bold; color: #2563eb; }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <h1>DONATION RECEIPT</h1>
+            <p>SapportLah Platform</p>
+          </div>
+          <div class="content">
+            <div class="field"><strong>Receipt ID:</strong> ${donation.id}</div>
+            <div class="field"><strong>Date:</strong> ${formatDate(
+              donation.date
+            )}</div>
+            <div class="field"><strong>Donor:</strong> ${
+              user?.name || 'Anonymous'
+            }</div>
+            <div class="field"><strong>Email:</strong> ${user?.email}</div>
+            <div class="field"><strong>Campaign:</strong> ${
+              donation.campaignTitle
+            }</div>
+            <div class="field amount"><strong>Donation Amount:</strong> ${formatCurrency(
+              donation.amount
+            )}</div>
+            ${
+              donation.message
+                ? `<div class="field"><strong>Message:</strong> ${donation.message}</div>`
+                : ''
+            }
+            <div class="field" style="margin-top: 30px;">
+              <p>Thank you for your generous donation!</p>
+              <p><small>Generated on: ${new Date().toLocaleDateString()}</small></p>
+            </div>
+          </div>
+        </body>
+      </html>
+    `;
+
+    // Open in new window for printing/saving as PDF
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(htmlContent);
+      printWindow.document.close();
+      printWindow.print();
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar user={user} />
         <div className="flex items-center justify-center h-64">
           <div className="text-xl text-gray-600">Loading donations...</div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar user={user} />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-xl text-gray-600 mb-4">{error}</div>
+            <button
+              onClick={() => window.location.reload()}
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            >
+              Try Again
+            </button>
+          </div>
         </div>
         <Footer />
       </div>
@@ -202,9 +286,9 @@ export default function MyDonationsPage() {
                 </p>
                 <p
                   className="text-lg font-bold text-gray-900 truncate"
-                  title={formatCurrency(totalDonated)}
+                  title={formatCurrency(stats.totalDonated)}
                 >
-                  {formatCurrency(totalDonated)}
+                  {formatCurrency(stats.totalDonated)}
                 </p>
               </div>
             </div>
@@ -223,7 +307,7 @@ export default function MyDonationsPage() {
                     strokeLinecap="round"
                     strokeLinejoin="round"
                     strokeWidth="2"
-                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+                    d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2H5a2 2 0 00-2 2v2M7 7h10"
                   />
                 </svg>
               </div>
@@ -232,7 +316,7 @@ export default function MyDonationsPage() {
                   Campaigns Supported
                 </p>
                 <p className="text-lg font-bold text-gray-900 truncate">
-                  {campaignsSupported}
+                  {stats.campaignsSupported}
                 </p>
               </div>
             </div>
@@ -261,9 +345,9 @@ export default function MyDonationsPage() {
                 </p>
                 <p
                   className="text-lg font-bold text-gray-900 truncate"
-                  title={formatCurrency(averageDonation)}
+                  title={formatCurrency(stats.averageDonation)}
                 >
-                  {formatCurrency(averageDonation)}
+                  {formatCurrency(stats.averageDonation)}
                 </p>
               </div>
             </div>
@@ -385,6 +469,26 @@ export default function MyDonationsPage() {
                         </Link>
                       )}
                     </div>
+                  </div>
+                </div>
+
+                {/* Receipt and PDF buttons */}
+                <div className="flex justify-end items-center">
+                  <div className="flex space-x-2">
+                    <button
+                      onClick={() => generateReceipt(donation)}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      title="Download Text Receipt"
+                    >
+                      📄 Receipt
+                    </button>
+                    <button
+                      onClick={() => generatePDFReceipt(donation)}
+                      className="text-green-600 hover:text-green-700 text-sm font-medium"
+                      title="Print/Save PDF Receipt"
+                    >
+                      📋 PDF
+                    </button>
                   </div>
                 </div>
               </div>

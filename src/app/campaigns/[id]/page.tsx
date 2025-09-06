@@ -7,26 +7,21 @@ import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 
 interface Campaign {
-  id: string;
+  id: number;
   title: string;
   description: string;
-  story: string;
-  image: string;
-  goal: number;
-  raised: number;
-  donorCount: number;
-  category: string;
-  creator: {
-    name: string;
-    avatar: string;
-    verified: boolean;
-    location: string;
-  };
-  type: 'all-or-nothing' | 'keep-it-all';
-  location: string;
-  endDate: string;
-  featured: boolean;
-  createdDate: string;
+  short_description: string;
+  goal_amount: number;
+  current_amount: number;
+  end_date: string;
+  featured_image?: string;
+  video_url?: string;
+  status: string;
+  is_featured: boolean;
+  backers_count: number;
+  created_at: string;
+  creator_name: string;
+  creator_email: string;
 }
 
 interface Donation {
@@ -54,178 +49,93 @@ export default function CampaignDetailPage() {
   const campaignId = params.id as string;
   const [campaign, setCampaign] = useState<Campaign | null>(null);
   const [recentDonations, setRecentDonations] = useState<Donation[]>([]);
+  const [questions, setQuestions] = useState<Question[]>([]);
   const [donationAmount, setDonationAmount] = useState('');
   const [donationMessage, setDonationMessage] = useState('');
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null); // Add user state
+  const [error, setError] = useState('');
+  const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState<'donations' | 'qna'>('donations');
-  const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState('');
   const [isQuestionAnonymous, setIsQuestionAnonymous] = useState(false);
 
   // Check if user is logged in
   useEffect(() => {
-    const checkAuth = () => {
-      // Replace with actual auth logic
+    const checkAuth = async () => {
       const token = localStorage.getItem('authToken');
       if (token) {
-        const userData = JSON.parse(localStorage.getItem('userData') || '{}');
-        setUser(userData);
+        try {
+          const response = await fetch('/api/auth/me', {
+            headers: { Authorization: `Bearer ${token}` },
+          });
+          if (response.ok) {
+            const data = await response.json();
+            setUser(data.user);
+          }
+        } catch (error) {
+          console.error('Auth check failed:', error);
+        }
       }
     };
 
     checkAuth();
   }, []);
 
-  // Mock data - replace with actual API call
+  // Fetch campaign data from backend
   useEffect(() => {
     const fetchCampaignData = async () => {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000));
+      setLoading(true);
+      try {
+        const response = await fetch(`/api/campaigns/${campaignId}`);
 
-      const mockCampaign: Campaign = {
-        id: campaignId,
-        title: 'Clean Water for Rural Communities',
-        description:
-          'Help us bring clean drinking water to underserved rural areas through sustainable water purification systems.',
-        story: `Access to clean drinking water is a fundamental human right, yet millions of people in rural communities still lack this basic necessity. Our project aims to install solar-powered water purification systems in 5 remote villages, providing clean, safe drinking water to over 2,000 people.
+        if (response.ok) {
+          const data = await response.json();
+          setCampaign(data.campaign);
 
-The Problem:
-These communities currently rely on contaminated water sources, leading to waterborne diseases that particularly affect children and elderly residents. The nearest clean water source is often miles away, forcing families to spend hours each day collecting water instead of working or attending school.
-
-Our Solution:
-We've partnered with local engineers and community leaders to design sustainable water purification systems that use solar energy and require minimal maintenance. Each system can purify up to 5,000 liters of water per day and has a lifespan of 15 years.
-
-Impact:
-- Provide clean water access to 2,000+ people
-- Reduce waterborne diseases by 80%
-- Save 3 hours per family per day previously spent collecting water
-- Create local jobs for system maintenance
-- Establish a model for expansion to other communities
-
-Your support will directly fund:
-- Equipment and materials ($30,000)
-- Installation and setup ($10,000)
-- Training local technicians ($5,000)
-- Project monitoring for 2 years ($5,000)
-
-Every contribution, no matter the size, brings us closer to transforming these communities and ensuring that clean water is accessible to all.`,
-        image: '/api/placeholder/800/400',
-        goal: 50000,
-        raised: 32500,
-        donorCount: 245,
-        category: 'Environment',
-        creator: {
-          name: 'Water For All Foundation',
-          avatar: '/api/placeholder/100/100',
-          verified: true,
-          location: 'Singapore',
-        },
-        type: 'all-or-nothing',
-        location: 'Rural Philippines',
-        endDate: '2024-06-15',
-        featured: true,
-        createdDate: '2024-03-15',
-      };
-
-      const mockDonations: Donation[] = [
-        {
-          id: '1',
-          donorName: 'Sarah Chen',
-          amount: 500,
-          message:
-            'This is such an important cause. Hope this helps reach the goal!',
-          date: '2024-04-20T10:30:00Z',
-          anonymous: false,
-        },
-        {
-          id: '2',
-          donorName: 'Anonymous',
-          amount: 100,
-          message: 'Every drop counts. Keep up the great work!',
-          date: '2024-04-20T09:15:00Z',
-          anonymous: true,
-        },
-        {
-          id: '3',
-          donorName: 'Michael Wong',
-          amount: 250,
-          message: 'Clean water should be available to everyone.',
-          date: '2024-04-19T16:45:00Z',
-          anonymous: false,
-        },
-        {
-          id: '4',
-          donorName: 'Anonymous',
-          amount: 50,
-          message: '',
-          date: '2024-04-19T14:20:00Z',
-          anonymous: true,
-        },
-        {
-          id: '5',
-          donorName: 'Lisa Tan',
-          amount: 1000,
-          message:
-            'Amazing project! My company would love to partner with you for future initiatives.',
-          date: '2024-04-19T11:30:00Z',
-          anonymous: false,
-        },
-      ];
-
-      const mockQuestions: Question[] = [
-        {
-          id: '1',
-          question:
-            'How will you ensure the water purification systems are maintained long-term?',
-          answer:
-            "We will train local technicians and establish a maintenance fund that covers repairs and replacements for the first 5 years. Additionally, we're partnering with the local government to ensure ongoing support.",
-          askerName: 'David Kim',
-          dateAsked: '2024-04-18T14:30:00Z',
-          dateAnswered: '2024-04-19T09:15:00Z',
-          anonymous: false,
-        },
-        {
-          id: '2',
-          question: "What happens if you don't reach the full funding goal?",
-          answer:
-            "Since this is an all-or-nothing campaign, if we don't reach our goal, all funds will be returned to donors. However, we have backup plans to seek additional funding from grants and corporate sponsors.",
-          askerName: 'Anonymous',
-          dateAsked: '2024-04-17T11:20:00Z',
-          dateAnswered: '2024-04-17T16:45:00Z',
-          anonymous: true,
-        },
-        {
-          id: '3',
-          question:
-            'Can you provide more details about the solar technology being used?',
-          answer: null,
-          askerName: 'Emily Zhang',
-          dateAsked: '2024-04-20T08:30:00Z',
-          dateAnswered: null,
-          anonymous: false,
-        },
-        {
-          id: '4',
-          question:
-            'How will you measure the success and impact of this project?',
-          answer:
-            'We will track several metrics including water quality tests, health improvement surveys, time saved by families, and school attendance rates. Reports will be published quarterly and shared with all donors.',
-          askerName: 'Anonymous',
-          dateAsked: '2024-04-16T13:45:00Z',
-          dateAnswered: '2024-04-16T20:30:00Z',
-          anonymous: true,
-        },
-      ];
-
-      setCampaign(mockCampaign);
-      setRecentDonations(mockDonations);
-      setQuestions(mockQuestions);
-      setLoading(false);
+          // Fetch donations and questions separately for better performance
+          fetchDonations();
+          fetchQuestions();
+        } else if (response.status === 404) {
+          setError('Campaign not found');
+        } else {
+          setError('Failed to load campaign');
+        }
+      } catch (error) {
+        console.error('Error fetching campaign:', error);
+        setError('Failed to load campaign');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    fetchCampaignData();
+    const fetchDonations = async () => {
+      try {
+        const response = await fetch(`/api/campaigns/${campaignId}/donations`);
+        if (response.ok) {
+          const data = await response.json();
+          setRecentDonations(data.donations || []);
+        }
+      } catch (error) {
+        console.error('Error fetching donations:', error);
+      }
+    };
+
+    const fetchQuestions = async () => {
+      try {
+        const response = await fetch(`/api/campaigns/${campaignId}/questions`);
+        if (response.ok) {
+          const data = await response.json();
+          setQuestions(data.questions || []);
+        }
+      } catch (error) {
+        console.error('Error fetching questions:', error);
+      }
+    };
+
+    if (campaignId) {
+      fetchCampaignData();
+    }
   }, [campaignId]);
 
   const calculatePercentage = (raised: number, goal: number) => {
@@ -260,10 +170,8 @@ Every contribution, no matter the size, brings us closer to transforming these c
   const handleDonate = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Check if user is logged in
     if (!user) {
-      // Redirect to login page with return URL
-      router.push(`/login?returnUrl=/campaign/${campaignId}`);
+      router.push(`/login?returnUrl=/campaigns/${campaignId}`);
       return;
     }
 
@@ -280,28 +188,56 @@ Every contribution, no matter the size, brings us closer to transforming these c
     e.preventDefault();
 
     if (!user) {
-      router.push(`/login?returnUrl=/campaign/${campaignId}`);
+      router.push(`/login?returnUrl=/campaigns/${campaignId}`);
       return;
     }
 
     if (!newQuestion.trim()) return;
 
-    // Handle question submission
-    console.log('New question:', {
-      question: newQuestion,
-      anonymous: isQuestionAnonymous,
-    });
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await fetch(`/api/campaigns/${campaignId}/questions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          question: newQuestion.trim(),
+          userId: user.id,
+          anonymous: isQuestionAnonymous,
+        }),
+      });
 
-    // Reset form
-    setNewQuestion('');
-    setIsQuestionAnonymous(false);
-    alert('Your question has been submitted!');
+      if (response.ok) {
+        // Reset form
+        setNewQuestion('');
+        setIsQuestionAnonymous(false);
+
+        // Refresh questions list
+        const questionsResponse = await fetch(
+          `/api/campaigns/${campaignId}/questions`
+        );
+        if (questionsResponse.ok) {
+          const data = await questionsResponse.json();
+          setQuestions(data.questions || []);
+        }
+
+        alert('Your question has been submitted successfully!');
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to submit question. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error submitting question:', error);
+      alert('Failed to submit question. Please try again.');
+    }
   };
 
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+        <Navbar user={user} />
         <div className="flex items-center justify-center h-64">
           <div className="text-xl text-gray-600">Loading campaign...</div>
         </div>
@@ -310,20 +246,33 @@ Every contribution, no matter the size, brings us closer to transforming these c
     );
   }
 
-  if (!campaign) {
+  if (error || !campaign) {
     return (
       <div className="min-h-screen bg-gray-50">
-        <Navbar />
+        <Navbar user={user} />
         <div className="flex items-center justify-center h-64">
-          <div className="text-xl text-gray-600">Campaign not found</div>
+          <div className="text-center">
+            <div className="text-xl text-gray-600 mb-4">
+              {error || 'Campaign not found'}
+            </div>
+            <Link
+              href="/campaigns"
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            >
+              Browse Campaigns
+            </Link>
+          </div>
         </div>
         <Footer />
       </div>
     );
   }
 
-  const percentage = calculatePercentage(campaign.raised, campaign.goal);
-  const daysLeft = getDaysLeft(campaign.endDate);
+  const percentage = calculatePercentage(
+    campaign.current_amount,
+    campaign.goal_amount
+  );
+  const daysLeft = getDaysLeft(campaign.end_date);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -355,18 +304,15 @@ Every contribution, no matter the size, brings us closer to transforming these c
             {/* Campaign Image */}
             <div className="relative mb-6">
               <img
-                src={campaign.image}
+                src={campaign.featured_image || '/api/placeholder/800/400'}
                 alt={campaign.title}
                 className="w-full h-64 md:h-96 object-cover rounded-lg"
               />
-              {campaign.featured && (
+              {campaign.is_featured && (
                 <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 text-sm font-semibold rounded">
                   Featured
                 </div>
               )}
-              <div className="absolute top-4 right-4 bg-black bg-opacity-50 text-white px-3 py-1 text-sm rounded">
-                {campaign.category}
-              </div>
             </div>
 
             {/* Campaign Info */}
@@ -376,56 +322,37 @@ Every contribution, no matter the size, brings us closer to transforming these c
               </h1>
 
               <div className="flex items-center mb-4">
-                <img
-                  src={campaign.creator.avatar}
-                  alt={campaign.creator.name}
-                  className="w-12 h-12 rounded-full mr-4"
-                />
+                <div className="w-12 h-12 rounded-full bg-gray-300 mr-4 flex items-center justify-center">
+                  <span className="text-gray-600 font-semibold">
+                    {campaign.creator_name.charAt(0)}
+                  </span>
+                </div>
                 <div>
                   <div className="flex items-center">
                     <span className="font-semibold text-gray-900">
-                      {campaign.creator.name}
+                      {campaign.creator_name}
                     </span>
-                    {campaign.creator.verified && (
-                      <svg
-                        className="w-5 h-5 text-blue-600 ml-1"
-                        fill="currentColor"
-                        viewBox="0 0 20 20"
-                      >
-                        <path
-                          fillRule="evenodd"
-                          d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                          clipRule="evenodd"
-                        />
-                      </svg>
-                    )}
                   </div>
-                  <p className="text-sm text-gray-500">
-                    {campaign.creator.location}
-                  </p>
+                  <p className="text-sm text-gray-500">Campaign Creator</p>
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 text-sm">
                 <div>
-                  <span className="text-gray-500">Type:</span>
-                  <p className="font-semibold capitalize">
-                    {campaign.type.replace('-', ' ')}
-                  </p>
-                </div>
-                <div>
-                  <span className="text-gray-500">Location:</span>
-                  <p className="font-semibold">{campaign.location}</p>
+                  <span className="text-gray-500">Status:</span>
+                  <p className="font-semibold capitalize">{campaign.status}</p>
                 </div>
                 <div>
                   <span className="text-gray-500">Created:</span>
                   <p className="font-semibold">
-                    {new Date(campaign.createdDate).toLocaleDateString()}
+                    {new Date(campaign.created_at).toLocaleDateString()}
                   </p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Category:</span>
-                  <p className="font-semibold">{campaign.category}</p>
+                  <span className="text-gray-500">End Date:</span>
+                  <p className="font-semibold">
+                    {new Date(campaign.end_date).toLocaleDateString()}
+                  </p>
                 </div>
               </div>
 
@@ -435,18 +362,18 @@ Every contribution, no matter the size, brings us closer to transforming these c
             </div>
 
             {/* Campaign Story */}
-            <div className="bg-white rounded-lg shadow-md p-6 mb-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">
-                Campaign Story
-              </h2>
-              <div className="prose max-w-none">
-                {campaign.story.split('\n\n').map((paragraph, index) => (
-                  <p key={index} className="text-gray-700 leading-relaxed mb-4">
-                    {paragraph}
+            {campaign.short_description && (
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                  Campaign Story
+                </h2>
+                <div className="prose max-w-none">
+                  <p className="text-gray-700 leading-relaxed">
+                    {campaign.short_description}
                   </p>
-                ))}
+                </div>
               </div>
-            </div>
+            )}
 
             {/* Recent Donations / Q&A Section */}
             <div className="bg-white rounded-lg shadow-md p-6">
@@ -480,37 +407,49 @@ Every contribution, no matter the size, brings us closer to transforming these c
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">
                     Recent Donations
                   </h2>
-                  <div className="space-y-4">
-                    {recentDonations.map((donation) => (
-                      <div
-                        key={donation.id}
-                        className="border-b border-gray-200 pb-4 last:border-b-0"
-                      >
-                        <div className="flex justify-between items-start">
-                          <div className="flex-1">
-                            <div className="flex items-center mb-1">
-                              <span className="font-semibold text-gray-900">
-                                {donation.anonymous
-                                  ? 'Anonymous'
-                                  : donation.donorName}
-                              </span>
-                              <span className="text-blue-600 font-bold ml-2">
-                                {formatCurrency(donation.amount)}
-                              </span>
-                            </div>
-                            {donation.message && (
-                              <p className="text-gray-600 text-sm mb-1">
-                                "{donation.message}"
+                  {recentDonations.length > 0 ? (
+                    <div className="space-y-4">
+                      {recentDonations.map((donation) => (
+                        <div
+                          key={donation.id}
+                          className="border-b border-gray-200 pb-4 last:border-b-0"
+                        >
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center mb-1">
+                                <span className="font-semibold text-gray-900">
+                                  {donation.anonymous
+                                    ? 'Anonymous'
+                                    : donation.donorName}
+                                </span>
+                                <span className="text-blue-600 font-bold ml-2">
+                                  {formatCurrency(donation.amount)}
+                                </span>
+                              </div>
+                              {donation.message && (
+                                <p className="text-gray-600 text-sm mb-1">
+                                  "{donation.message}"
+                                </p>
+                              )}
+                              <p className="text-gray-400 text-xs">
+                                {formatDate(donation.date)}
                               </p>
-                            )}
-                            <p className="text-gray-400 text-xs">
-                              {formatDate(donation.date)}
-                            </p>
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-gray-400 text-4xl mb-4">💝</div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        No donations yet
+                      </h3>
+                      <p className="text-gray-600">
+                        Be the first to support this campaign!
+                      </p>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div>
@@ -557,90 +496,90 @@ Every contribution, no matter the size, brings us closer to transforming these c
                   </div>
 
                   {/* Questions List */}
-                  <div className="space-y-6">
-                    {questions.map((question) => (
-                      <div
-                        key={question.id}
-                        className="border-b border-gray-200 pb-6 last:border-b-0"
-                      >
-                        {/* Question */}
-                        <div className="mb-4">
-                          <div className="flex items-start mb-2">
-                            <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                              <span className="text-blue-600 font-semibold text-sm">
-                                Q
-                              </span>
-                            </div>
-                            <div className="flex-1">
-                              <p className="text-gray-900 font-medium">
-                                {question.question}
-                              </p>
-                              <div className="flex items-center mt-1 text-sm text-gray-500">
-                                <span>
-                                  Asked by{' '}
-                                  {question.anonymous
-                                    ? 'Anonymous'
-                                    : question.askerName}
-                                </span>
-                                <span className="mx-2">•</span>
-                                <span>{formatDate(question.dateAsked)}</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Answer */}
-                        {question.answer ? (
-                          <div className="ml-11">
-                            <div className="flex items-start">
-                              <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                                <span className="text-green-600 font-semibold text-sm">
-                                  A
+                  {questions.length > 0 ? (
+                    <div className="space-y-6">
+                      {questions.map((question) => (
+                        <div
+                          key={question.id}
+                          className="border-b border-gray-200 pb-6 last:border-b-0"
+                        >
+                          {/* Question */}
+                          <div className="mb-4">
+                            <div className="flex items-start mb-2">
+                              <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
+                                <span className="text-blue-600 font-semibold text-sm">
+                                  Q
                                 </span>
                               </div>
                               <div className="flex-1">
-                                <p className="text-gray-700">
-                                  {question.answer}
+                                <p className="text-gray-900 font-medium">
+                                  {question.question}
                                 </p>
                                 <div className="flex items-center mt-1 text-sm text-gray-500">
                                   <span>
-                                    Answered by {campaign?.creator.name}
+                                    Asked by{' '}
+                                    {question.anonymous
+                                      ? 'Anonymous'
+                                      : question.askerName}
                                   </span>
                                   <span className="mx-2">•</span>
-                                  <span>
-                                    {question.dateAnswered &&
-                                      formatDate(question.dateAnswered)}
-                                  </span>
+                                  <span>{formatDate(question.dateAsked)}</span>
                                 </div>
                               </div>
                             </div>
                           </div>
-                        ) : (
-                          <div className="ml-11">
-                            <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-                              <p className="text-sm text-yellow-800">
-                                <span className="font-medium">Pending:</span>{' '}
-                                This question is waiting for an answer from the
-                                campaign creator.
-                              </p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    ))}
 
-                    {questions.length === 0 && (
-                      <div className="text-center py-8">
-                        <div className="text-gray-400 text-4xl mb-4">❓</div>
-                        <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                          No questions yet
-                        </h3>
-                        <p className="text-gray-600">
-                          Be the first to ask the campaign creator a question!
-                        </p>
-                      </div>
-                    )}
-                  </div>
+                          {/* Answer */}
+                          {question.answer ? (
+                            <div className="ml-11">
+                              <div className="flex items-start">
+                                <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
+                                  <span className="text-green-600 font-semibold text-sm">
+                                    A
+                                  </span>
+                                </div>
+                                <div className="flex-1">
+                                  <p className="text-gray-700">
+                                    {question.answer}
+                                  </p>
+                                  <div className="flex items-center mt-1 text-sm text-gray-500">
+                                    <span>
+                                      Answered by {campaign?.creator_name}
+                                    </span>
+                                    <span className="mx-2">•</span>
+                                    <span>
+                                      {question.dateAnswered &&
+                                        formatDate(question.dateAnswered)}
+                                    </span>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="ml-11">
+                              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
+                                <p className="text-sm text-yellow-800">
+                                  <span className="font-medium">Pending:</span>{' '}
+                                  This question is waiting for an answer from
+                                  the campaign creator.
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-gray-400 text-4xl mb-4">❓</div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        No questions yet
+                      </h3>
+                      <p className="text-gray-600">
+                        Be the first to ask the campaign creator a question!
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -652,8 +591,8 @@ Every contribution, no matter the size, brings us closer to transforming these c
             <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
               <div className="mb-6">
                 <div className="flex justify-between text-lg font-semibold mb-2">
-                  <span>Raised: {formatCurrency(campaign.raised)}</span>
-                  <span>Goal: {formatCurrency(campaign.goal)}</span>
+                  <span>Raised: {formatCurrency(campaign.current_amount)}</span>
+                  <span>Goal: {formatCurrency(campaign.goal_amount)}</span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3 mb-3">
                   <div
@@ -668,7 +607,7 @@ Every contribution, no matter the size, brings us closer to transforming these c
                   <span>{daysLeft} days left</span>
                 </div>
                 <div className="mt-2 text-sm text-gray-600">
-                  <span>{campaign.donorCount} donors</span>
+                  <span>{campaign.backers_count} backers</span>
                 </div>
               </div>
 

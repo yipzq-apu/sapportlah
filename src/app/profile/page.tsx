@@ -30,42 +30,33 @@ export default function ProfilePage() {
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
 
   useEffect(() => {
-    const fetchProfile = async () => {
-      // Get user data from localStorage for testing
-      const token = localStorage.getItem('authToken');
-      const userData = localStorage.getItem('userData');
+    const loadProfile = () => {
+      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
+      const userProfile: UserProfile = {
+        id: 'temp-user',
+        name: 'Temporary User',
+        email: 'user@temp.com',
+        role: 'donor',
+        avatar: '/api/placeholder/150/150',
+        location: 'Singapore',
+        bio: 'This is a temporary user profile for testing.',
+        phone: '+65 1234 5678',
+        joinDate: '2024-01-01',
+        totalDonations: 1500,
+        campaignsSupported: 5,
+        settings: {
+          emailNotifications: true,
+          publicProfile: true,
+          anonymousDonations: false,
+        },
+      };
 
-      if (token && userData) {
-        const user = JSON.parse(userData);
-
-        // Mock complete profile data based on logged in user
-        const mockProfile: UserProfile = {
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          avatar: user.avatar || '/api/placeholder/150/150',
-          location: 'Singapore',
-          bio: 'Passionate about supporting education and environmental causes. Love seeing how technology can make a positive impact on communities.',
-          phone: '+65 9123 4567',
-          joinDate: '2023-08-15',
-          totalDonations: 925,
-          campaignsSupported: 8,
-          settings: {
-            emailNotifications: true,
-            publicProfile: true,
-            anonymousDonations: false,
-          },
-        };
-
-        setUser(mockProfile);
-        setFormData(mockProfile);
-      }
-
+      setUser(userProfile);
+      setFormData(userProfile);
       setLoading(false);
     };
 
-    fetchProfile();
+    loadProfile();
   }, []);
 
   const handleInputChange = (
