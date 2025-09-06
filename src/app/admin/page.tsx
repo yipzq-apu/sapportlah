@@ -168,14 +168,18 @@ export default function AdminPage() {
                     Success Rate
                   </h3>
                   <p className="text-3xl font-bold text-orange-600">
-                    {Math.round((stats.successfulCampaigns / stats.totalCampaigns) * 100)}%
+                    {Math.round(
+                      (stats.successfulCampaigns / stats.totalCampaigns) * 100
+                    )}
+                    %
                   </p>
                 </div>
                 <div className="text-4xl text-orange-500">🎯</div>
               </div>
               <div className="mt-4">
                 <span className="text-gray-500 text-sm">
-                  {stats.successfulCampaigns} of {stats.totalCampaigns} campaigns
+                  {stats.successfulCampaigns} of {stats.totalCampaigns}{' '}
+                  campaigns
                 </span>
               </div>
             </div>
@@ -234,7 +238,8 @@ export default function AdminPage() {
                       className="bg-yellow-600 h-2 rounded-full"
                       style={{
                         width: `${
-                          (stats!.pendingCampaigns / stats!.totalCampaigns) * 100
+                          (stats!.pendingCampaigns / stats!.totalCampaigns) *
+                          100
                         }%`,
                       }}
                     />
@@ -277,7 +282,9 @@ export default function AdminPage() {
                         style={{ width: `${category.percentage}%` }}
                       />
                     </div>
-                    <span className="text-xs font-medium">{category.count}</span>
+                    <span className="text-xs font-medium">
+                      {category.count}
+                    </span>
                   </div>
                 </div>
               ))}

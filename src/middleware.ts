@@ -8,7 +8,7 @@ export function middleware(request: NextRequest) {
 
 // Empty matcher to disable middleware for all routes
 export const config = {
-  matcher: []
+  matcher: [],
 };
 // }
 // */

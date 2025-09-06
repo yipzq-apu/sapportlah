@@ -33,7 +33,7 @@ export default function EditCampaignPage() {
   const params = useParams();
   const router = useRouter();
   const campaignId = params.id as string;
-  
+
   const [user, setUser] = useState<any>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [campaignImages, setCampaignImages] = useState<CampaignImage[]>([]);
@@ -77,8 +77,10 @@ export default function EditCampaignPage() {
       // Mock existing campaign data
       const mockCampaign: CampaignForm = {
         title: 'Clean Water for Rural Communities',
-        description: 'We are working to provide clean and safe drinking water to rural communities that lack access to basic water infrastructure. This project will install water wells and purification systems in 5 villages, benefiting over 2,000 people. The funds will be used for equipment, installation, training local maintenance staff, and ensuring sustainable operation for years to come.',
-        short_description: 'Providing clean water access to remote villages through well installation and purification systems.',
+        description:
+          'We are working to provide clean and safe drinking water to rural communities that lack access to basic water infrastructure. This project will install water wells and purification systems in 5 villages, benefiting over 2,000 people. The funds will be used for equipment, installation, training local maintenance staff, and ensuring sustainable operation for years to come.',
+        short_description:
+          'Providing clean water access to remote villages through well installation and purification systems.',
         goal_amount: '50000',
         category_id: '3',
         end_date: '2024-06-15',
@@ -89,9 +91,21 @@ export default function EditCampaignPage() {
 
       // Mock campaign images
       const mockImages: CampaignImage[] = [
-        { id: 1, url: '/api/placeholder/300/200', caption: 'Current water source in the village' },
-        { id: 2, url: '/api/placeholder/300/200', caption: 'Community meeting about the project' },
-        { id: 3, url: '/api/placeholder/300/200', caption: 'Proposed well location' },
+        {
+          id: 1,
+          url: '/api/placeholder/300/200',
+          caption: 'Current water source in the village',
+        },
+        {
+          id: 2,
+          url: '/api/placeholder/300/200',
+          caption: 'Community meeting about the project',
+        },
+        {
+          id: 3,
+          url: '/api/placeholder/300/200',
+          caption: 'Proposed well location',
+        },
       ];
 
       setCategories(mockCategories);
@@ -103,9 +117,13 @@ export default function EditCampaignPage() {
     loadData();
   }, [campaignId]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleFileUpload = async (file: File, type: 'image' | 'video') => {
@@ -116,13 +134,13 @@ export default function EditCampaignPage() {
 
       // Mock upload
       const mockUrl = `/api/placeholder/600/400`;
-      
+
       if (type === 'image') {
-        setFormData(prev => ({ ...prev, featured_image: mockUrl }));
+        setFormData((prev) => ({ ...prev, featured_image: mockUrl }));
       } else {
-        setFormData(prev => ({ ...prev, video_url: mockUrl }));
+        setFormData((prev) => ({ ...prev, video_url: mockUrl }));
       }
-      
+
       alert('File uploaded successfully!');
     } catch (error) {
       console.error('Upload error:', error);
@@ -160,8 +178,8 @@ export default function EditCampaignPage() {
         url: '/api/placeholder/300/200',
         caption: '',
       };
-      
-      setCampaignImages(prev => [...prev, newImage]);
+
+      setCampaignImages((prev) => [...prev, newImage]);
       alert('Campaign image uploaded successfully!');
     } catch (error) {
       console.error('Upload error:', error);
@@ -171,7 +189,9 @@ export default function EditCampaignPage() {
     }
   };
 
-  const handleCampaignImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleCampaignImageChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
     const file = e.target.files?.[0];
     if (file) {
       addCampaignImage(file);
@@ -180,15 +200,13 @@ export default function EditCampaignPage() {
   };
 
   const updateImageCaption = (imageId: number, caption: string) => {
-    setCampaignImages(prev => 
-      prev.map(img => 
-        img.id === imageId ? { ...img, caption } : img
-      )
+    setCampaignImages((prev) =>
+      prev.map((img) => (img.id === imageId ? { ...img, caption } : img))
     );
   };
 
   const removeImage = (imageId: number) => {
-    setCampaignImages(prev => prev.filter(img => img.id !== imageId));
+    setCampaignImages((prev) => prev.filter((img) => img.id !== imageId));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -197,8 +215,8 @@ export default function EditCampaignPage() {
 
     try {
       // Mock saving
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       alert('Campaign updated successfully!');
       router.push(`/campaigns/${campaignId}`);
     } catch (error) {
@@ -335,9 +353,12 @@ export default function EditCampaignPage() {
                   <option value="paused">Paused</option>
                 </select>
                 <p className="text-sm text-gray-600 mt-1">
-                  {formData.status === 'draft' && 'Campaign is not visible to public'}
-                  {formData.status === 'active' && 'Campaign is live and accepting donations'}
-                  {formData.status === 'paused' && 'Campaign is visible but not accepting donations'}
+                  {formData.status === 'draft' &&
+                    'Campaign is not visible to public'}
+                  {formData.status === 'active' &&
+                    'Campaign is live and accepting donations'}
+                  {formData.status === 'paused' &&
+                    'Campaign is visible but not accepting donations'}
                 </p>
               </div>
             </div>
@@ -442,7 +463,10 @@ export default function EditCampaignPage() {
                 {campaignImages.length > 0 && (
                   <div className="mt-4 space-y-4">
                     {campaignImages.map((image) => (
-                      <div key={image.id} className="border border-gray-200 rounded-md p-4">
+                      <div
+                        key={image.id}
+                        className="border border-gray-200 rounded-md p-4"
+                      >
                         <div className="flex items-start space-x-4">
                           <img
                             src={image.url}
@@ -456,7 +480,9 @@ export default function EditCampaignPage() {
                             <input
                               type="text"
                               value={image.caption}
-                              onChange={(e) => updateImageCaption(image.id, e.target.value)}
+                              onChange={(e) =>
+                                updateImageCaption(image.id, e.target.value)
+                              }
                               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400"
                               placeholder="Describe this image..."
                               maxLength={100}
@@ -481,7 +507,9 @@ export default function EditCampaignPage() {
 
               {uploading && (
                 <div className="text-center py-4">
-                  <div className="text-blue-700 font-medium">Uploading file... Please wait.</div>
+                  <div className="text-blue-700 font-medium">
+                    Uploading file... Please wait.
+                  </div>
                 </div>
               )}
             </div>

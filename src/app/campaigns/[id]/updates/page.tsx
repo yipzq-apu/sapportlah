@@ -25,7 +25,7 @@ export default function CampaignUpdatesPage() {
   const params = useParams();
   const router = useRouter();
   const campaignId = params.id as string;
-  
+
   const [user, setUser] = useState<any>(null);
   const [updates, setUpdates] = useState<CampaignUpdate[]>([]);
   const [loading, setLoading] = useState(true);
@@ -52,7 +52,8 @@ export default function CampaignUpdatesPage() {
         {
           id: 1,
           title: 'Great Progress on Water Well Construction!',
-          content: 'We are excited to share that the water well construction is 70% complete! The local community has been incredibly supportive, and we expect to finish the project by next month. Thank you to all our supporters for making this possible.',
+          content:
+            'We are excited to share that the water well construction is 70% complete! The local community has been incredibly supportive, and we expect to finish the project by next month. Thank you to all our supporters for making this possible.',
           image_url: '/api/placeholder/600/400',
           created_at: '2024-04-20T10:30:00Z',
           updated_at: '2024-04-20T10:30:00Z',
@@ -60,14 +61,16 @@ export default function CampaignUpdatesPage() {
         {
           id: 2,
           title: 'First Phase Completed Successfully',
-          content: 'The initial site preparation and foundation work has been completed ahead of schedule. The engineering team confirmed that the soil conditions are perfect for a deep water well. We are now moving to the drilling phase.',
+          content:
+            'The initial site preparation and foundation work has been completed ahead of schedule. The engineering team confirmed that the soil conditions are perfect for a deep water well. We are now moving to the drilling phase.',
           created_at: '2024-04-15T14:20:00Z',
           updated_at: '2024-04-15T14:20:00Z',
         },
         {
           id: 3,
           title: 'Community Meeting and Project Kickoff',
-          content: 'Had an amazing meeting with the local community leaders today. Everyone is excited about the clean water project. We also held a small ceremony to mark the official start of construction. The enthusiasm from the villagers is truly inspiring!',
+          content:
+            'Had an amazing meeting with the local community leaders today. Everyone is excited about the clean water project. We also held a small ceremony to mark the official start of construction. The enthusiasm from the villagers is truly inspiring!',
           image_url: '/api/placeholder/600/400',
           created_at: '2024-04-10T09:15:00Z',
           updated_at: '2024-04-10T09:15:00Z',
@@ -81,9 +84,11 @@ export default function CampaignUpdatesPage() {
     loadData();
   }, [campaignId]);
 
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -101,7 +106,7 @@ export default function CampaignUpdatesPage() {
         updated_at: new Date().toISOString(),
       };
 
-      setUpdates(prev => [newUpdate, ...prev]);
+      setUpdates((prev) => [newUpdate, ...prev]);
       setFormData({ title: '', content: '', image_url: '' });
       setShowForm(false);
       alert('Update posted successfully!');
@@ -257,7 +262,10 @@ export default function CampaignUpdatesPage() {
             </div>
           ) : (
             updates.map((update) => (
-              <div key={update.id} className="bg-white rounded-lg shadow-md p-6">
+              <div
+                key={update.id}
+                className="bg-white rounded-lg shadow-md p-6"
+              >
                 <div className="mb-4">
                   <h3 className="text-xl font-semibold text-gray-900 mb-2">
                     {update.title}

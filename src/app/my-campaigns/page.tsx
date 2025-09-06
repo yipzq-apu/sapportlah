@@ -24,35 +24,53 @@ export default function MyCampaignsPage() {
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    const loadData = () => {
-      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
-      setUser({
-        id: 'temp-creator',
-        name: 'Temporary Creator',
-        email: 'creator@temp.com',
-        role: 'creator',
-      });
+    const fetchData = async () => {
+      setLoading(true);
+      try {
+        // Check if user is logged in
+        const token = localStorage.getItem('authToken');
+        const userData = localStorage.getItem('userData');
 
-      // Mock campaigns data
-      const mockCampaigns: Campaign[] = [
-        {
-          id: '1',
-          title: 'Clean Water for Rural Communities',
-          goal: 50000,
-          raised: 32500,
-          donorCount: 245,
-          status: 'active',
-          endDate: '2024-06-15',
-          createdDate: '2024-03-15',
-        },
-        // ...add more mock campaigns as needed...
-      ];
+        if (!token || !userData) {
+          window.location.href = '/login?returnUrl=/my-campaigns';
+          return;
+        }
 
-      setCampaigns(mockCampaigns);
-      setLoading(false);
+        const user = JSON.parse(userData);
+
+        // Check if user is creator or admin
+        if (user.role !== 'creator' && user.role !== 'admin') {
+          window.location.href = '/unauthorized';
+          return;
+        }
+
+        setUser(user);
+
+        // Fetch campaigns from backend
+        const response = await fetch('/api/campaigns/my-campaigns', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setCampaigns(data.campaigns || []);
+        } else if (response.status === 401) {
+          localStorage.removeItem('authToken');
+          localStorage.removeItem('userData');
+          window.location.href = '/login?returnUrl=/my-campaigns';
+          return;
+        } else {
+          throw new Error('Failed to fetch campaigns');
+        }
+      } catch (error) {
+        console.error('Error fetching campaigns:', error);
+        setError('Failed to load campaigns. Please try again.');
+      } finally {
+        setLoading(false);
+      }
     };
 
-    loadData();
+    fetchData();
   }, []);
 
   const formatCurrency = (amount: number) => {

@@ -115,24 +115,23 @@ export default function AdminUsersPage() {
     loadUsers();
   }, []);
 
-  const filteredUsers = users.filter(user => {
-    const matchesSearch = 
+  const filteredUsers = users.filter((user) => {
+    const matchesSearch =
       user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    
+
     const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
-    
+    const matchesStatus =
+      statusFilter === 'all' || user.status === statusFilter;
+
     return matchesSearch && matchesRole && matchesStatus;
   });
 
   const updateUserStatus = (userId: number, newStatus: string) => {
-    setUsers(prev => 
-      prev.map(user => 
-        user.id === userId 
-          ? { ...user, status: newStatus as any }
-          : user
+    setUsers((prev) =>
+      prev.map((user) =>
+        user.id === userId ? { ...user, status: newStatus as any } : user
       )
     );
   };
@@ -173,9 +172,11 @@ export default function AdminUsersPage() {
     });
   };
 
-  const handleCreateInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+  const handleCreateInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { name, value } = e.target;
-    setCreateForm(prev => ({ ...prev, [name]: value }));
+    setCreateForm((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleCreateAdmin = async (e: React.FormEvent) => {
@@ -196,7 +197,7 @@ export default function AdminUsersPage() {
         phone: createForm.phone || undefined,
       };
 
-      setUsers(prev => [newAdmin, ...prev]);
+      setUsers((prev) => [newAdmin, ...prev]);
       setCreateForm({
         first_name: '',
         last_name: '',
@@ -228,7 +229,9 @@ export default function AdminUsersPage() {
       <div className="flex justify-between items-center">
         <div>
           <h1 className="text-2xl font-bold text-gray-900">User Management</h1>
-          <p className="text-gray-600">Manage platform users and their permissions</p>
+          <p className="text-gray-600">
+            Manage platform users and their permissions
+          </p>
         </div>
         <button
           onClick={() => setShowCreateModal(true)}
@@ -247,19 +250,19 @@ export default function AdminUsersPage() {
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Active Users</h3>
           <p className="text-2xl font-bold text-green-600">
-            {users.filter(u => u.status === 'active').length}
+            {users.filter((u) => u.status === 'active').length}
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Creators</h3>
           <p className="text-2xl font-bold text-blue-600">
-            {users.filter(u => u.role === 'creator').length}
+            {users.filter((u) => u.role === 'creator').length}
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Pending Review</h3>
           <p className="text-2xl font-bold text-yellow-600">
-            {users.filter(u => u.status === 'pending').length}
+            {users.filter((u) => u.status === 'pending').length}
           </p>
         </div>
       </div>
@@ -345,17 +348,27 @@ export default function AdminUsersPage() {
                       </div>
                       <div className="text-sm text-gray-500">{user.email}</div>
                       {user.phone && (
-                        <div className="text-xs text-gray-400">{user.phone}</div>
+                        <div className="text-xs text-gray-400">
+                          {user.phone}
+                        </div>
                       )}
                     </div>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getRoleColor(user.role)}`}>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getRoleColor(
+                        user.role
+                      )}`}
+                    >
                       {user.role}
                     </span>
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap">
-                    <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(user.status)}`}>
+                    <span
+                      className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
+                        user.status
+                      )}`}
+                    >
                       {user.status}
                     </span>
                   </td>
@@ -439,7 +452,7 @@ export default function AdminUsersPage() {
                   ✕
                 </button>
               </div>
-              
+
               <form onSubmit={handleCreateAdmin} className="space-y-4">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -515,11 +528,12 @@ export default function AdminUsersPage() {
 
                 <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
                   <p className="text-sm text-yellow-700">
-                    <strong>Note:</strong> A temporary password will be generated and sent to the user's email. 
-                    They will be required to change it on first login.
+                    <strong>Note:</strong> A temporary password will be
+                    generated and sent to the user's email. They will be
+                    required to change it on first login.
                   </p>
                 </div>
-                
+
                 <div className="flex justify-end space-x-2 pt-4">
                   <button
                     type="button"
@@ -558,69 +572,102 @@ export default function AdminUsersPage() {
                   ✕
                 </button>
               </div>
-              
+
               <div className="space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Name</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Name
+                  </label>
                   <p className="text-sm text-gray-900">
                     {selectedUser.first_name} {selectedUser.last_name}
                   </p>
                 </div>
-                
+
                 <div>
-                  <label className="block text-sm font-medium text-gray-700">Email</label>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Email
+                  </label>
                   <p className="text-sm text-gray-900">{selectedUser.email}</p>
                 </div>
 
                 {selectedUser.phone && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Phone</label>
-                    <p className="text-sm text-gray-900">{selectedUser.phone}</p>
-                  </div>
-                )}
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Role</label>
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getRoleColor(selectedUser.role)}`}>
-                    {selectedUser.role}
-                  </span>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Status</label>
-                  <span className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(selectedUser.status)}`}>
-                    {selectedUser.status}
-                  </span>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Member Since</label>
-                  <p className="text-sm text-gray-900">{formatDate(selectedUser.created_at)}</p>
-                </div>
-                
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">Last Login</label>
-                  <p className="text-sm text-gray-900">{formatDate(selectedUser.last_login)}</p>
-                </div>
-
-                {selectedUser.role === 'donor' && selectedUser.total_donations && (
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700">Total Donations</label>
-                    <p className="text-sm text-green-600 font-semibold">
-                      ${selectedUser.total_donations}
+                    <label className="block text-sm font-medium text-gray-700">
+                      Phone
+                    </label>
+                    <p className="text-sm text-gray-900">
+                      {selectedUser.phone}
                     </p>
                   </div>
                 )}
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Role
+                  </label>
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getRoleColor(
+                      selectedUser.role
+                    )}`}
+                  >
+                    {selectedUser.role}
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Status
+                  </label>
+                  <span
+                    className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
+                      selectedUser.status
+                    )}`}
+                  >
+                    {selectedUser.status}
+                  </span>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Member Since
+                  </label>
+                  <p className="text-sm text-gray-900">
+                    {formatDate(selectedUser.created_at)}
+                  </p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700">
+                    Last Login
+                  </label>
+                  <p className="text-sm text-gray-900">
+                    {formatDate(selectedUser.last_login)}
+                  </p>
+                </div>
+
+                {selectedUser.role === 'donor' &&
+                  selectedUser.total_donations && (
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700">
+                        Total Donations
+                      </label>
+                      <p className="text-sm text-green-600 font-semibold">
+                        ${selectedUser.total_donations}
+                      </p>
+                    </div>
+                  )}
+
                 {selectedUser.role === 'creator' && (
                   <div>
-                    <label className="block text-sm font-medium text-gray-700">Campaigns Created</label>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Campaigns Created
+                    </label>
                     <p className="text-sm text-blue-600 font-semibold">
                       {selectedUser.campaigns_created}
                     </p>
                   </div>
                 )}
-                
+
                 <div className="flex justify-end space-x-2 pt-4">
                   <button
                     onClick={() => setShowModal(false)}

@@ -2,11 +2,14 @@ import { NextRequest, NextResponse } from 'next/server';
 import { queryService } from '../../../../../database';
 import { verifyToken } from '../../../../../lib/auth';
 
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { id } = await params;
     const campaignId = parseInt(id);
-    
+
     if (isNaN(campaignId)) {
       return NextResponse.json(
         { error: 'Invalid campaign ID' },
@@ -25,14 +28,11 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
 
     const token = authHeader.substring(7);
     let decoded;
-    
+
     try {
       decoded = verifyToken(token);
     } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
     }
 
     const body = await request.json();
@@ -52,7 +52,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Insert campaign image into database
     const insertQuery = `
       INSERT INTO campaign_images (campaign_id, image_url, caption, sort_order, created_at)
-      VALUES (${campaignId}, '${escapedImageUrl}', '${escapedCaption}', ${sort_order || 0}, NOW())
+      VALUES (${campaignId}, '${escapedImageUrl}', '${escapedCaption}', ${
+      sort_order || 0
+    }, NOW())
     `;
 
     await queryService.customQuery(insertQuery);
@@ -61,10 +63,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       { message: 'Campaign image added successfully' },
       { status: 201 }
     );
-
   } catch (error: any) {
     console.error('Add campaign image error:', error);
-    
+
     return NextResponse.json(
       { error: 'Failed to add campaign image', details: error.message },
       { status: 500 }

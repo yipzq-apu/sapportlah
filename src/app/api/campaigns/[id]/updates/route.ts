@@ -3,11 +3,14 @@ import { queryService } from '../../../../../database';
 import { verifyToken } from '../../../../../lib/auth';
 
 // Get campaign updates
-export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { id } = await params;
     const campaignId = parseInt(id);
-    
+
     if (isNaN(campaignId)) {
       return NextResponse.json(
         { error: 'Invalid campaign ID' },
@@ -32,7 +35,6 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
     const updates = await queryService.customQuery(query);
 
     return NextResponse.json({ updates }, { status: 200 });
-
   } catch (error: any) {
     console.error('Get campaign updates error:', error);
     return NextResponse.json(
@@ -43,11 +45,14 @@ export async function GET(request: NextRequest, { params }: { params: Promise<{ 
 }
 
 // Add campaign update
-export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
     const { id } = await params;
     const campaignId = parseInt(id);
-    
+
     if (isNaN(campaignId)) {
       return NextResponse.json(
         { error: 'Invalid campaign ID' },
@@ -107,7 +112,9 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     // Insert campaign update
     const insertQuery = `
       INSERT INTO campaign_updates (campaign_id, title, content, image_url, created_at)
-      VALUES (${campaignId}, '${escapedTitle}', '${escapedContent}', ${escapedImageUrl ? `'${escapedImageUrl}'` : 'NULL'}, NOW())
+      VALUES (${campaignId}, '${escapedTitle}', '${escapedContent}', ${
+      escapedImageUrl ? `'${escapedImageUrl}'` : 'NULL'
+    }, NOW())
     `;
 
     await queryService.customQuery(insertQuery);
@@ -116,7 +123,6 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       { message: 'Update posted successfully' },
       { status: 201 }
     );
-
   } catch (error: any) {
     console.error('Post campaign update error:', error);
     return NextResponse.json(

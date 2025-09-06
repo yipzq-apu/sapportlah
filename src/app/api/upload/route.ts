@@ -6,19 +6,26 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    
+
     if (!file) {
-      return NextResponse.json(
-        { error: 'No file uploaded' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
     // Validate file type
-    const allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'video/mp4', 'video/webm', 'video/ogg'];
+    const allowedTypes = [
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'video/mp4',
+      'video/webm',
+      'video/ogg',
+    ];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        { error: 'Invalid file type. Only images (JPEG, PNG, GIF) and videos (MP4, WebM, OGG) are allowed.' },
+        {
+          error:
+            'Invalid file type. Only images (JPEG, PNG, GIF) and videos (MP4, WebM, OGG) are allowed.',
+        },
         { status: 400 }
       );
     }
@@ -40,21 +47,18 @@ export async function POST(request: NextRequest) {
 
     // Create uploads directory if it doesn't exist
     const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-    
+
     try {
       const bytes = await file.arrayBuffer();
       const buffer = Buffer.from(bytes);
-      
+
       const filePath = path.join(uploadDir, filename);
       await writeFile(filePath, buffer);
-      
+
       // Return the public URL
       const fileUrl = `/uploads/${filename}`;
-      
-      return NextResponse.json(
-        { url: fileUrl, filename },
-        { status: 200 }
-      );
+
+      return NextResponse.json({ url: fileUrl, filename }, { status: 200 });
     } catch (error) {
       console.error('File write error:', error);
       return NextResponse.json(
@@ -62,7 +66,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
   } catch (error: any) {
     console.error('Upload error:', error);
     return NextResponse.json(

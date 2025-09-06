@@ -125,7 +125,7 @@ export default function FavoritesPage() {
   };
 
   const removeFavorite = (campaignId: string) => {
-    setFavorites(prev => prev.filter(fav => fav.id !== campaignId));
+    setFavorites((prev) => prev.filter((fav) => fav.id !== campaignId));
   };
 
   if (loading) {
@@ -147,7 +147,7 @@ export default function FavoritesPage() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="text-xl text-gray-600 mb-4">{error}</div>
-            <button 
+            <button
               onClick={() => window.location.reload()}
               className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
             >
@@ -195,8 +195,16 @@ export default function FavoritesPage() {
                       className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition-colors"
                       title="Remove from favorites"
                     >
-                      <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
-                        <path fillRule="evenodd" d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z" clipRule="evenodd" />
+                      <svg
+                        className="w-4 h-4"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
+                          clipRule="evenodd"
+                        />
                       </svg>
                     </button>
                   </div>
@@ -217,7 +225,7 @@ export default function FavoritesPage() {
                       {campaign.title}
                     </h3>
                   </Link>
-                  
+
                   <p className="text-gray-600 text-sm mb-3 line-clamp-2">
                     {campaign.shortDescription}
                   </p>
@@ -230,7 +238,9 @@ export default function FavoritesPage() {
                     <div className="w-full bg-gray-200 rounded-full h-2">
                       <div
                         className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${Math.min(campaign.progress, 100)}%` }}
+                        style={{
+                          width: `${Math.min(campaign.progress, 100)}%`,
+                        }}
                       />
                     </div>
                   </div>
@@ -238,15 +248,21 @@ export default function FavoritesPage() {
                   <div className="flex justify-between text-sm mb-4">
                     <div>
                       <p className="text-gray-500">Raised</p>
-                      <p className="font-semibold">{formatCurrency(campaign.raised)}</p>
+                      <p className="font-semibold">
+                        {formatCurrency(campaign.raised)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-500">Goal</p>
-                      <p className="font-semibold">{formatCurrency(campaign.goal)}</p>
+                      <p className="font-semibold">
+                        {formatCurrency(campaign.goal)}
+                      </p>
                     </div>
                     <div>
                       <p className="text-gray-500">Days left</p>
-                      <p className="font-semibold">{getDaysLeft(campaign.endDate)}</p>
+                      <p className="font-semibold">
+                        {getDaysLeft(campaign.endDate)}
+                      </p>
                     </div>
                   </div>
 
