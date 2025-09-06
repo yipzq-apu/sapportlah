@@ -30,7 +30,7 @@ export default function LoginPage() {
 
     try {
       console.log('Login attempt for:', formData.email);
-      
+
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -46,25 +46,14 @@ export default function LoginPage() {
         throw new Error(data.error || 'Login failed');
       }
 
-      // Store token and user data in localStorage
-      if (data.token) {
-        localStorage.setItem('authToken', data.token);
-        console.log('Token stored:', data.token.substring(0, 20) + '...');
-      }
-      
+      // Store only user data in localStorage (no token)
       if (data.user) {
         localStorage.setItem('userData', JSON.stringify(data.user));
         console.log('User data stored:', data.user);
       }
 
-      // Verify storage
-      const storedToken = localStorage.getItem('authToken');
-      const storedUser = localStorage.getItem('userData');
-      console.log('Verification - Token stored:', !!storedToken);
-      console.log('Verification - User data stored:', !!storedUser);
-
       // Small delay to ensure localStorage is written
-      await new Promise(resolve => setTimeout(resolve, 500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       console.log('Redirecting to:', data.redirectUrl);
 
@@ -79,7 +68,6 @@ export default function LoginPage() {
         console.log('Donor user - redirecting to /');
         window.location.replace('/');
       }
-
     } catch (err: any) {
       console.error('Login error:', err);
       setError(err.message || 'Login failed. Please try again.');

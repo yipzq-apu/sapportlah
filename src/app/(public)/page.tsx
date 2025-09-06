@@ -20,7 +20,7 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Navbar user={user} />
+      <Navbar user={user as any} />
       <main>
         <HeroSection />
         <FeaturedCampaigns />

@@ -6,9 +6,9 @@ import Image from 'next/image';
 
 interface User {
   id: string;
-  name: string;
-  role: 'donor' | 'creator';
-  avatar?: string;
+  firstName: string;
+  lastName: string;
+  role: 'donor' | 'creator' | 'admin';
   email?: string;
 }
 
@@ -16,9 +16,40 @@ interface NavbarProps {
   user?: User | null;
 }
 
-export default function Navbar({ user }: NavbarProps) {
+export default function Navbar({ user: propUser }: NavbarProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(propUser || null);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Load user data from localStorage on component mount
+  useEffect(() => {
+    const loadUserData = () => {
+      try {
+        const userData = localStorage.getItem('userData');
+        if (userData) {
+          const parsedUser = JSON.parse(userData);
+          setUser(parsedUser);
+        } else {
+          setUser(null);
+        }
+      } catch (error) {
+        console.error('Error loading user data:', error);
+        setUser(null);
+      }
+    };
+
+    loadUserData();
+
+    // Listen for storage changes (in case user logs in/out in another tab)
+    const handleStorageChange = () => {
+      loadUserData();
+    };
+
+    window.addEventListener('storage', handleStorageChange);
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -43,6 +74,7 @@ export default function Navbar({ user }: NavbarProps) {
     try {
       localStorage.removeItem('authToken');
       localStorage.removeItem('userData');
+      setUser(null); // Update local state
       window.location.href = '/';
     } catch (error) {
       console.error('Error during logout:', error);
@@ -137,6 +169,7 @@ export default function Navbar({ user }: NavbarProps) {
 
   const renderAuthButtons = () => {
     if (user) {
+      const userName = `${user.firstName} ${user.lastName}`;
       return (
         <div className="relative" ref={dropdownRef}>
           <button
@@ -144,12 +177,12 @@ export default function Navbar({ user }: NavbarProps) {
             className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition duration-300"
           >
             <img
-              src={user.avatar || '/api/placeholder/40/40'}
-              alt={user.name}
+              src="/api/placeholder/40/40"
+              alt={userName}
               className="w-8 h-8 rounded-full object-cover"
             />
             <div className="hidden md:block text-left">
-              <p className="text-sm font-medium text-gray-900">{user.name}</p>
+              <p className="text-sm font-medium text-gray-900">{userName}</p>
               <p className="text-xs text-gray-500 capitalize">{user.role}</p>
             </div>
             <svg
@@ -173,7 +206,7 @@ export default function Navbar({ user }: NavbarProps) {
           {isDropdownOpen && (
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
               <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">{user.name}</p>
+                <p className="text-sm font-medium text-gray-900">{userName}</p>
                 <p className="text-xs text-gray-500">
                   {user.email || 'No email'}
                 </p>
