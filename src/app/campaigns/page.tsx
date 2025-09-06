@@ -42,22 +42,16 @@ export default function CampaignsPage() {
   const [totalCampaigns, setTotalCampaigns] = useState(0);
   const campaignsPerPage = 6;
 
-  // Check if user is logged in
+  // Check if user is logged in (simplified - no token auth)
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        try {
-          const response = await fetch('/api/auth/me', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data.user);
-          }
-        } catch (error) {
-          console.error('Auth check failed:', error);
+    const checkAuth = () => {
+      try {
+        const userData = localStorage.getItem('userData');
+        if (userData) {
+          setUser(JSON.parse(userData));
         }
+      } catch (error) {
+        console.error('Error loading user data:', error);
       }
     };
 
@@ -92,10 +86,13 @@ export default function CampaignsPage() {
         });
 
         if (searchTerm) params.append('search', searchTerm);
-        if (selectedCategory !== 'all')
+        if (selectedCategory !== 'all') {
           params.append('category_id', selectedCategory);
+          console.log('Adding category_id to params:', selectedCategory);
+        }
 
         console.log('Fetching campaigns with URL:', `/api/campaigns?${params}`);
+        console.log('Selected category:', selectedCategory);
 
         const response = await fetch(`/api/campaigns?${params}`);
 
@@ -106,8 +103,8 @@ export default function CampaignsPage() {
           const data = await response.json();
           console.log('Campaigns data:', data);
           setCampaigns(data.campaigns || []);
-          setTotalPages(data.pagination?.totalPages || 1);
-          setTotalCampaigns(data.pagination?.total || 0);
+          setTotalPages(data.pagination?.total_pages || 1);
+          setTotalCampaigns(data.pagination?.total_campaigns || 0);
         } else {
           const errorText = await response.text();
           console.error('Failed to fetch campaigns. Status:', response.status);
@@ -136,6 +133,7 @@ export default function CampaignsPage() {
   };
 
   const handleCategoryChange = (value: string) => {
+    console.log('Category changed to:', value);
     setSelectedCategory(value);
     setCurrentPage(1);
   };

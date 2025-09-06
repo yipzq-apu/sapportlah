@@ -4,10 +4,11 @@ import { RowDataPacket } from 'mysql2';
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const campaignId = parseInt(params.id);
+    const { id } = await params;
+    const campaignId = parseInt(id);
 
     if (isNaN(campaignId)) {
       return NextResponse.json(
@@ -17,7 +18,7 @@ export async function GET(
     }
 
     // Fetch campaign details with creator information
-    const campaigns = await db.query(
+    const campaigns = (await db.query(
       `SELECT 
         c.id,
         c.title,
@@ -26,10 +27,12 @@ export async function GET(
         c.goal_amount,
         c.current_amount,
         c.featured_image,
+        c.video_url,
         c.status,
-        c.category,
+        c.category_id,
         c.end_date,
         c.is_featured,
+        c.backers_count,
         c.created_at,
         c.updated_at,
         u.id as creator_id,
@@ -37,10 +40,10 @@ export async function GET(
         u.email as creator_email,
         u.profile_image as creator_image
       FROM campaigns c
-      JOIN users u ON c.creator_id = u.id
+      JOIN users u ON c.user_id = u.id
       WHERE c.id = ?`,
       [campaignId]
-    ) as RowDataPacket[];
+    )) as RowDataPacket[];
 
     if (campaigns.length === 0) {
       return NextResponse.json(
@@ -52,17 +55,27 @@ export async function GET(
     const campaign = campaigns[0];
 
     // Calculate additional metrics
-    const progressPercentage = Math.min((campaign.current_amount / campaign.goal_amount) * 100, 100);
-    const daysLeft = campaign.end_date ? Math.max(0, Math.ceil((new Date(campaign.end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24))) : null;
+    const progressPercentage = Math.min(
+      (campaign.current_amount / campaign.goal_amount) * 100,
+      100
+    );
+    const daysLeft = campaign.end_date
+      ? Math.max(
+          0,
+          Math.ceil(
+            (new Date(campaign.end_date).getTime() - new Date().getTime()) /
+              (1000 * 60 * 60 * 24)
+          )
+        )
+      : null;
 
     return NextResponse.json({
       campaign: {
         ...campaign,
         progress_percentage: progressPercentage,
-        days_left: daysLeft
-      }
+        days_left: daysLeft,
+      },
     });
-
   } catch (error) {
     console.error('Error fetching campaign details:', error);
     return NextResponse.json(
