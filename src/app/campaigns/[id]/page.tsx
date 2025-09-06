@@ -60,22 +60,16 @@ export default function CampaignDetailPage() {
   const [newQuestion, setNewQuestion] = useState('');
   const [isQuestionAnonymous, setIsQuestionAnonymous] = useState(false);
 
-  // Check if user is logged in
+  // Check if user is logged in (simplified - no token auth)
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        try {
-          const response = await fetch('/api/auth/me', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data.user);
-          }
-        } catch (error) {
-          console.error('Auth check failed:', error);
+    const checkAuth = () => {
+      try {
+        const userData = localStorage.getItem('userData');
+        if (userData) {
+          setUser(JSON.parse(userData));
         }
+      } catch (error) {
+        console.error('Error loading user data:', error);
       }
     };
 
@@ -175,13 +169,60 @@ export default function CampaignDetailPage() {
       return;
     }
 
-    // Handle donation logic here
-    console.log('Donation:', {
-      amount: donationAmount,
-      message: donationMessage,
-      anonymous: isAnonymous,
-    });
-    alert('Thank you for your donation!');
+    if (!donationAmount || parseFloat(donationAmount) <= 0) {
+      alert('Please enter a valid donation amount');
+      return;
+    }
+
+    try {
+      const response = await fetch(`/api/campaigns/${campaignId}/donate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          userId: user.id,
+          amount: parseFloat(donationAmount),
+          message: donationMessage.trim() || null,
+          anonymous: isAnonymous,
+          paymentMethod: 'online',
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        // Update campaign state with new amounts
+        if (campaign) {
+          setCampaign({
+            ...campaign,
+            current_amount: data.campaign.current_amount,
+            backers_count: data.campaign.backers_count,
+          });
+        }
+
+        // Reset form
+        setDonationAmount('');
+        setDonationMessage('');
+        setIsAnonymous(false);
+
+        // Refresh donations list
+        const donationsResponse = await fetch(
+          `/api/campaigns/${campaignId}/donations`
+        );
+        if (donationsResponse.ok) {
+          const donationsData = await donationsResponse.json();
+          setRecentDonations(donationsData.donations || []);
+        }
+
+        alert('Thank you for your donation! Your support means a lot.');
+      } else {
+        alert(data.error || 'Failed to process donation. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error processing donation:', error);
+      alert('Failed to process donation. Please try again.');
+    }
   };
 
   const handleQuestionSubmit = async (e: React.FormEvent) => {
@@ -195,12 +236,10 @@ export default function CampaignDetailPage() {
     if (!newQuestion.trim()) return;
 
     try {
-      const token = localStorage.getItem('authToken');
       const response = await fetch(`/api/campaigns/${campaignId}/questions`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           question: newQuestion.trim(),
@@ -419,7 +458,7 @@ export default function CampaignDetailPage() {
                               <div className="flex items-center mb-1">
                                 <span className="font-semibold text-gray-900">
                                   {donation.anonymous
-                                    ? 'Anonymous'
+                                    ? 'Anonymous User'
                                     : donation.donorName}
                                 </span>
                                 <span className="text-blue-600 font-bold ml-2">
@@ -519,7 +558,7 @@ export default function CampaignDetailPage() {
                                   <span>
                                     Asked by{' '}
                                     {question.anonymous
-                                      ? 'Anonymous'
+                                      ? 'Anonymous User'
                                       : question.askerName}
                                   </span>
                                   <span className="mx-2">•</span>
