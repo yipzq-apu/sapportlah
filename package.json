@@ -12,6 +12,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/pg": "^8.15.5",
     "bcryptjs": "^3.0.2",
+    "cloudinary": "^2.7.0",
     "jsonwebtoken": "^9.0.2",
     "mysql2": "^3.14.3",
     "next": "15.4.6",
