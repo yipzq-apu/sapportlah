@@ -34,52 +34,54 @@ export default function MyDonationsPage() {
   });
 
   useEffect(() => {
-    const loadData = () => {
-      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
-      setUser({
-        id: 'temp-donor',
-        name: 'Temporary Donor',
-        email: 'donor@temp.com',
-        role: 'donor',
-      });
+    const loadData = async () => {
+      try {
+        // Check if user is logged in
+        const userData = localStorage.getItem('userData');
+        if (!userData) {
+          setError('Please log in to view your donations');
+          setLoading(false);
+          return;
+        }
 
-      // Mock donations data
-      const mockDonations: Donation[] = [
-        {
-          id: '1',
-          campaignId: '1',
-          campaignTitle: 'Clean Water for Rural Communities',
-          campaignImage: '/api/placeholder/300/200',
-          amount: 500,
-          date: '2024-04-20T10:30:00Z',
-          message:
-            'This is such an important cause. Hope this helps reach the goal!',
-          anonymous: false,
-          campaignStatus: 'active',
-          campaignProgress: 65,
-          campaignGoal: 50000,
-          campaignRaised: 32500,
-        },
-        // ...add more mock donations as needed...
-      ];
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
 
-      setDonations(mockDonations);
-      setStats({
-        totalDonated: 1000,
-        campaignsSupported: 3,
-        averageDonation: 333,
-        totalDonations: 3,
-      });
-      setLoading(false);
+        // Fetch donations from backend
+        const response = await fetch(
+          `/api/donations/my-donations?userId=${parsedUser.id}&status=${filter}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setDonations(data.donations || []);
+          setStats(
+            data.stats || {
+              totalDonated: 0,
+              campaignsSupported: 0,
+              averageDonation: 0,
+              totalDonations: 0,
+            }
+          );
+        } else {
+          const errorData = await response.json();
+          setError(errorData.error || 'Failed to load donations');
+        }
+      } catch (error) {
+        console.error('Error loading donations:', error);
+        setError('Failed to load donations');
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadData();
-  }, []);
+  }, [filter]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-SG', {
+    return new Intl.NumberFormat('en-MY', {
       style: 'currency',
-      currency: 'SGD',
+      currency: 'MYR',
     }).format(amount);
   };
 
@@ -238,12 +240,10 @@ Generated on: ${new Date().toLocaleDateString()}
     );
   }
 
-  // Stats calculations
-  const totalDonated = getTotalDonated();
-  const campaignsSupported = donations.length;
-  const averageDonation = donations.length
-    ? totalDonated / donations.length
-    : 0;
+  // Stats calculations - use stats from API instead of local calculation
+  const totalDonated = stats.totalDonated;
+  const campaignsSupported = stats.campaignsSupported;
+  const averageDonation = stats.averageDonation;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -460,14 +460,6 @@ Generated on: ${new Date().toLocaleDateString()}
                       >
                         View Campaign
                       </Link>
-                      {donation.campaignStatus === 'active' && (
-                        <Link
-                          href={`/campaigns/${donation.campaignId}`}
-                          className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition duration-300"
-                        >
-                          Donate Again
-                        </Link>
-                      )}
                     </div>
                   </div>
                 </div>

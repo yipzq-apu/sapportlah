@@ -170,6 +170,10 @@ export default function Navbar({ user: propUser }: NavbarProps) {
   const renderAuthButtons = () => {
     if (user) {
       const userName = `${user.firstName} ${user.lastName}`;
+      const profilePicture =
+        user.avatar ||
+        `https://ui-avatars.com/api/?name=${user.firstName}&background=3b82f6&color=fff&size=40`;
+
       return (
         <div className="relative" ref={dropdownRef}>
           <button
@@ -177,7 +181,7 @@ export default function Navbar({ user: propUser }: NavbarProps) {
             className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition duration-300"
           >
             <img
-              src="/api/placeholder/40/40"
+              src={profilePicture}
               alt={userName}
               className="w-8 h-8 rounded-full object-cover"
             />
