@@ -32,6 +32,11 @@ export default function AdminLayout({
 
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: '📊' },
+    {
+      name: 'Featured Campaigns',
+      href: '/admin/featured-campaigns',
+      icon: '⭐',
+    },
     { name: 'Campaign Reviews', href: '/admin/campaigns', icon: '📋' },
     { name: 'User Management', href: '/admin/users', icon: '👥' },
     { name: 'Contact Messages', href: '/admin/messages', icon: '💬' },
