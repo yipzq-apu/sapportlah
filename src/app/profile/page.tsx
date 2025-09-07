@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import MapLocationPicker from '../components/MapLocationPicker';
 
 interface UserProfile {
   id: string;
@@ -13,6 +14,7 @@ interface UserProfile {
   role: 'donor' | 'creator';
   avatar?: string;
   location?: string;
+  bio?: string;
   phone?: string;
   joinDate: string;
   totalDonations: number;
@@ -29,6 +31,8 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(true);
   const [editing, setEditing] = useState(false);
   const [formData, setFormData] = useState<Partial<UserProfile>>({});
+  const [showMap, setShowMap] = useState(false);
+  const [tempLocation, setTempLocation] = useState('');
 
   useEffect(() => {
     const loadProfile = async () => {
@@ -62,6 +66,7 @@ export default function ProfilePage() {
             role: parsedUser.role,
             avatar: `https://ui-avatars.com/api/?name=${parsedUser.firstName}&background=3b82f6&color=fff&size=150`,
             location: '',
+            bio: '',
             phone: '',
             joinDate: new Date().toISOString(),
             totalDonations: 0,
@@ -164,6 +169,33 @@ export default function ProfilePage() {
       console.error('Error updating profile:', error);
       alert('Failed to update profile');
     }
+  };
+
+  const handleLocationSelect = (location: {
+    address: string;
+    lat: number;
+    lng: number;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  }) => {
+    setFormData((prev) => ({
+      ...prev,
+      location: location.address,
+    }));
+    setShowMap(false);
+    setTempLocation('');
+  };
+
+  const handleMapOpen = () => {
+    setTempLocation(formData.location || '');
+    setShowMap(true);
+  };
+
+  const handleMapCancel = () => {
+    setShowMap(false);
+    setTempLocation('');
   };
 
   const formatCurrency = (amount: number) => {
@@ -349,16 +381,25 @@ export default function ProfilePage() {
                       <label className="block text-sm font-medium text-gray-700 mb-2">
                         Location
                       </label>
-                      <input
-                        type="text"
-                        name="location"
-                        value={formData.location || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-gray-900 placeholder-gray-400"
-                        placeholder="Enter your location (city, state, country)"
-                      />
-                      <p className="mt-1 text-sm text-gray-500">
-                        Example: Kuala Lumpur, Malaysia
+                      <div className="flex">
+                        <input
+                          type="text"
+                          name="location"
+                          value={formData.location || ''}
+                          onChange={handleInputChange}
+                          className="flex-1 px-4 py-3 border border-gray-300 rounded-l-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-gray-900 placeholder-gray-400"
+                          placeholder="Enter your location or use map to select"
+                        />
+                        <button
+                          type="button"
+                          onClick={handleMapOpen}
+                          className="px-4 py-3 bg-blue-600 text-white border border-blue-600 rounded-r-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm font-medium transition duration-200"
+                        >
+                          📍 Map
+                        </button>
+                      </div>
+                      <p className="mt-1 text-xs text-gray-500">
+                        Click the map button to select your location visually
                       </p>
                     </div>
                   </div>
@@ -545,6 +586,33 @@ export default function ProfilePage() {
       </main>
 
       <Footer />
+
+      {/* Map Modal */}
+      {showMap && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-6 border-b border-gray-200">
+              <h3 className="text-lg font-medium text-gray-900">
+                Select Your Location
+              </h3>
+              <button
+                type="button"
+                onClick={handleMapCancel}
+                className="text-gray-400 hover:text-gray-600 text-xl font-bold w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 transition duration-200"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="flex-1 p-6" style={{ height: '500px' }}>
+              <MapLocationPicker
+                onLocationSelect={handleLocationSelect}
+                onCancel={handleMapCancel}
+                initialLocation={undefined}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

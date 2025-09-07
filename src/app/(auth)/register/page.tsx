@@ -22,6 +22,7 @@ export default function RegisterPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showMap, setShowMap] = useState(false);
+  const [tempAddress, setTempAddress] = useState('');
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -86,6 +87,22 @@ export default function RegisterPage() {
       address: location.address, // This will now be human-readable
     });
     setShowMap(false);
+    setTempAddress('');
+  };
+
+  const handleMapOpen = () => {
+    setTempAddress(formData.address);
+    setShowMap(true);
+  };
+
+  const handleMapCancel = () => {
+    // Restore the original address if user cancels
+    setFormData({
+      ...formData,
+      address: tempAddress,
+    });
+    setShowMap(false);
+    setTempAddress('');
   };
 
   return (
@@ -302,7 +319,7 @@ export default function RegisterPage() {
                     />
                     <button
                       type="button"
-                      onClick={() => setShowMap(true)}
+                      onClick={handleMapOpen}
                       className="px-4 py-2 bg-blue-600 text-white border border-blue-600 rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                     >
                       📍 Map
@@ -314,24 +331,27 @@ export default function RegisterPage() {
                 </div>
 
                 {showMap && (
-                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-                    <div className="bg-white rounded-lg p-4 max-w-4xl w-full mx-4 max-h-[80vh] overflow-hidden">
-                      <div className="flex justify-between items-center mb-4">
+                  <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+                    <div className="bg-white rounded-lg w-full max-w-4xl max-h-[90vh] flex flex-col">
+                      <div className="flex justify-between items-center p-6 border-b border-gray-200">
                         <h3 className="text-lg font-medium text-gray-900">
                           Select Your Location
                         </h3>
                         <button
                           type="button"
-                          onClick={() => setShowMap(false)}
-                          className="text-gray-400 hover:text-gray-600"
+                          onClick={handleMapCancel}
+                          className="text-gray-400 hover:text-gray-600 text-xl font-bold w-8 h-8 flex items-center justify-center rounded hover:bg-gray-100 transition duration-200"
                         >
                           ✕
                         </button>
                       </div>
-                      <MapLocationPicker
-                        onLocationSelect={handleLocationSelect}
-                        initialLocation={undefined}
-                      />
+                      <div className="flex-1 p-6" style={{ height: '500px' }}>
+                        <MapLocationPicker
+                          onLocationSelect={handleLocationSelect}
+                          onCancel={handleMapCancel}
+                          initialLocation={undefined}
+                        />
+                      </div>
                     </div>
                   </div>
                 )}
