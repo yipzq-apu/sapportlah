@@ -27,40 +27,37 @@ export default function MyCampaignsPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Check if user is logged in
-        const token = localStorage.getItem('authToken');
+        // Check if user is logged in (simplified - no token auth)
         const userData = localStorage.getItem('userData');
 
-        if (!token || !userData) {
-          window.location.href = '/login?returnUrl=/my-campaigns';
+        if (!userData) {
+          setError('Please log in to view your campaigns');
+          setLoading(false);
           return;
         }
 
-        const user = JSON.parse(userData);
+        const parsedUser = JSON.parse(userData);
 
         // Check if user is creator or admin
-        if (user.role !== 'creator' && user.role !== 'admin') {
-          window.location.href = '/unauthorized';
+        if (parsedUser.role !== 'creator' && parsedUser.role !== 'admin') {
+          setError('You must be a creator to view campaigns');
+          setLoading(false);
           return;
         }
 
-        setUser(user);
+        setUser(parsedUser);
 
         // Fetch campaigns from backend
-        const response = await fetch('/api/campaigns/my-campaigns', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+        const response = await fetch(
+          `/api/campaigns/my-campaigns?userId=${parsedUser.id}`
+        );
 
         if (response.ok) {
           const data = await response.json();
           setCampaigns(data.campaigns || []);
-        } else if (response.status === 401) {
-          localStorage.removeItem('authToken');
-          localStorage.removeItem('userData');
-          window.location.href = '/login?returnUrl=/my-campaigns';
-          return;
         } else {
-          throw new Error('Failed to fetch campaigns');
+          const errorData = await response.json();
+          setError(errorData.error || 'Failed to fetch campaigns');
         }
       } catch (error) {
         console.error('Error fetching campaigns:', error);
@@ -74,9 +71,9 @@ export default function MyCampaignsPage() {
   }, []);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-SG', {
+    return new Intl.NumberFormat('en-MY', {
       style: 'currency',
-      currency: 'SGD',
+      currency: 'MYR',
     }).format(amount);
   };
 
@@ -121,12 +118,21 @@ export default function MyCampaignsPage() {
         <div className="flex items-center justify-center h-64">
           <div className="text-center">
             <div className="text-xl text-gray-600 mb-4">{error}</div>
-            <button
-              onClick={() => window.location.reload()}
-              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
-            >
-              Try Again
-            </button>
+            {error.includes('log in') ? (
+              <Link
+                href="/login"
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              >
+                Login
+              </Link>
+            ) : (
+              <button
+                onClick={() => window.location.reload()}
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+              >
+                Try Again
+              </button>
+            )}
           </div>
         </div>
         <Footer />

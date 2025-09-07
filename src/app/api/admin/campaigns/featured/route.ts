@@ -5,7 +5,7 @@ import { RowDataPacket } from 'mysql2';
 export async function GET(request: NextRequest) {
   try {
     // Fetch all campaigns with their featured status
-    const campaigns = await db.query(
+    const campaigns = (await db.query(
       `SELECT 
         c.id,
         c.title,
@@ -23,12 +23,11 @@ export async function GET(request: NextRequest) {
       JOIN users u ON c.user_id = u.id
       LEFT JOIN categories cat ON c.category_id = cat.id
       ORDER BY c.is_featured DESC, c.created_at DESC`
-    ) as RowDataPacket[];
+    )) as RowDataPacket[];
 
     return NextResponse.json({
-      campaigns: campaigns
+      campaigns: campaigns,
     });
-
   } catch (error) {
     console.error('Error fetching campaigns:', error);
     return NextResponse.json(
@@ -52,13 +51,16 @@ export async function PUT(request: NextRequest) {
 
     // If trying to feature a campaign, check the current count
     if (isFeatured) {
-      const featuredCount = await db.query(
+      const featuredCount = (await db.query(
         'SELECT COUNT(*) as count FROM campaigns WHERE is_featured = 1'
-      ) as RowDataPacket[];
+      )) as RowDataPacket[];
 
       if (featuredCount[0].count >= 3) {
         return NextResponse.json(
-          { error: 'Maximum of 3 campaigns can be featured at a time. Please remove a featured campaign first.' },
+          {
+            error:
+              'Maximum of 3 campaigns can be featured at a time. Please remove a featured campaign first.',
+          },
           { status: 400 }
         );
       }
@@ -71,9 +73,10 @@ export async function PUT(request: NextRequest) {
     );
 
     return NextResponse.json({
-      message: `Campaign ${isFeatured ? 'added to' : 'removed from'} featured list`
+      message: `Campaign ${
+        isFeatured ? 'added to' : 'removed from'
+      } featured list`,
     });
-
   } catch (error) {
     console.error('Error updating featured status:', error);
     return NextResponse.json(

@@ -46,13 +46,20 @@ export default function CreateCampaignPage() {
 
   useEffect(() => {
     const loadData = async () => {
-      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
-      setUser({
-        id: 'temp-creator',
-        name: 'Temporary Creator',
-        email: 'creator@temp.com',
-        role: 'creator',
-      });
+      // Check if user is logged in
+      const userData = localStorage.getItem('userData');
+      if (!userData) {
+        router.push('/login?returnUrl=/create-campaign');
+        return;
+      }
+
+      const parsedUser = JSON.parse(userData);
+      if (parsedUser.role !== 'creator') {
+        router.push('/unauthorized');
+        return;
+      }
+
+      setUser(parsedUser);
 
       // Fetch categories
       try {
@@ -181,8 +188,7 @@ export default function CreateCampaignPage() {
     setLoading(true);
 
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) {
+      if (!user) {
         router.push('/login?returnUrl=/create-campaign');
         return;
       }
@@ -192,9 +198,11 @@ export default function CreateCampaignPage() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          userId: user.id,
+        }),
       });
 
       if (response.ok) {
@@ -209,7 +217,6 @@ export default function CreateCampaignPage() {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',
-                Authorization: `Bearer ${token}`,
               },
               body: JSON.stringify({
                 image_url: image.url,
@@ -220,8 +227,10 @@ export default function CreateCampaignPage() {
           }
         }
 
-        alert('Campaign created successfully!');
-        router.push('/dashboard');
+        alert(
+          'Campaign created successfully! It will be reviewed before going live.'
+        );
+        router.push('/my-campaigns');
       } else {
         const data = await response.json();
         alert(data.error || 'Failed to create campaign');
@@ -483,7 +492,7 @@ export default function CreateCampaignPage() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Funding Goal (SGD) *
+                    Funding Goal (MYR) *
                   </label>
                   <input
                     type="number"

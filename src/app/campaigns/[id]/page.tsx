@@ -5,6 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
+import QuestionAnswerItem from '../../components/QuestionAnswerItem';
 
 interface Campaign {
   id: number;
@@ -43,6 +44,21 @@ interface Question {
   anonymous: boolean;
 }
 
+interface CampaignImage {
+  id: number;
+  image_url: string;
+  caption: string;
+  sort_order: number;
+}
+
+interface CampaignUpdate {
+  id: string;
+  title: string;
+  content: string;
+  isBackersOnly: boolean;
+  createdAt: string;
+}
+
 export default function CampaignDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -56,9 +72,23 @@ export default function CampaignDetailPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [user, setUser] = useState<any>(null);
-  const [activeTab, setActiveTab] = useState<'donations' | 'qna'>('donations');
+  const [activeTab, setActiveTab] = useState<'donations' | 'qna' | 'updates'>(
+    'donations'
+  );
+  const [campaignUpdates, setCampaignUpdates] = useState<CampaignUpdate[]>([]);
+  const [isBacker, setIsBacker] = useState(false);
   const [newQuestion, setNewQuestion] = useState('');
   const [isQuestionAnonymous, setIsQuestionAnonymous] = useState(false);
+  const [campaignImages, setCampaignImages] = useState<CampaignImage[]>([]);
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+
+  // Helper variables for user roles
+  const isCreator =
+    user && user.role === 'creator' && user.email === campaign?.creator_email;
+  const isAdmin = user && user.role === 'admin';
+  const isDonor = user && user.role === 'donor';
+  const canEditCampaign = isCreator && campaign?.status === 'pending';
 
   // Check if user is logged in (simplified - no token auth)
   useEffect(() => {
@@ -87,9 +117,11 @@ export default function CampaignDetailPage() {
           const data = await response.json();
           setCampaign(data.campaign);
 
-          // Fetch donations and questions separately for better performance
+          // Fetch donations, questions, media, and updates separately
           fetchDonations();
           fetchQuestions();
+          fetchMedia();
+          fetchUpdates();
         } else if (response.status === 404) {
           setError('Campaign not found');
         } else {
@@ -127,10 +159,40 @@ export default function CampaignDetailPage() {
       }
     };
 
+    const fetchMedia = async () => {
+      try {
+        const response = await fetch(`/api/campaigns/${campaignId}/media`);
+        if (response.ok) {
+          const data = await response.json();
+          setCampaignImages(data.images || []);
+          setVideoUrl(data.videoUrl);
+        }
+      } catch (error) {
+        console.error('Error fetching media:', error);
+      }
+    };
+
+    const fetchUpdates = async () => {
+      try {
+        const url = user
+          ? `/api/campaigns/${campaignId}/updates?userId=${user.id}`
+          : `/api/campaigns/${campaignId}/updates`;
+
+        const response = await fetch(url);
+        if (response.ok) {
+          const data = await response.json();
+          setCampaignUpdates(data.updates || []);
+          setIsBacker(data.isBacker || false);
+        }
+      } catch (error) {
+        console.error('Error fetching updates:', error);
+      }
+    };
+
     if (campaignId) {
       fetchCampaignData();
     }
-  }, [campaignId]);
+  }, [campaignId, user]);
 
   const calculatePercentage = (raised: number, goal: number) => {
     return Math.min((raised / goal) * 100, 100);
@@ -166,6 +228,12 @@ export default function CampaignDetailPage() {
 
     if (!user) {
       router.push(`/login?returnUrl=/campaigns/${campaignId}`);
+      return;
+    }
+
+    // Only donors can donate
+    if (user.role !== 'donor') {
+      alert('Only donors can make donations to campaigns.');
       return;
     }
 
@@ -206,13 +274,25 @@ export default function CampaignDetailPage() {
         setDonationMessage('');
         setIsAnonymous(false);
 
-        // Refresh donations list
+        // Refresh donations list and updates (backer status may have changed)
         const donationsResponse = await fetch(
           `/api/campaigns/${campaignId}/donations`
         );
         if (donationsResponse.ok) {
           const donationsData = await donationsResponse.json();
           setRecentDonations(donationsData.donations || []);
+        }
+
+        // Refresh updates to check new backer status
+        const url = user
+          ? `/api/campaigns/${campaignId}/updates?userId=${user.id}`
+          : `/api/campaigns/${campaignId}/updates`;
+
+        const updatesResponse = await fetch(url);
+        if (updatesResponse.ok) {
+          const updatesData = await updatesResponse.json();
+          setCampaignUpdates(updatesData.updates || []);
+          setIsBacker(updatesData.isBacker || false);
         }
 
         alert('Thank you for your donation! Your support means a lot.');
@@ -270,6 +350,47 @@ export default function CampaignDetailPage() {
     } catch (error) {
       console.error('Error submitting question:', error);
       alert('Failed to submit question. Please try again.');
+    }
+  };
+
+  const handleAnswerQuestion = async (questionId: string, answer: string) => {
+    if (!user || !isCreator) {
+      alert('Only campaign creators can answer questions');
+      return;
+    }
+
+    try {
+      const response = await fetch(
+        `/api/campaigns/${campaignId}/questions/${questionId}/answer`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            answer: answer.trim(),
+            creatorId: user.id,
+          }),
+        }
+      );
+
+      if (response.ok) {
+        // Refresh questions list
+        const questionsResponse = await fetch(
+          `/api/campaigns/${campaignId}/questions`
+        );
+        if (questionsResponse.ok) {
+          const data = await questionsResponse.json();
+          setQuestions(data.questions || []);
+        }
+        alert('Answer posted successfully!');
+      } else {
+        const data = await response.json();
+        alert(data.error || 'Failed to post answer. Please try again.');
+      }
+    } catch (error) {
+      console.error('Error posting answer:', error);
+      alert('Failed to post answer. Please try again.');
     }
   };
 
@@ -340,24 +461,138 @@ export default function CampaignDetailPage() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
           <div className="lg:col-span-2">
-            {/* Campaign Image */}
-            <div className="relative mb-6">
-              <img
-                src={campaign.featured_image || '/api/placeholder/800/400'}
-                alt={campaign.title}
-                className="w-full h-64 md:h-96 object-cover rounded-lg"
-              />
-              {campaign.is_featured && (
-                <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 text-sm font-semibold rounded">
-                  Featured
+            {/* Campaign Media Gallery */}
+            <div className="mb-6">
+              {/* Main Image/Video Display */}
+              <div className="relative mb-4">
+                {videoUrl && selectedImageIndex === -1 ? (
+                  <div className="relative">
+                    <video
+                      controls
+                      className="w-full h-64 md:h-96 object-cover rounded-lg"
+                      poster={
+                        campaign?.featured_image || '/api/placeholder/800/400'
+                      }
+                    >
+                      <source src={videoUrl} type="video/mp4" />
+                      Your browser does not support the video tag.
+                    </video>
+                    {campaign?.is_featured && (
+                      <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 text-sm font-semibold rounded">
+                        Featured
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <img
+                      src={
+                        selectedImageIndex >= 0 &&
+                        campaignImages[selectedImageIndex]
+                          ? campaignImages[selectedImageIndex].image_url
+                          : campaign?.featured_image ||
+                            '/api/placeholder/800/400'
+                      }
+                      alt={
+                        selectedImageIndex >= 0 &&
+                        campaignImages[selectedImageIndex]
+                          ? campaignImages[selectedImageIndex].caption ||
+                            campaign?.title
+                          : campaign?.title
+                      }
+                      className="w-full h-64 md:h-96 object-cover rounded-lg"
+                    />
+                    {campaign?.is_featured && (
+                      <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 text-sm font-semibold rounded">
+                        Featured
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Thumbnail Gallery */}
+              {(campaignImages.length > 0 || videoUrl) && (
+                <div className="flex space-x-2 overflow-x-auto pb-2">
+                  {/* Main featured image thumbnail */}
+                  <button
+                    onClick={() => setSelectedImageIndex(-2)}
+                    className={`flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 transition-colors ${
+                      selectedImageIndex === -2
+                        ? 'border-blue-500'
+                        : 'border-gray-300 hover:border-gray-400'
+                    }`}
+                  >
+                    <img
+                      src={campaign?.featured_image || '/api/placeholder/80/80'}
+                      alt="Main"
+                      className="w-full h-full object-cover"
+                    />
+                  </button>
+
+                  {/* Video thumbnail */}
+                  {videoUrl && (
+                    <button
+                      onClick={() => setSelectedImageIndex(-1)}
+                      className={`flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 transition-colors relative ${
+                        selectedImageIndex === -1
+                          ? 'border-blue-500'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <img
+                        src={
+                          campaign?.featured_image || '/api/placeholder/80/80'
+                        }
+                        alt="Video"
+                        className="w-full h-full object-cover"
+                      />
+                      <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
+                        <svg
+                          className="w-6 h-6 text-white"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M6.3 2.84A1 1 0 004 3.7v12.6a1 1 0 001.6.8l8.4-6.3a1 1 0 000-1.6L5.6 2.84z" />
+                        </svg>
+                      </div>
+                    </button>
+                  )}
+
+                  {/* Additional images thumbnails */}
+                  {campaignImages.map((image, index) => (
+                    <button
+                      key={image.id}
+                      onClick={() => setSelectedImageIndex(index)}
+                      className={`flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 transition-colors ${
+                        selectedImageIndex === index
+                          ? 'border-blue-500'
+                          : 'border-gray-300 hover:border-gray-400'
+                      }`}
+                    >
+                      <img
+                        src={image.image_url}
+                        alt={image.caption || `Image ${index + 1}`}
+                        className="w-full h-full object-cover"
+                      />
+                    </button>
+                  ))}
                 </div>
               )}
+
+              {/* Image Caption */}
+              {selectedImageIndex >= 0 &&
+                campaignImages[selectedImageIndex]?.caption && (
+                  <div className="mt-2 text-sm text-gray-600 text-center italic">
+                    {campaignImages[selectedImageIndex].caption}
+                  </div>
+                )}
             </div>
 
             {/* Campaign Info */}
             <div className="bg-white rounded-lg shadow-md p-6 mb-6">
               <h1 className="text-3xl font-bold text-gray-900 mb-4">
-                {campaign.title}
+                {campaign?.title}
               </h1>
 
               <div className="flex items-center mb-4">
@@ -414,7 +649,7 @@ export default function CampaignDetailPage() {
               </div>
             )}
 
-            {/* Recent Donations / Q&A Section */}
+            {/* Recent Donations / Q&A / Updates Section */}
             <div className="bg-white rounded-lg shadow-md p-6">
               {/* Tab Headers */}
               <div className="flex border-b border-gray-200 mb-6">
@@ -427,6 +662,16 @@ export default function CampaignDetailPage() {
                   }`}
                 >
                   Recent Donations ({recentDonations.length})
+                </button>
+                <button
+                  onClick={() => setActiveTab('updates')}
+                  className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ml-6 ${
+                    activeTab === 'updates'
+                      ? 'border-blue-600 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  Updates ({campaignUpdates.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('qna')}
@@ -490,6 +735,97 @@ export default function CampaignDetailPage() {
                     </div>
                   )}
                 </div>
+              ) : activeTab === 'updates' ? (
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">
+                    Campaign Updates
+                  </h2>
+                  {isBacker && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-3 mb-4">
+                      <div className="flex items-center">
+                        <svg
+                          className="w-5 h-5 text-green-600 mr-2"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
+                          <path
+                            fillRule="evenodd"
+                            d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z"
+                            clipRule="evenodd"
+                          />
+                        </svg>
+                        <span className="text-sm font-medium text-green-800">
+                          You're a backer! You can see exclusive updates marked
+                          with 🔒
+                        </span>
+                      </div>
+                    </div>
+                  )}
+
+                  {campaignUpdates.length > 0 ? (
+                    <div className="space-y-6">
+                      {campaignUpdates.map((update) => (
+                        <div
+                          key={update.id}
+                          className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition duration-200"
+                        >
+                          <div className="flex items-start justify-between mb-3">
+                            <h3 className="text-lg font-semibold text-gray-900 flex items-center">
+                              {update.isBackersOnly && (
+                                <span
+                                  className="text-yellow-600 mr-2"
+                                  title="Backers Only"
+                                >
+                                  🔒
+                                </span>
+                              )}
+                              {update.title}
+                            </h3>
+                            <span className="text-sm text-gray-500 whitespace-nowrap ml-4">
+                              {formatDate(update.createdAt)}
+                            </span>
+                          </div>
+
+                          <div className="prose max-w-none">
+                            <p className="text-gray-700 leading-relaxed whitespace-pre-wrap">
+                              {update.content}
+                            </p>
+                          </div>
+
+                          {update.isBackersOnly && (
+                            <div className="mt-3 text-xs text-yellow-700 bg-yellow-50 px-2 py-1 rounded inline-block">
+                              Exclusive update for backers
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-8">
+                      <div className="text-gray-400 text-4xl mb-4">📢</div>
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                        No updates yet
+                      </h3>
+                      <p className="text-gray-600">
+                        The campaign creator hasn't posted any updates yet.
+                        Check back later!
+                      </p>
+                      {!user && (
+                        <p className="text-sm text-gray-500 mt-2">
+                          <Link
+                            href="/login"
+                            className="text-blue-600 hover:text-blue-700"
+                          >
+                            Log in
+                          </Link>{' '}
+                          and support this campaign to see exclusive backer
+                          updates.
+                        </p>
+                      )}
+                    </div>
+                  )}
+                </div>
               ) : (
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 mb-4">
@@ -538,74 +874,14 @@ export default function CampaignDetailPage() {
                   {questions.length > 0 ? (
                     <div className="space-y-6">
                       {questions.map((question) => (
-                        <div
+                        <QuestionAnswerItem
                           key={question.id}
-                          className="border-b border-gray-200 pb-6 last:border-b-0"
-                        >
-                          {/* Question */}
-                          <div className="mb-4">
-                            <div className="flex items-start mb-2">
-                              <div className="flex-shrink-0 w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center mr-3">
-                                <span className="text-blue-600 font-semibold text-sm">
-                                  Q
-                                </span>
-                              </div>
-                              <div className="flex-1">
-                                <p className="text-gray-900 font-medium">
-                                  {question.question}
-                                </p>
-                                <div className="flex items-center mt-1 text-sm text-gray-500">
-                                  <span>
-                                    Asked by{' '}
-                                    {question.anonymous
-                                      ? 'Anonymous User'
-                                      : question.askerName}
-                                  </span>
-                                  <span className="mx-2">•</span>
-                                  <span>{formatDate(question.dateAsked)}</span>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Answer */}
-                          {question.answer ? (
-                            <div className="ml-11">
-                              <div className="flex items-start">
-                                <div className="flex-shrink-0 w-8 h-8 bg-green-100 rounded-full flex items-center justify-center mr-3">
-                                  <span className="text-green-600 font-semibold text-sm">
-                                    A
-                                  </span>
-                                </div>
-                                <div className="flex-1">
-                                  <p className="text-gray-700">
-                                    {question.answer}
-                                  </p>
-                                  <div className="flex items-center mt-1 text-sm text-gray-500">
-                                    <span>
-                                      Answered by {campaign?.creator_name}
-                                    </span>
-                                    <span className="mx-2">•</span>
-                                    <span>
-                                      {question.dateAnswered &&
-                                        formatDate(question.dateAnswered)}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ) : (
-                            <div className="ml-11">
-                              <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
-                                <p className="text-sm text-yellow-800">
-                                  <span className="font-medium">Pending:</span>{' '}
-                                  This question is waiting for an answer from
-                                  the campaign creator.
-                                </p>
-                              </div>
-                            </div>
-                          )}
-                        </div>
+                          question={question}
+                          campaign={campaign}
+                          isCreator={isCreator}
+                          onAnswerSubmit={handleAnswerQuestion}
+                          formatDate={formatDate}
+                        />
                       ))}
                     </div>
                   ) : (
@@ -626,99 +902,236 @@ export default function CampaignDetailPage() {
 
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            {/* Donation Card */}
-            <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
-              <div className="mb-6">
-                <div className="flex justify-between text-lg font-semibold mb-2">
-                  <span>Raised: {formatCurrency(campaign.current_amount)}</span>
-                  <span>Goal: {formatCurrency(campaign.goal_amount)}</span>
-                </div>
-                <div className="w-full bg-gray-200 rounded-full h-3 mb-3">
-                  <div
-                    className="bg-blue-600 h-3 rounded-full transition-all duration-300"
-                    style={{ width: `${percentage}%` }}
-                  ></div>
-                </div>
-                <div className="flex justify-between text-sm text-gray-600">
-                  <span className="font-semibold text-blue-600">
-                    {percentage.toFixed(1)}% funded
-                  </span>
-                  <span>{daysLeft} days left</span>
-                </div>
-                <div className="mt-2 text-sm text-gray-600">
-                  <span>{campaign.backers_count} backers</span>
+            {/* Campaign Management Card for Creator/Admin */}
+            {(isCreator || isAdmin) && (
+              <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  {isCreator ? 'Campaign Management' : 'Admin Actions'}
+                </h3>
+                <div className="space-y-3">
+                  {isCreator && (
+                    <>
+                      {canEditCampaign ? (
+                        <Link
+                          href={`/my-campaigns/${campaign.id}/edit`}
+                          className="block w-full text-center bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300 font-medium"
+                        >
+                          Edit Campaign
+                        </Link>
+                      ) : (
+                        <div className="block w-full text-center bg-gray-300 text-gray-500 py-2 px-4 rounded-md cursor-not-allowed font-medium">
+                          Edit Campaign (Only in Pending State)
+                        </div>
+                      )}
+                      <Link
+                        href={`/my-campaigns/${campaign.id}/post-update`}
+                        className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-medium"
+                      >
+                        Post Update
+                      </Link>
+                      <div className="text-center">
+                        <span className="text-sm text-gray-600">
+                          Answer questions in the Q&A section below
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  {isAdmin && (
+                    <>
+                      <Link
+                        href={`/admin/campaigns/${campaign.id}`}
+                        className="block w-full text-center bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition duration-300 font-medium"
+                      >
+                        Admin Panel
+                      </Link>
+                      <button
+                        onClick={() => {
+                          // Toggle featured status functionality for admin
+                          console.log(
+                            'Toggle featured status for campaign:',
+                            campaign.id
+                          );
+                        }}
+                        className="w-full bg-yellow-600 text-white py-2 px-4 rounded-md hover:bg-yellow-700 transition duration-300 font-medium"
+                      >
+                        {campaign.is_featured
+                          ? 'Remove Featured'
+                          : 'Make Featured'}
+                      </button>
+                    </>
+                  )}
                 </div>
               </div>
+            )}
 
-              {/* Donation Form */}
-              <form onSubmit={handleDonate} className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="amount"
-                    className="block text-sm font-medium text-gray-700 mb-1"
-                  >
-                    Donation Amount (SGD)
-                  </label>
-                  <input
-                    type="number"
-                    id="amount"
-                    min="1"
-                    step="1"
-                    required
-                    value={donationAmount}
-                    onChange={(e) => setDonationAmount(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Enter amount"
-                  />
+            {/* Donation Card - Only for Donors */}
+            {(!user || isDonor) && (
+              <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
+                <div className="mb-6">
+                  <div className="flex justify-between text-lg font-semibold mb-2">
+                    <span>
+                      Raised: {formatCurrency(campaign.current_amount)}
+                    </span>
+                    <span>Goal: {formatCurrency(campaign.goal_amount)}</span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-3 mb-3">
+                    <div
+                      className="bg-blue-600 h-3 rounded-full transition-all duration-300"
+                      style={{ width: `${percentage}%` }}
+                    ></div>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span className="font-semibold text-blue-600">
+                      {percentage.toFixed(1)}% funded
+                    </span>
+                    <span>{daysLeft} days left</span>
+                  </div>
+                  <div className="mt-2 text-sm text-gray-600">
+                    <span>{campaign.backers_count} backers</span>
+                  </div>
                 </div>
 
-                <div>
-                  <label
-                    htmlFor="message"
-                    className="block text-sm font-medium text-gray-700 mb-1"
+                {/* Donation Form */}
+                <form onSubmit={handleDonate} className="space-y-4">
+                  <div>
+                    <label
+                      htmlFor="amount"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Donation Amount (MYR)
+                    </label>
+                    <input
+                      type="number"
+                      id="amount"
+                      min="1"
+                      step="1"
+                      required
+                      value={donationAmount}
+                      onChange={(e) => setDonationAmount(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Enter amount"
+                      disabled={user && user.role !== 'donor'}
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="message"
+                      className="block text-sm font-medium text-gray-700 mb-1"
+                    >
+                      Message (Optional)
+                    </label>
+                    <textarea
+                      id="message"
+                      rows={3}
+                      value={donationMessage}
+                      onChange={(e) => setDonationMessage(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      placeholder="Leave a message of support"
+                      disabled={user && user.role !== 'donor'}
+                    />
+                  </div>
+
+                  <div className="flex items-center">
+                    <input
+                      type="checkbox"
+                      id="anonymous"
+                      checked={isAnonymous}
+                      onChange={(e) => setIsAnonymous(e.target.checked)}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                      disabled={user && user.role !== 'donor'}
+                    />
+                    <label
+                      htmlFor="anonymous"
+                      className="ml-2 text-sm text-gray-700"
+                    >
+                      Donate anonymously
+                    </label>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={user && user.role !== 'donor'}
+                    className={`w-full py-3 px-4 rounded-md font-semibold transition duration-300 ${
+                      !user
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : user.role === 'donor'
+                        ? 'bg-blue-600 text-white hover:bg-blue-700'
+                        : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    }`}
                   >
-                    Message (Optional)
-                  </label>
-                  <textarea
-                    id="message"
-                    rows={3}
-                    value={donationMessage}
-                    onChange={(e) => setDonationMessage(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Leave a message of support"
-                  />
+                    {!user
+                      ? 'Login to Donate'
+                      : user.role === 'donor'
+                      ? 'Donate Now'
+                      : user.role === 'creator'
+                      ? 'Creators Cannot Donate'
+                      : 'Admins Cannot Donate'}
+                  </button>
+                </form>
+
+                <div className="mt-4 text-xs text-gray-500 text-center">
+                  {!user
+                    ? 'Please log in as a donor to make a donation to this campaign.'
+                    : user.role === 'donor'
+                    ? 'Your donation is secure and will help this campaign reach its goal.'
+                    : 'Only donors can make donations to campaigns.'}
                 </div>
-
-                <div className="flex items-center">
-                  <input
-                    type="checkbox"
-                    id="anonymous"
-                    checked={isAnonymous}
-                    onChange={(e) => setIsAnonymous(e.target.checked)}
-                    className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                  />
-                  <label
-                    htmlFor="anonymous"
-                    className="ml-2 text-sm text-gray-700"
-                  >
-                    Donate anonymously
-                  </label>
-                </div>
-
-                <button
-                  type="submit"
-                  className="w-full bg-blue-600 text-white py-3 px-4 rounded-md font-semibold hover:bg-blue-700 transition duration-300"
-                >
-                  {user ? 'Donate Now' : 'Login to Donate'}
-                </button>
-              </form>
-
-              <div className="mt-4 text-xs text-gray-500 text-center">
-                {user
-                  ? 'Your donation is secure and will help this campaign reach its goal.'
-                  : 'Please log in to make a donation to this campaign.'}
               </div>
-            </div>
+            )}
+
+            {/* Campaign Stats Card - Only for Creator/Admin */}
+            {(isCreator || isAdmin) && (
+              <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">
+                  Campaign Statistics
+                </h3>
+                <div className="space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Goal Amount</span>
+                    <span className="font-semibold">
+                      {formatCurrency(campaign.goal_amount)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Raised Amount</span>
+                    <span className="font-semibold text-green-600">
+                      {formatCurrency(campaign.current_amount)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Progress</span>
+                    <span className="font-semibold text-blue-600">
+                      {percentage.toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Total Backers</span>
+                    <span className="font-semibold">
+                      {campaign.backers_count}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">
+                      Days Remaining
+                    </span>
+                    <span className="font-semibold">{daysLeft} days</span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">Status</span>
+                    <span className="font-semibold capitalize">
+                      {campaign.status}
+                    </span>
+                  </div>
+                  {campaign.is_featured && (
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm text-gray-500">Featured</span>
+                      <span className="font-semibold text-blue-600">Yes</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </main>

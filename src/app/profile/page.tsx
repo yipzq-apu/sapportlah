@@ -13,7 +13,6 @@ interface UserProfile {
   role: 'donor' | 'creator';
   avatar?: string;
   location?: string;
-  bio?: string;
   phone?: string;
   joinDate: string;
   totalDonations: number;
@@ -63,7 +62,6 @@ export default function ProfilePage() {
             role: parsedUser.role,
             avatar: `https://ui-avatars.com/api/?name=${parsedUser.firstName}&background=3b82f6&color=fff&size=150`,
             location: '',
-            bio: '',
             phone: '',
             joinDate: new Date().toISOString(),
             totalDonations: 0,
@@ -359,21 +357,10 @@ export default function ProfilePage() {
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-gray-900 placeholder-gray-400"
                         placeholder="Enter your location (city, state, country)"
                       />
+                      <p className="mt-1 text-sm text-gray-500">
+                        Example: Kuala Lumpur, Malaysia
+                      </p>
                     </div>
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 mb-2">
-                      Bio
-                    </label>
-                    <textarea
-                      name="bio"
-                      rows={4}
-                      value={formData.bio || ''}
-                      onChange={handleInputChange}
-                      className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-gray-900 placeholder-gray-400 resize-none"
-                      placeholder="Tell us about yourself..."
-                    />
                   </div>
 
                   <div>

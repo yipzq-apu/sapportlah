@@ -1,214 +1,214 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
-
-// Global flag to track if Google Maps API is loaded
-declare global {
-  interface Window {
-    google: any;
-    googleMapsLoading: boolean;
-    googleMapsLoadPromise: Promise<void> | null;
-  }
-}
-
-interface Location {
-  lat: number;
-  lng: number;
-}
+import { useState, useEffect } from 'react';
 
 interface LocationData {
   address: string;
-  lat: number;
-  lng: number;
-  city?: string;
-  state?: string;
-  postalCode?: string;
-  country?: string;
+  latitude: number;
+  longitude: number;
 }
 
 interface MapLocationPickerProps {
+  initialLocation?: string;
   onLocationSelect: (location: LocationData) => void;
-  initialLocation?: Location;
 }
 
 export default function MapLocationPicker({
+  initialLocation = '',
   onLocationSelect,
-  initialLocation,
 }: MapLocationPickerProps) {
-  const mapRef = useRef<HTMLDivElement>(null);
-  const [map, setMap] = useState<google.maps.Map | null>(null);
-  const [marker, setMarker] = useState<google.maps.Marker | null>(null);
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(
-    initialLocation || null
+  const [searchQuery, setSearchQuery] = useState(initialLocation);
+  const [suggestions, setSuggestions] = useState<any[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(
+    null
   );
-  const [address, setAddress] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
 
   useEffect(() => {
-    loadGoogleMapsAndInitialize();
-  }, []);
+    if (initialLocation) {
+      setSearchQuery(initialLocation);
+    }
+  }, [initialLocation]);
 
-  const loadGoogleMapsAndInitialize = async () => {
+  const searchLocations = async (query: string) => {
+    if (!query || query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
+
+    setLoading(true);
     try {
-      await loadGoogleMapsAPI();
-      initMap();
-    } catch (err) {
-      console.error('Failed to load Google Maps:', err);
-      setError('Failed to load map. Please try again.');
+      // Using Nominatim (OpenStreetMap) API for geocoding
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(
+          query
+        )}&format=json&limit=5&countrycodes=my,sg&addressdetails=1`
+      );
+
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestions(data);
+      }
+    } catch (error) {
+      console.error('Error searching locations:', error);
+    } finally {
       setLoading(false);
     }
   };
 
-  const loadGoogleMapsAPI = (): Promise<void> => {
-    return new Promise((resolve, reject) => {
-      // Check if Google Maps is already loaded
-      if (window.google && window.google.maps) {
-        resolve();
-        return;
-      }
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchQuery(value);
 
-      // Check if Google Maps is currently loading
-      if (window.googleMapsLoading && window.googleMapsLoadPromise) {
-        window.googleMapsLoadPromise.then(resolve).catch(reject);
-        return;
-      }
+    // Debounce search
+    const timeoutId = setTimeout(() => {
+      searchLocations(value);
+    }, 300);
 
-      // Check if script already exists
-      const existingScript = document.querySelector(
-        'script[src*="maps.googleapis.com"]'
-      );
-      if (existingScript) {
-        // Script exists but Google Maps might not be ready yet
-        const checkGoogle = () => {
-          if (window.google && window.google.maps) {
-            resolve();
-          } else {
-            setTimeout(checkGoogle, 100);
+    return () => clearTimeout(timeoutId);
+  };
+
+  const handleLocationSelect = (location: any) => {
+    const locationData: LocationData = {
+      address: location.display_name,
+      latitude: parseFloat(location.lat),
+      longitude: parseFloat(location.lon),
+    };
+
+    setSelectedLocation(locationData);
+    setSearchQuery(location.display_name);
+    setSuggestions([]);
+    onLocationSelect(locationData);
+  };
+
+  const getCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert('Geolocation is not supported by this browser');
+      return;
+    }
+
+    setLoading(true);
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const { latitude, longitude } = position.coords;
+
+        try {
+          // Reverse geocode to get address
+          const response = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`
+          );
+
+          if (response.ok) {
+            const data = await response.json();
+            const locationData: LocationData = {
+              address: data.display_name,
+              latitude,
+              longitude,
+            };
+
+            setSelectedLocation(locationData);
+            setSearchQuery(data.display_name);
+            onLocationSelect(locationData);
           }
-        };
-        checkGoogle();
-        return;
-      }
-
-      // Set loading flag
-      window.googleMapsLoading = true;
-
-      // Create the promise for other components to wait for
-      window.googleMapsLoadPromise = new Promise(
-        (promiseResolve, promiseReject) => {
-          const script = document.createElement('script');
-          script.src = `https://maps.googleapis.com/maps/api/js?key=${process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}&libraries=places`;
-          script.async = true;
-          script.defer = true;
-
-          script.onload = () => {
-            window.googleMapsLoading = false;
-            promiseResolve();
-            resolve();
-          };
-
-          script.onerror = () => {
-            window.googleMapsLoading = false;
-            const error = new Error('Failed to load Google Maps API');
-            promiseReject(error);
-            reject(error);
-          };
-
-          document.head.appendChild(script);
+        } catch (error) {
+          console.error('Error getting address:', error);
+          alert('Could not get address for your location');
+        } finally {
+          setLoading(false);
         }
-      );
-    });
+      },
+      (error) => {
+        setLoading(false);
+        console.error('Error getting location:', error);
+        alert('Could not get your current location');
+      }
+    );
   };
 
-  const initMap = () => {
-    if (!mapRef.current || !window.google) return;
+  return (
+    <div className="space-y-3">
+      <div className="relative">
+        <input
+          type="text"
+          value={searchQuery}
+          onChange={handleInputChange}
+          className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-gray-900 placeholder-gray-400"
+          placeholder="Search for your location..."
+        />
 
-    const defaultLocation = initialLocation || { lat: 3.139, lng: 101.6869 }; // Kuala Lumpur default
+        <button
+          type="button"
+          onClick={getCurrentLocation}
+          disabled={loading}
+          className="absolute right-2 top-1/2 transform -translate-y-1/2 px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 disabled:bg-gray-400 transition duration-200"
+        >
+          {loading ? 'Getting...' : 'Use Current'}
+        </button>
+      </div>
 
-    const mapInstance = new google.maps.Map(mapRef.current, {
-      center: defaultLocation,
-      zoom: 15,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-    });
+      {/* Suggestions dropdown */}
+      {suggestions.length > 0 && (
+        <div className="border border-gray-300 rounded-lg bg-white shadow-lg max-h-60 overflow-y-auto">
+          {suggestions.map((location, index) => (
+            <button
+              key={index}
+              type="button"
+              onClick={() => handleLocationSelect(location)}
+              className="w-full text-left px-4 py-3 hover:bg-gray-50 border-b border-gray-100 last:border-b-0 transition duration-200"
+            >
+              <div className="text-sm font-medium text-gray-900">
+                {location.display_name}
+              </div>
+              <div className="text-xs text-gray-500">
+                {location.type &&
+                  `${location.type} • Lat: ${parseFloat(location.lat).toFixed(
+                    4
+                  )}, Lng: ${parseFloat(location.lon).toFixed(4)}`}
+              </div>
+            </button>
+          ))}
+        </div>
+      )}
 
-    const markerInstance = new google.maps.Marker({
-      position: defaultLocation,
-      map: mapInstance,
-      draggable: true,
-    });
+      {/* Selected location display */}
+      {selectedLocation && (
+        <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+          <div className="flex items-start justify-between">
+            <div>
+              <div className="text-sm font-medium text-green-800">
+                Selected Location:
+              </div>
+              <div className="text-sm text-green-700 mt-1">
+                {selectedLocation.address}
+              </div>
+              <div className="text-xs text-green-600 mt-1">
+                Coordinates:{' '}
+                {selectedLocation.latitude.toFixed(4)},{' '}
+                {selectedLocation.longitude.toFixed(4)}
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSelectedLocation(null);
+                setSearchQuery('');
+                onLocationSelect({ address: '', latitude: 0, longitude: 0 });
+              }}
+              className="text-green-600 hover:text-green-800 text-sm"
+            >
+              Clear
+            </button>
+          </div>
+        </div>
+      )}
 
-    // Add click listener to map
-    mapInstance.addListener('click', (event: google.maps.MapMouseEvent) => {
-      if (event.latLng) {
-        const lat = event.latLng.lat();
-        const lng = event.latLng.lng();
-        updateLocation({ lat, lng });
-      }
-    });
-
-    // Add drag listener to marker
-    markerInstance.addListener('dragend', () => {
-      const position = markerInstance.getPosition();
-      if (position) {
-        const lat = position.lat();
-        const lng = position.lng();
-        updateLocation({ lat, lng });
-      }
-    });
-
-    setMap(mapInstance);
-    setMarker(markerInstance);
-    setLoading(false);
-
-    // If there's an initial location, get its address
-    if (initialLocation) {
-      updateLocation(initialLocation);
-    }
-  };
-
-  const updateLocation = async (location: Location) => {
-    setSelectedLocation(location);
-
-    if (marker) {
-      marker.setPosition(location);
-    }
-
-    if (map) {
-      map.setCenter(location);
-    }
-
-    // Reverse geocoding to get human-readable address
-    try {
-      const geocoder = new google.maps.Geocoder();
-      const response = await geocoder.geocode({ location });
-
-      if (response.results[0]) {
-        const result = response.results[0];
-        const addressComponents = result.address_components;
-
-        // Use the formatted address as the main address
-        const humanReadableAddress = result.formatted_address;
-        setAddress(humanReadableAddress);
-
-        // Extract specific address components
-        let streetNumber = '';
-        let route = '';
-        let city = '';
-        let state = '';
-        let postalCode = '';
-        let country = '';
-
-        addressComponents.forEach((component) => {
-          const types = component.types;
-          if (types.includes('street_number')) {
-            streetNumber = component.long_name;
-          } else if (types.includes('route')) {
-            route = component.long_name;
-          } else if (
-            types.includes('locality') ||
+      <div className="text-xs text-gray-500">
+        Start typing to search for locations, or click "Use Current" to use your
+        current location.
+      </div>
+    </div>
+  );
+}
             types.includes('sublocality')
           ) {
             city = component.long_name;
