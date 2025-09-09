@@ -81,13 +81,13 @@ export default function ContactUs() {
                 <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center mr-4">
                   <span className="text-white text-sm">📞</span>
                 </div>
-                <span className="text-gray-700">+65 1234 5678</span>
+                <span className="text-gray-700">+60 123456789</span>
               </div>
               <div className="flex items-center">
                 <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center mr-4">
                   <span className="text-white text-sm">📍</span>
                 </div>
-                <span className="text-gray-700">Singapore</span>
+                <span className="text-gray-700">Malaysia</span>
               </div>
             </div>
           </div>

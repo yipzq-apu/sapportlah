@@ -60,37 +60,26 @@ export async function POST(request: NextRequest) {
 
     // Check if user already exists
     const existingUser = await db.query(
-      'SELECT id FROM users WHERE email = ? OR ic_passport_number = ?',
-      [email, idNumber]
+      'SELECT id FROM users WHERE email = ?',
+      [email]
     );
 
     if (Array.isArray(existingUser) && existingUser.length > 0) {
       return NextResponse.json(
-        { error: 'User with this email or ID number already exists' },
-        { status: 409 }
+        { error: 'User with this email already exists' },
+        { status: 400 }
       );
     }
 
     // Hash password
-    const saltRounds = 12;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Insert user into database
-    const result = (await db.query(
+    // Insert new user with pending status
+    await db.query(
       `INSERT INTO users (
-        email, 
-        password, 
-        first_name, 
-        last_name, 
-        phone, 
-        date_of_birth, 
-        ic_passport_number, 
-        ic_passport_type, 
-        address, 
-        role,
-        created_at,
-        updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())`,
+        email, password, first_name, last_name, phone, date_of_birth,
+        ic_passport_number, ic_passport_type, address, role, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())`,
       [
         email,
         hashedPassword,
@@ -103,51 +92,14 @@ export async function POST(request: NextRequest) {
         address,
         role,
       ]
-    )) as any;
-
-    const insertId = result.insertId || result[0]?.insertId;
-
-    // Generate JWT token
-    const token = jwt.sign(
-      {
-        userId: insertId,
-        email: email,
-        role: role,
-      },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
     );
 
-    return NextResponse.json(
-      {
-        message: 'User registered successfully',
-        token: token,
-        user: {
-          id: insertId,
-          email: email,
-          firstName: firstName,
-          lastName: lastName,
-          role: role,
-        },
-      },
-      { status: 201 }
-    );
+    return NextResponse.json({
+      success: true,
+      message: 'Registration successful. Your account is pending approval.',
+    });
   } catch (error) {
     console.error('Registration error:', error);
-
-    // Handle specific database errors
-    if (
-      error &&
-      typeof error === 'object' &&
-      'code' in error &&
-      error.code === 'ER_DUP_ENTRY'
-    ) {
-      return NextResponse.json(
-        { error: 'User with this email or ID number already exists' },
-        { status: 409 }
-      );
-    }
-
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

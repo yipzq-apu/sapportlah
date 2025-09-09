@@ -21,9 +21,23 @@ interface Campaign {
 export default function FeaturedCampaignsAdminPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<'all' | 'featured' | 'not-featured'>(
-    'all'
-  );
+
+  // Replace single filter with multiple checkbox filters
+  const [filters, setFilters] = useState({
+    featured: {
+      featured: true,
+      notFeatured: true,
+    },
+    status: {
+      pending: true,
+      approved: true,
+      rejected: true,
+      active: true,
+      successful: true,
+      failed: true,
+      cancelled: true,
+    },
+  });
 
   useEffect(() => {
     fetchCampaigns();
@@ -94,10 +108,39 @@ export default function FeaturedCampaignsAdminPage() {
     return Math.min((current / goal) * 100, 100);
   };
 
+  const handleFeaturedFilterChange = (
+    filterType: 'featured' | 'notFeatured'
+  ) => {
+    setFilters((prev) => ({
+      ...prev,
+      featured: {
+        ...prev.featured,
+        [filterType]: !prev.featured[filterType],
+      },
+    }));
+  };
+
+  const handleStatusFilterChange = (status: keyof typeof filters.status) => {
+    setFilters((prev) => ({
+      ...prev,
+      status: {
+        ...prev.status,
+        [status]: !prev.status[status],
+      },
+    }));
+  };
+
   const filteredCampaigns = campaigns.filter((campaign) => {
-    if (filter === 'featured') return campaign.is_featured;
-    if (filter === 'not-featured') return !campaign.is_featured;
-    return true;
+    // Check featured filter
+    const featuredMatch =
+      (campaign.is_featured && filters.featured.featured) ||
+      (!campaign.is_featured && filters.featured.notFeatured);
+
+    // Check status filter
+    const statusMatch =
+      filters.status[campaign.status as keyof typeof filters.status];
+
+    return featuredMatch && statusMatch;
   });
 
   const featuredCount = campaigns.filter((c) => c.is_featured).length;
@@ -129,7 +172,8 @@ export default function FeaturedCampaignsAdminPage() {
 
       {/* Stats and Filters */}
       <div className="bg-white rounded-lg shadow-md p-6 mb-8">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div className="flex flex-col gap-6">
+          {/* Stats Row */}
           <div className="flex items-center space-x-6">
             <div className="text-center">
               <div
@@ -153,27 +197,152 @@ export default function FeaturedCampaignsAdminPage() {
               </div>
               <div className="text-sm text-gray-500">Total Campaigns</div>
             </div>
-          </div>
-
-          <div className="flex flex-col items-end space-y-2">
             {featuredCount >= 3 && (
               <div className="text-sm text-red-600 font-medium">
                 ⚠️ Maximum featured limit reached
               </div>
             )}
-            <div className="flex items-center space-x-4">
-              <label className="text-sm font-medium text-gray-700">
-                Filter:
-              </label>
-              <select
-                value={filter}
-                onChange={(e) => setFilter(e.target.value as any)}
-                className="px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-              >
-                <option value="all">All Campaigns</option>
-                <option value="featured">Featured Only</option>
-                <option value="not-featured">Not Featured</option>
-              </select>
+          </div>
+
+          {/* Filters Row */}
+          <div className="border-t border-gray-200 pt-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Featured Status Filter */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                  Featured Status
+                </h4>
+                <div className="space-y-2">
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={filters.featured.featured}
+                      onChange={() => handleFeaturedFilterChange('featured')}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">
+                      Featured ({campaigns.filter((c) => c.is_featured).length})
+                    </span>
+                  </label>
+                  <label className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={filters.featured.notFeatured}
+                      onChange={() => handleFeaturedFilterChange('notFeatured')}
+                      className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                    />
+                    <span className="ml-2 text-sm text-gray-700">
+                      Not Featured (
+                      {campaigns.filter((c) => !c.is_featured).length})
+                    </span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Campaign Status Filter */}
+              <div>
+                <h4 className="text-sm font-medium text-gray-700 mb-3">
+                  Campaign Status
+                </h4>
+                <div className="grid grid-cols-2 gap-2">
+                  {Object.entries({
+                    pending: 'Pending',
+                    approved: 'Approved',
+                    rejected: 'Rejected',
+                    active: 'Active',
+                    successful: 'Successful',
+                    failed: 'Failed',
+                    cancelled: 'Cancelled',
+                  }).map(([key, label]) => {
+                    const count = campaigns.filter(
+                      (c) => c.status === key
+                    ).length;
+                    return (
+                      <label key={key} className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={
+                            filters.status[key as keyof typeof filters.status]
+                          }
+                          onChange={() =>
+                            handleStatusFilterChange(
+                              key as keyof typeof filters.status
+                            )
+                          }
+                          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                        />
+                        <span
+                          className={`ml-2 text-sm ${
+                            key === 'active'
+                              ? 'text-green-700'
+                              : key === 'pending'
+                              ? 'text-yellow-700'
+                              : key === 'approved'
+                              ? 'text-blue-700'
+                              : key === 'successful'
+                              ? 'text-green-700'
+                              : key === 'rejected' ||
+                                key === 'failed' ||
+                                key === 'cancelled'
+                              ? 'text-red-700'
+                              : 'text-gray-700'
+                          }`}
+                        >
+                          {label} ({count})
+                        </span>
+                      </label>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            {/* Filter Actions */}
+            <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-200">
+              <div className="text-sm text-gray-600">
+                Showing {filteredCampaigns.length} of {campaigns.length}{' '}
+                campaigns
+              </div>
+              <div className="flex space-x-2">
+                <button
+                  onClick={() =>
+                    setFilters({
+                      featured: { featured: true, notFeatured: true },
+                      status: {
+                        pending: true,
+                        approved: true,
+                        rejected: true,
+                        active: true,
+                        successful: true,
+                        failed: true,
+                        cancelled: true,
+                      },
+                    })
+                  }
+                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition duration-200"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={() =>
+                    setFilters({
+                      featured: { featured: false, notFeatured: false },
+                      status: {
+                        pending: false,
+                        approved: false,
+                        rejected: false,
+                        active: false,
+                        successful: false,
+                        failed: false,
+                        cancelled: false,
+                      },
+                    })
+                  }
+                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition duration-200"
+                >
+                  Clear All
+                </button>
+              </div>
             </div>
           </div>
         </div>
@@ -222,6 +391,14 @@ export default function FeaturedCampaignsAdminPage() {
                               ? 'bg-green-100 text-green-800'
                               : campaign.status === 'pending'
                               ? 'bg-yellow-100 text-yellow-800'
+                              : campaign.status === 'approved'
+                              ? 'bg-blue-100 text-blue-800'
+                              : campaign.status === 'successful'
+                              ? 'bg-green-100 text-green-800'
+                              : campaign.status === 'rejected' ||
+                                campaign.status === 'failed' ||
+                                campaign.status === 'cancelled'
+                              ? 'bg-red-100 text-red-800'
                               : 'bg-gray-100 text-gray-800'
                           }`}
                         >
@@ -310,10 +487,10 @@ export default function FeaturedCampaignsAdminPage() {
               No campaigns found
             </h3>
             <p className="text-gray-600">
-              {filter === 'featured'
-                ? 'No campaigns are currently featured'
-                : filter === 'not-featured'
-                ? 'All campaigns are featured'
+              {filters.featured.featured && !filters.featured.notFeatured
+                ? 'No not featured campaigns available'
+                : !filters.featured.featured && filters.featured.notFeatured
+                ? 'No featured campaigns available'
                 : 'No campaigns available'}
             </p>
           </div>

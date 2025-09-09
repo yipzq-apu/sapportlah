@@ -16,7 +16,6 @@ interface Campaign {
   current_amount: number;
   end_date: string;
   featured_image?: string;
-  video_url?: string;
   status: string;
   is_featured: boolean;
   backers_count: number;
@@ -80,7 +79,6 @@ export default function CampaignDetailPage() {
   const [newQuestion, setNewQuestion] = useState('');
   const [isQuestionAnonymous, setIsQuestionAnonymous] = useState(false);
   const [campaignImages, setCampaignImages] = useState<CampaignImage[]>([]);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
 
   // Helper variables for user roles
@@ -165,7 +163,6 @@ export default function CampaignDetailPage() {
         if (response.ok) {
           const data = await response.json();
           setCampaignImages(data.images || []);
-          setVideoUrl(data.videoUrl);
         }
       } catch (error) {
         console.error('Error fetching media:', error);
@@ -463,62 +460,39 @@ export default function CampaignDetailPage() {
           <div className="lg:col-span-2">
             {/* Campaign Media Gallery */}
             <div className="mb-6">
-              {/* Main Image/Video Display */}
+              {/* Main Image Display */}
               <div className="relative mb-4">
-                {videoUrl && selectedImageIndex === -1 ? (
-                  <div className="relative">
-                    <video
-                      controls
-                      className="w-full h-64 md:h-96 object-cover rounded-lg"
-                      poster={
-                        campaign?.featured_image || '/api/placeholder/800/400'
-                      }
-                    >
-                      <source src={videoUrl} type="video/mp4" />
-                      Your browser does not support the video tag.
-                    </video>
-                    {campaign?.is_featured && (
-                      <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 text-sm font-semibold rounded">
-                        Featured
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="relative">
-                    <img
-                      src={
-                        selectedImageIndex >= 0 &&
-                        campaignImages[selectedImageIndex]
-                          ? campaignImages[selectedImageIndex].image_url
-                          : campaign?.featured_image ||
-                            '/api/placeholder/800/400'
-                      }
-                      alt={
-                        selectedImageIndex >= 0 &&
-                        campaignImages[selectedImageIndex]
-                          ? campaignImages[selectedImageIndex].caption ||
-                            campaign?.title
-                          : campaign?.title
-                      }
-                      className="w-full h-64 md:h-96 object-cover rounded-lg"
-                    />
-                    {campaign?.is_featured && (
-                      <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 text-sm font-semibold rounded">
-                        Featured
-                      </div>
-                    )}
+                <img
+                  src={
+                    selectedImageIndex >= 0 &&
+                    campaignImages[selectedImageIndex]
+                      ? campaignImages[selectedImageIndex].image_url
+                      : campaign?.featured_image || '/api/placeholder/800/400'
+                  }
+                  alt={
+                    selectedImageIndex >= 0 &&
+                    campaignImages[selectedImageIndex]
+                      ? campaignImages[selectedImageIndex].caption ||
+                        campaign?.title
+                      : campaign?.title
+                  }
+                  className="w-full h-64 md:h-96 object-cover rounded-lg"
+                />
+                {campaign?.is_featured && (
+                  <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 text-sm font-semibold rounded">
+                    Featured
                   </div>
                 )}
               </div>
 
               {/* Thumbnail Gallery */}
-              {(campaignImages.length > 0 || videoUrl) && (
+              {campaignImages.length > 0 && (
                 <div className="flex space-x-2 overflow-x-auto pb-2">
                   {/* Main featured image thumbnail */}
                   <button
-                    onClick={() => setSelectedImageIndex(-2)}
+                    onClick={() => setSelectedImageIndex(-1)}
                     className={`flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 transition-colors ${
-                      selectedImageIndex === -2
+                      selectedImageIndex === -1
                         ? 'border-blue-500'
                         : 'border-gray-300 hover:border-gray-400'
                     }`}
@@ -529,35 +503,6 @@ export default function CampaignDetailPage() {
                       className="w-full h-full object-cover"
                     />
                   </button>
-
-                  {/* Video thumbnail */}
-                  {videoUrl && (
-                    <button
-                      onClick={() => setSelectedImageIndex(-1)}
-                      className={`flex-shrink-0 w-16 h-16 rounded-md overflow-hidden border-2 transition-colors relative ${
-                        selectedImageIndex === -1
-                          ? 'border-blue-500'
-                          : 'border-gray-300 hover:border-gray-400'
-                      }`}
-                    >
-                      <img
-                        src={
-                          campaign?.featured_image || '/api/placeholder/80/80'
-                        }
-                        alt="Video"
-                        className="w-full h-full object-cover"
-                      />
-                      <div className="absolute inset-0 bg-black bg-opacity-30 flex items-center justify-center">
-                        <svg
-                          className="w-6 h-6 text-white"
-                          fill="currentColor"
-                          viewBox="0 0 20 20"
-                        >
-                          <path d="M6.3 2.84A1 1 0 004 3.7v12.6a1 1 0 001.6.8l8.4-6.3a1 1 0 000-1.6L5.6 2.84z" />
-                        </svg>
-                      </div>
-                    </button>
-                  )}
 
                   {/* Additional images thumbnails */}
                   {campaignImages.map((image, index) => (

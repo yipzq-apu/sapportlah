@@ -5,17 +5,24 @@ import Link from 'next/link';
 
 interface Campaign {
   id: string;
+  user_id: string;
+  category_id: string;
   title: string;
   description: string;
-  creator: string;
-  creatorEmail: string;
-  goal: number;
-  category: string;
+  short_description: string;
+  goal_amount: number;
+  current_amount: number;
+  end_date: string;
+  featured_image: string;
   status: 'pending' | 'approved' | 'rejected';
-  submittedDate: string;
-  reviewedDate?: string;
-  reviewedBy?: string;
-  rejectionReason?: string;
+  reason?: string;
+  is_featured: boolean;
+  backers_count: number;
+  created_at: string;
+  updated_at: string;
+  creator_name: string;
+  creator_email: string;
+  category_name: string;
 }
 
 export default function AdminCampaignsPage() {
@@ -25,88 +32,87 @@ export default function AdminCampaignsPage() {
 
   useEffect(() => {
     const fetchCampaigns = async () => {
-      // Mock data
-      const mockCampaigns: Campaign[] = [
-        {
-          id: '1',
-          title: 'Clean Water for Rural Communities',
-          description:
-            'Help us bring clean drinking water to underserved rural areas through sustainable water purification systems.',
-          creator: 'Water For All Foundation',
-          creatorEmail: 'contact@waterforall.org',
-          goal: 50000,
-          category: 'Environment',
-          status: 'pending',
-          submittedDate: '2024-04-21T10:30:00Z',
-        },
-        {
-          id: '2',
-          title: 'Emergency Medical Supplies',
-          description:
-            'Urgent funding needed for medical supplies in disaster-affected areas.',
-          creator: 'Medical Aid Society',
-          creatorEmail: 'help@medicalaid.org',
-          goal: 75000,
-          category: 'Healthcare',
-          status: 'pending',
-          submittedDate: '2024-04-20T14:15:00Z',
-        },
-        {
-          id: '3',
-          title: 'Education Technology Initiative',
-          description:
-            'Providing tablets and internet access to students in need.',
-          creator: 'Digital Learning Initiative',
-          creatorEmail: 'info@digitallearning.org',
-          goal: 25000,
-          category: 'Education',
-          status: 'approved',
-          submittedDate: '2024-04-18T09:00:00Z',
-          reviewedDate: '2024-04-19T11:30:00Z',
-          reviewedBy: 'Admin User',
-        },
-      ];
-
-      setCampaigns(mockCampaigns);
-      setLoading(false);
+      try {
+        const response = await fetch(`/api/admin/campaigns?status=${filter}`);
+        if (response.ok) {
+          const data = await response.json();
+          setCampaigns(data.campaigns);
+        } else {
+          console.error('Failed to fetch campaigns');
+        }
+      } catch (error) {
+        console.error('Error fetching campaigns:', error);
+      } finally {
+        setLoading(false);
+      }
     };
 
     fetchCampaigns();
-  }, []);
+  }, [filter]);
 
   const handleApprove = async (campaignId: string) => {
-    setCampaigns((prev) =>
-      prev.map((campaign) =>
-        campaign.id === campaignId
-          ? {
-              ...campaign,
-              status: 'approved',
-              reviewedDate: new Date().toISOString(),
-              reviewedBy: 'Admin User',
-            }
-          : campaign
-      )
-    );
-    alert('Campaign approved successfully!');
+    try {
+      const response = await fetch(`/api/admin/campaigns/${campaignId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: 'approved',
+          reviewedBy: 'Admin User', // In production, get from auth context
+        }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setCampaigns((prev) =>
+          prev.map((campaign) =>
+            campaign.id === campaignId ? data.campaign : campaign
+          )
+        );
+        alert('Campaign approved successfully!');
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error approving campaign:', error);
+      alert('Failed to approve campaign. Please try again.');
+    }
   };
 
   const handleReject = async (campaignId: string) => {
-    const reason = prompt('Please provide a reason for rejection:');
-    if (reason) {
-      setCampaigns((prev) =>
-        prev.map((campaign) =>
-          campaign.id === campaignId
-            ? {
-                ...campaign,
-                status: 'rejected',
-                reviewedDate: new Date().toISOString(),
-                reviewedBy: 'Admin User',
-                rejectionReason: reason,
-              }
-            : campaign
-        )
-      );
-      alert('Campaign rejected successfully!');
+    const rejectionReason = prompt('Please provide a reason for rejection:');
+    if (rejectionReason && rejectionReason.trim()) {
+      try {
+        const response = await fetch(`/api/admin/campaigns/${campaignId}`, {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            status: 'rejected',
+            reason: rejectionReason.trim(),
+            reviewedBy: 'Admin User', // In production, get from auth context
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          setCampaigns((prev) =>
+            prev.map((campaign) =>
+              campaign.id === campaignId ? data.campaign : campaign
+            )
+          );
+          alert('Campaign rejected successfully!');
+        } else {
+          const error = await response.json();
+          alert(`Error: ${error.error}`);
+        }
+      } catch (error) {
+        console.error('Error rejecting campaign:', error);
+        alert('Failed to reject campaign. Please try again.');
+      }
     }
   };
 
@@ -205,44 +211,51 @@ export default function AdminCampaignsPage() {
                   >
                     {campaign.status}
                   </span>
+                  {campaign.is_featured && (
+                    <span className="ml-2 px-2 py-1 text-xs font-medium rounded-full bg-yellow-100 text-yellow-800">
+                      ⭐ Featured
+                    </span>
+                  )}
                 </div>
                 <p className="text-gray-600 mb-3">{campaign.description}</p>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
                   <div>
                     <span className="text-gray-500">Creator:</span>
-                    <p className="font-medium">{campaign.creator}</p>
-                    <p className="text-gray-500">{campaign.creatorEmail}</p>
+                    <p className="font-medium">{campaign.creator_name}</p>
+                    <p className="text-gray-500">{campaign.creator_email}</p>
                   </div>
                   <div>
                     <span className="text-gray-500">Goal:</span>
                     <p className="font-medium">
-                      {formatCurrency(campaign.goal)}
+                      {formatCurrency(campaign.goal_amount)}
+                    </p>
+                    <span className="text-gray-500">Raised:</span>
+                    <p className="font-medium">
+                      {formatCurrency(campaign.current_amount)}
                     </p>
                     <span className="text-gray-500">Category:</span>
-                    <p className="font-medium">{campaign.category}</p>
+                    <p className="font-medium">{campaign.category_name}</p>
                   </div>
                   <div>
                     <span className="text-gray-500">Submitted:</span>
                     <p className="font-medium">
-                      {formatDate(campaign.submittedDate)}
+                      {formatDate(campaign.created_at)}
                     </p>
-                    {campaign.reviewedDate && (
-                      <>
-                        <span className="text-gray-500">Reviewed:</span>
-                        <p className="font-medium">
-                          {formatDate(campaign.reviewedDate)}
-                        </p>
-                      </>
-                    )}
+                    <span className="text-gray-500">Backers:</span>
+                    <p className="font-medium">{campaign.backers_count}</p>
+                    <span className="text-gray-500">End Date:</span>
+                    <p className="font-medium">
+                      {formatDate(campaign.end_date)}
+                    </p>
                   </div>
                 </div>
 
-                {campaign.rejectionReason && (
+                {campaign.reason && (
                   <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-md">
                     <p className="text-sm text-red-800">
                       <span className="font-medium">Rejection Reason:</span>{' '}
-                      {campaign.rejectionReason}
+                      {campaign.reason}
                     </p>
                   </div>
                 )}

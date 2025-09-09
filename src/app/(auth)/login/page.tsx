@@ -29,8 +29,6 @@ export default function LoginPage() {
     setError('');
 
     try {
-      console.log('Login attempt for:', formData.email);
-
       const response = await fetch('/api/auth/login', {
         method: 'POST',
         headers: {
@@ -40,36 +38,49 @@ export default function LoginPage() {
       });
 
       const data = await response.json();
-      console.log('Login response:', data);
 
       if (!response.ok) {
+        // Handle special account status cases
+        if (data.error === 'account_pending') {
+          const params = new URLSearchParams({
+            status: 'pending',
+            message: data.message,
+          });
+          window.location.href = `/account-status?${params}`;
+          return;
+        }
+
+        if (data.error === 'account_rejected') {
+          const params = new URLSearchParams({
+            status: 'rejected',
+            message: data.message,
+            reason: data.reason || '',
+            email: data.email || '',
+          });
+          window.location.href = `/account-status?${params}`;
+          return;
+        }
+
+        if (data.error === 'account_suspended') {
+          const params = new URLSearchParams({
+            status: 'suspended',
+            message: data.message,
+          });
+          window.location.href = `/account-status?${params}`;
+          return;
+        }
+
         throw new Error(data.error || 'Login failed');
       }
 
       // Store only user data in localStorage (no token)
-      if (data.user) {
-        localStorage.setItem('userData', JSON.stringify(data.user));
-        console.log('User data stored:', data.user);
-      }
+      localStorage.setItem('userData', JSON.stringify(data.user));
 
-      // Small delay to ensure localStorage is written
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      console.log('Redirecting to:', data.redirectUrl);
-
-      // Force redirect based on user role
-      if (data.user.role === 'admin') {
-        console.log('Admin user - redirecting to /admin');
-        window.location.replace('/admin');
-      } else if (data.user.role === 'creator') {
-        console.log('Creator user - redirecting to /dashboard');
-        window.location.replace('/dashboard');
-      } else {
-        console.log('Donor user - redirecting to /');
-        window.location.replace('/');
-      }
+      // Redirect based on user role
+      const redirectUrl =
+        searchParams.get('returnUrl') || getDefaultRedirect(data.user.role);
+      window.location.href = redirectUrl;
     } catch (err: any) {
-      console.error('Login error:', err);
       setError(err.message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
@@ -197,4 +208,15 @@ export default function LoginPage() {
       </div>
     </div>
   );
+}
+
+function getDefaultRedirect(role: string) {
+  switch (role) {
+    case 'admin':
+      return '/admin';
+    case 'creator':
+      return '/dashboard';
+    default:
+      return '/';
+  }
 }

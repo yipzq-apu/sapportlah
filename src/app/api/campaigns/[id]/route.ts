@@ -27,7 +27,6 @@ export async function GET(
         c.goal_amount,
         c.current_amount,
         c.featured_image,
-        c.video_url,
         c.status,
         c.category_id,
         c.end_date,

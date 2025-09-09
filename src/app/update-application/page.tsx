@@ -1,15 +1,17 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import MapLocationPicker from '@/app/components/MapLocationPicker';
 
-export default function RegisterPage() {
+export default function UpdateApplicationPage() {
+  const searchParams = useSearchParams();
+  const [email, setEmail] = useState('');
+  const [rejectionReason, setRejectionReason] = useState('');
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
-    email: '',
     phone: '',
     dateOfBirth: '',
     idType: 'ic' as 'ic' | 'passport',
@@ -23,6 +25,46 @@ export default function RegisterPage() {
   const [error, setError] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [tempAddress, setTempAddress] = useState('');
+  const [userExists, setUserExists] = useState(false);
+
+  useEffect(() => {
+    const emailParam = searchParams.get('email');
+    const reasonParam = searchParams.get('reason');
+
+    if (emailParam) {
+      setEmail(emailParam);
+      setRejectionReason(reasonParam || '');
+      fetchUserData(emailParam);
+    }
+  }, [searchParams]);
+
+  const fetchUserData = async (userEmail: string) => {
+    try {
+      const response = await fetch(
+        `/api/auth/user-data?email=${encodeURIComponent(userEmail)}`
+      );
+      if (response.ok) {
+        const data = await response.json();
+        const user = data.user;
+
+        setFormData({
+          firstName: user.first_name || '',
+          lastName: user.last_name || '',
+          phone: user.phone || '',
+          dateOfBirth: user.date_of_birth || '',
+          idType: user.ic_passport_type || 'ic',
+          idNumber: user.ic_passport_number || '',
+          address: user.address || '',
+          password: '',
+          confirmPassword: '',
+          role: user.role || 'donor',
+        });
+        setUserExists(true);
+      }
+    } catch (error) {
+      console.error('Error fetching user data:', error);
+    }
+  };
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -38,31 +80,34 @@ export default function RegisterPage() {
     setLoading(true);
     setError('');
 
-    if (formData.password !== formData.confirmPassword) {
+    if (formData.password && formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
       setLoading(false);
       return;
     }
 
     try {
-      const response = await fetch('/api/auth/register', {
+      const response = await fetch('/api/auth/update-application', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          email,
+          ...formData,
+        }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Registration failed');
+        throw new Error(data.error || 'Update failed');
       }
 
       // Redirect to success page
-      window.location.href = '/registration-success';
+      window.location.href = '/application-updated';
     } catch (err: any) {
-      setError(err.message || 'Registration failed. Please try again.');
+      setError(err.message || 'Update failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -79,7 +124,7 @@ export default function RegisterPage() {
   }) => {
     setFormData({
       ...formData,
-      address: location.address, // This will now be human-readable
+      address: location.address,
     });
     setShowMap(false);
     setTempAddress('');
@@ -91,7 +136,6 @@ export default function RegisterPage() {
   };
 
   const handleMapCancel = () => {
-    // Restore the original address if user cancels
     setFormData({
       ...formData,
       address: tempAddress,
@@ -100,42 +144,68 @@ export default function RegisterPage() {
     setTempAddress('');
   };
 
+  if (!email) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold text-gray-900 mb-4">
+            Invalid Access
+          </h2>
+          <Link href="/" className="text-blue-600 hover:text-blue-700">
+            Go back to home
+          </Link>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-2xl">
         <div className="flex justify-center">
           <Link href="/">
-            <Image
-              src="/logo.png"
-              alt="SapportLah Logo"
-              width={200}
-              height={60}
-              className="h-12 w-auto"
-            />
+            <span className="text-2xl font-bold text-blue-600">SapportLah</span>
           </Link>
         </div>
         <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
-          Create your account
+          Update Your Application
         </h2>
         <p className="mt-2 text-center text-sm text-gray-600">
-          Or{' '}
-          <Link
-            href="/login"
-            className="font-medium text-blue-600 hover:text-blue-500"
-          >
-            sign in to your existing account
-          </Link>
+          Please review and update your information below
         </p>
       </div>
 
       <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-2xl">
         <div className="bg-white py-8 px-4 shadow sm:rounded-lg sm:px-10">
+          {/* Rejection Reason Display */}
+          {rejectionReason && (
+            <div className="mb-6 border border-red-200 bg-red-50 rounded-lg p-4">
+              <h3 className="text-sm font-medium text-red-800 mb-2">
+                Reason for rejection:
+              </h3>
+              <p className="text-sm text-red-700">{rejectionReason}</p>
+            </div>
+          )}
+
           <form className="space-y-6" onSubmit={handleSubmit}>
             {error && (
               <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded">
                 {error}
               </div>
             )}
+
+            {/* Email Display */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                Email Address
+              </label>
+              <input
+                type="email"
+                value={email}
+                disabled
+                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-gray-500"
+              />
+            </div>
 
             {/* Personal Information */}
             <div>
@@ -158,7 +228,6 @@ export default function RegisterPage() {
                     value={formData.firstName}
                     onChange={handleChange}
                     className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="Enter your first name"
                   />
                 </div>
 
@@ -177,7 +246,6 @@ export default function RegisterPage() {
                     value={formData.lastName}
                     onChange={handleChange}
                     className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="Enter your last name"
                   />
                 </div>
 
@@ -233,9 +301,6 @@ export default function RegisterPage() {
                     value={formData.idNumber}
                     onChange={handleChange}
                     className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder={`Enter your ${
-                      formData.idType === 'ic' ? 'IC' : 'passport'
-                    } number`}
                   />
                 </div>
               </div>
@@ -246,45 +311,22 @@ export default function RegisterPage() {
               <h3 className="text-lg font-medium text-gray-900 mb-4">
                 Contact Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label
-                    htmlFor="email"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Email Address
-                  </label>
-                  <input
-                    id="email"
-                    name="email"
-                    type="email"
-                    autoComplete="email"
-                    required
-                    value={formData.email}
-                    onChange={handleChange}
-                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="Enter your email"
-                  />
-                </div>
-
-                <div>
-                  <label
-                    htmlFor="phone"
-                    className="block text-sm font-medium text-gray-700"
-                  >
-                    Phone Number
-                  </label>
-                  <input
-                    id="phone"
-                    name="phone"
-                    type="tel"
-                    required
-                    value={formData.phone}
-                    onChange={handleChange}
-                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="Enter your phone number"
-                  />
-                </div>
+              <div>
+                <label
+                  htmlFor="phone"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Phone Number
+                </label>
+                <input
+                  id="phone"
+                  name="phone"
+                  type="tel"
+                  required
+                  value={formData.phone}
+                  onChange={handleChange}
+                  className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                />
               </div>
             </div>
 
@@ -293,36 +335,30 @@ export default function RegisterPage() {
               <h3 className="text-lg font-medium text-gray-900 mb-4">
                 Address Information
               </h3>
-              <div className="space-y-4">
-                <div>
-                  <label
-                    htmlFor="address"
-                    className="block text-sm font-medium text-gray-700"
+              <div>
+                <label
+                  htmlFor="address"
+                  className="block text-sm font-medium text-gray-700"
+                >
+                  Street Address
+                </label>
+                <div className="mt-1 flex">
+                  <input
+                    id="address"
+                    name="address"
+                    type="text"
+                    required
+                    value={formData.address}
+                    onChange={handleChange}
+                    className="flex-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-l-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleMapOpen}
+                    className="px-4 py-2 bg-blue-600 text-white border border-blue-600 rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
                   >
-                    Street Address
-                  </label>
-                  <div className="mt-1 flex">
-                    <input
-                      id="address"
-                      name="address"
-                      type="text"
-                      required
-                      value={formData.address}
-                      onChange={handleChange}
-                      className="flex-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-l-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      placeholder="Enter your address or use map to select"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleMapOpen}
-                      className="px-4 py-2 bg-blue-600 text-white border border-blue-600 rounded-r-md hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-                    >
-                      📍 Map
-                    </button>
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">
-                    Click the map button to select your location visually
-                  </p>
+                    📍 Map
+                  </button>
                 </div>
 
                 {showMap && (
@@ -353,109 +389,61 @@ export default function RegisterPage() {
               </div>
             </div>
 
-            {/* Account Information */}
+            {/* Password Section */}
             <div>
               <h3 className="text-lg font-medium text-gray-900 mb-4">
-                Account Information
+                Password (Optional - Leave blank to keep current password)
               </h3>
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <label
-                    htmlFor="role"
+                    htmlFor="password"
                     className="block text-sm font-medium text-gray-700"
                   >
-                    I want to
+                    New Password
                   </label>
-                  <select
-                    id="role"
-                    name="role"
-                    value={formData.role}
+                  <input
+                    id="password"
+                    name="password"
+                    type="password"
+                    value={formData.password}
                     onChange={handleChange}
-                    className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                  >
-                    <option value="donor">Support campaigns (Donor)</option>
-                    <option value="creator">Create campaigns (Creator)</option>
-                  </select>
+                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div>
-                    <label
-                      htmlFor="password"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Password
-                    </label>
-                    <input
-                      id="password"
-                      name="password"
-                      type="password"
-                      required
-                      value={formData.password}
-                      onChange={handleChange}
-                      className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      placeholder="Create a password"
-                    />
-                  </div>
-
-                  <div>
-                    <label
-                      htmlFor="confirmPassword"
-                      className="block text-sm font-medium text-gray-700"
-                    >
-                      Confirm Password
-                    </label>
-                    <input
-                      id="confirmPassword"
-                      name="confirmPassword"
-                      type="password"
-                      required
-                      value={formData.confirmPassword}
-                      onChange={handleChange}
-                      className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                      placeholder="Confirm your password"
-                    />
-                  </div>
+                <div>
+                  <label
+                    htmlFor="confirmPassword"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Confirm New Password
+                  </label>
+                  <input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={handleChange}
+                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                  />
                 </div>
               </div>
             </div>
 
-            <div className="flex items-center">
-              <input
-                id="terms"
-                name="terms"
-                type="checkbox"
-                required
-                className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-              />
-              <label
-                htmlFor="terms"
-                className="ml-2 block text-sm text-gray-900"
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Link
+                href="/account-status"
+                className="flex-1 text-center bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition duration-300"
               >
-                I agree to the{' '}
-                <Link
-                  href="/terms"
-                  className="text-blue-600 hover:text-blue-500"
-                >
-                  Terms and Conditions
-                </Link>{' '}
-                and{' '}
-                <Link
-                  href="/privacy"
-                  className="text-blue-600 hover:text-blue-500"
-                >
-                  Privacy Policy
-                </Link>
-              </label>
-            </div>
-
-            <div>
+                Cancel
+              </Link>
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition duration-300"
               >
-                {loading ? 'Creating account...' : 'Create account'}
+                {loading ? 'Updating...' : 'Update Application'}
               </button>
             </div>
           </form>

@@ -31,18 +31,8 @@ export async function GET(
       [campaignId]
     )) as RowDataPacket[];
 
-    // Fetch campaign video URL
-    const campaignVideo = (await db.query(
-      `SELECT video_url FROM campaigns WHERE id = ?`,
-      [campaignId]
-    )) as RowDataPacket[];
-
-    const videoUrl =
-      campaignVideo.length > 0 ? campaignVideo[0].video_url : null;
-
     return NextResponse.json({
       images: images,
-      videoUrl: videoUrl,
     });
   } catch (error) {
     console.error('Error fetching campaign media:', error);
