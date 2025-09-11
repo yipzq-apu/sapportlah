@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/update-campaign-statuses",
+      "schedule": "0 0 * * *"
+    }
+  ]
+}

@@ -276,26 +276,32 @@ export default function ProfilePage() {
               <div className="mt-6 pt-6 border-t border-gray-200">
                 <div className="space-y-4">
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Member since</span>
+                    <span className="text-gray-700 font-medium">
+                      Member since
+                    </span>
                     <span
-                      className="font-medium truncate ml-2"
+                      className="font-semibold text-gray-900 ml-2"
                       title={formatDate(user.joinDate)}
                     >
                       {formatDate(user.joinDate)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Total donated</span>
+                    <span className="text-gray-700 font-medium">
+                      Total donated
+                    </span>
                     <span
-                      className="font-medium truncate ml-2"
+                      className="font-semibold text-gray-900 truncate ml-2"
                       title={formatCurrency(user.totalDonations)}
                     >
                       {formatCurrency(user.totalDonations)}
                     </span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-gray-500">Campaigns supported</span>
-                    <span className="font-medium truncate ml-2">
+                    <span className="text-gray-700 font-medium">
+                      Campaigns supported
+                    </span>
+                    <span className="font-semibold text-gray-900 truncate ml-2">
                       {user.campaignsSupported}
                     </span>
                   </div>

@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-export async function POST(request: NextRequest) {
+export async function PUT(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
   try {
+    const { id } = await params;
     const {
       userId,
       title,
@@ -15,18 +19,35 @@ export async function POST(request: NextRequest) {
       featured_image,
     } = await request.json();
 
-    // Validate required fields
-    if (
-      !userId ||
-      !title ||
-      !description ||
-      !goal_amount ||
-      !category_id ||
-      !start_date ||
-      !end_date
-    ) {
+    // Check if campaign exists and user owns it
+    const campaigns = await db.query(
+      'SELECT id, user_id, status FROM campaigns WHERE id = ?',
+      [id]
+    );
+
+    if (!Array.isArray(campaigns) || campaigns.length === 0) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'Campaign not found' },
+        { status: 404 }
+      );
+    }
+
+    const campaign = campaigns[0] as any;
+
+    if (campaign.user_id !== userId) {
+      return NextResponse.json(
+        { error: 'Unauthorized to edit this campaign' },
+        { status: 403 }
+      );
+    }
+
+    // Check if campaign can be edited (pending or rejected campaigns)
+    if (campaign.status !== 'pending' && campaign.status !== 'rejected') {
+      return NextResponse.json(
+        {
+          error:
+            'Campaign can only be edited while in pending or rejected status',
+        },
         { status: 400 }
       );
     }
@@ -62,35 +83,49 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Insert campaign into database
-    const result = await db.query(
-      `INSERT INTO campaigns (
-        user_id, category_id, title, description, short_description,
-        goal_amount, current_amount, start_date, end_date, featured_image,
-        status, is_featured, backers_count, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 'pending', false, 0, NOW(), NOW())`,
+    // Update campaign - if it was rejected, change status back to pending
+    const newStatus =
+      campaign.status === 'rejected' ? 'pending' : campaign.status;
+
+    await db.query(
+      `UPDATE campaigns SET 
+        title = ?, 
+        description = ?, 
+        short_description = ?, 
+        goal_amount = ?, 
+        category_id = ?, 
+        start_date = ?, 
+        end_date = ?, 
+        featured_image = ?,
+        status = ?,
+        reason = NULL,
+        updated_at = NOW()
+      WHERE id = ?`,
       [
-        userId,
-        category_id,
         title,
         description,
         short_description,
         parseFloat(goal_amount),
+        category_id,
         start_date,
         end_date,
         featured_image,
+        newStatus,
+        id,
       ]
     );
 
-    const campaignId = (result as any).insertId;
+    const message =
+      campaign.status === 'rejected'
+        ? 'Campaign resubmitted successfully for review'
+        : 'Campaign updated successfully';
 
     return NextResponse.json({
       success: true,
-      message: 'Campaign created successfully and is pending review',
-      campaignId,
+      message,
     });
   } catch (error) {
-    console.error('Error creating campaign:', error);
+    console.error('Error updating campaign:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }

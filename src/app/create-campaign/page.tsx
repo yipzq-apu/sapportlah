@@ -11,9 +11,9 @@ interface CampaignForm {
   short_description: string;
   goal_amount: string;
   category_id: string;
+  start_date: string;
   end_date: string;
   featured_image: string;
-  video_url: string;
 }
 
 interface Category {
@@ -38,11 +38,12 @@ export default function CreateCampaignPage() {
     short_description: '',
     goal_amount: '',
     category_id: '',
+    start_date: '',
     end_date: '',
     featured_image: '',
-    video_url: '',
   });
   const [campaignImages, setCampaignImages] = useState<CampaignImage[]>([]);
+  const [dateErrors, setDateErrors] = useState<{ [key: string]: string }>({});
 
   useEffect(() => {
     const loadData = async () => {
@@ -83,9 +84,67 @@ export default function CreateCampaignPage() {
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
+
+    // Clear date errors when user changes dates
+    if (name === 'start_date' || name === 'end_date') {
+      setDateErrors((prev) => ({ ...prev, [name]: '' }));
+    }
   };
 
-  const handleFileUpload = async (file: File, type: 'image' | 'video') => {
+  const validateDates = () => {
+    const errors: { [key: string]: string } = {};
+    const today = new Date();
+    const startDate = new Date(formData.start_date);
+    const endDate = new Date(formData.end_date);
+
+    // Validate start date
+    if (formData.start_date) {
+      const minStartDate = new Date();
+      minStartDate.setDate(today.getDate() + 3);
+      const maxStartDate = new Date();
+      maxStartDate.setDate(today.getDate() + 10);
+
+      if (startDate < minStartDate) {
+        errors.start_date = 'Start date must be at least 3 days from today';
+      } else if (startDate > maxStartDate) {
+        errors.start_date = 'Start date cannot be more than 10 days from today';
+      }
+    }
+
+    // Validate end date
+    if (formData.end_date && formData.start_date) {
+      const minEndDate = new Date(startDate);
+      minEndDate.setDate(startDate.getDate() + 7);
+      const maxEndDate = new Date(startDate);
+      maxEndDate.setDate(startDate.getDate() + 60);
+
+      if (endDate < minEndDate) {
+        errors.end_date = 'End date must be at least 7 days after start date';
+      } else if (endDate > maxEndDate) {
+        errors.end_date =
+          'End date cannot be more than 60 days after start date';
+      }
+    }
+
+    setDateErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleFileUpload = async (file: File) => {
+    // Validate file type before upload
+    const allowedTypes = ['image/png', 'image/jpg', 'image/jpeg'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Invalid file type. Only PNG, JPG, and JPEG files are allowed.');
+      return;
+    }
+
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      alert('File size too large. Maximum size is 10MB.');
+      return;
+    }
+
     setUploading(true);
     try {
       const uploadFormData = new FormData();
@@ -98,12 +157,8 @@ export default function CreateCampaignPage() {
 
       if (response.ok) {
         const data = await response.json();
-        if (type === 'image') {
-          setFormData((prev) => ({ ...prev, featured_image: data.url }));
-        } else {
-          setFormData((prev) => ({ ...prev, video_url: data.url }));
-        }
-        alert('File uploaded successfully!');
+        setFormData((prev) => ({ ...prev, featured_image: data.url }));
+        alert('Image uploaded successfully!');
       } else {
         const errorData = await response.json();
         alert(errorData.error || 'Failed to upload file');
@@ -119,20 +174,27 @@ export default function CreateCampaignPage() {
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      handleFileUpload(file, 'image');
-    }
-  };
-
-  const handleVideoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      handleFileUpload(file, 'video');
+      handleFileUpload(file);
     }
   };
 
   const handleCampaignImageUpload = async (file: File) => {
     if (campaignImages.length >= 5) {
       alert('Maximum 5 campaign images allowed');
+      return;
+    }
+
+    // Validate file type before upload
+    const allowedTypes = ['image/png', 'image/jpg', 'image/jpeg'];
+    if (!allowedTypes.includes(file.type)) {
+      alert('Invalid file type. Only PNG, JPG, and JPEG files are allowed.');
+      return;
+    }
+
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      alert('File size too large. Maximum size is 10MB.');
       return;
     }
 
@@ -185,6 +247,13 @@ export default function CreateCampaignPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // Validate dates before submission
+    if (!validateDates()) {
+      alert('Please fix the date validation errors before submitting.');
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -243,10 +312,30 @@ export default function CreateCampaignPage() {
     }
   };
 
-  // Calculate minimum end date (30 days from now)
-  const getMinEndDate = () => {
+  // Calculate date ranges for validation display
+  const getMinStartDate = () => {
     const date = new Date();
-    date.setDate(date.getDate() + 30);
+    date.setDate(date.getDate() + 4);
+    return date.toISOString().split('T')[0];
+  };
+
+  const getMaxStartDate = () => {
+    const date = new Date();
+    date.setDate(date.getDate() + 10);
+    return date.toISOString().split('T')[0];
+  };
+
+  const getMinEndDate = () => {
+    if (!formData.start_date) return '';
+    const date = new Date(formData.start_date);
+    date.setDate(date.getDate() + 7);
+    return date.toISOString().split('T')[0];
+  };
+
+  const getMaxEndDate = () => {
+    if (!formData.start_date) return '';
+    const date = new Date(formData.start_date);
+    date.setDate(date.getDate() + 60);
     return date.toISOString().split('T')[0];
   };
 
@@ -351,62 +440,32 @@ export default function CreateCampaignPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Featured Image *
-                  </label>
-                  <input
-                    type="file"
-                    accept="image/jpeg,image/png,image/gif"
-                    onChange={handleImageChange}
-                    disabled={uploading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 file:text-white file:bg-blue-600 file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4 file:hover:bg-blue-700 file:cursor-pointer"
-                  />
-                  <p className="text-sm text-gray-600 mt-1">
-                    Main campaign image (JPEG, PNG, GIF, max 10MB)
-                  </p>
-                  {formData.featured_image && (
-                    <div className="mt-2">
-                      <img
-                        src={formData.featured_image}
-                        alt="Featured Preview"
-                        className="w-full h-32 object-cover rounded-md"
-                      />
-                      <p className="text-sm text-green-700 mt-1 font-medium">
-                        ✓ Featured image uploaded successfully
-                      </p>
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Campaign Video (Optional)
-                  </label>
-                  <input
-                    type="file"
-                    accept="video/mp4,video/webm,video/ogg"
-                    onChange={handleVideoChange}
-                    disabled={uploading}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 file:text-white file:bg-blue-600 file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4 file:hover:bg-blue-700 file:cursor-pointer"
-                  />
-                  <p className="text-sm text-gray-600 mt-1">
-                    Upload a video (MP4, WebM, OGG, max 10MB)
-                  </p>
-                  {formData.video_url && (
-                    <div className="mt-2">
-                      <video
-                        src={formData.video_url}
-                        controls
-                        className="w-full h-32 rounded-md"
-                      />
-                      <p className="text-sm text-green-700 mt-1 font-medium">
-                        ✓ Video uploaded successfully
-                      </p>
-                    </div>
-                  )}
-                </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Featured Image *
+                </label>
+                <input
+                  type="file"
+                  accept="image/png,image/jpg,image/jpeg"
+                  onChange={handleImageChange}
+                  disabled={uploading}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 file:text-white file:bg-blue-600 file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4 file:hover:bg-blue-700 file:cursor-pointer"
+                />
+                <p className="text-sm text-gray-600 mt-1">
+                  Main campaign image (PNG, JPG, JPEG, max 10MB)
+                </p>
+                {formData.featured_image && (
+                  <div className="mt-2">
+                    <img
+                      src={formData.featured_image}
+                      alt="Featured Preview"
+                      className="w-full h-32 object-cover rounded-md"
+                    />
+                    <p className="text-sm text-green-700 mt-1 font-medium">
+                      ✓ Featured image uploaded successfully
+                    </p>
+                  </div>
+                )}
               </div>
 
               {/* Campaign Images */}
@@ -416,14 +475,14 @@ export default function CreateCampaignPage() {
                 </label>
                 <input
                   type="file"
-                  accept="image/jpeg,image/png,image/gif"
+                  accept="image/png,image/jpg,image/jpeg"
                   onChange={handleCampaignImageChange}
                   disabled={uploading || campaignImages.length >= 5}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 file:text-white file:bg-blue-600 file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4 file:hover:bg-blue-700 file:cursor-pointer disabled:file:bg-gray-400 disabled:file:cursor-not-allowed"
                 />
                 <p className="text-sm text-gray-600 mt-1">
-                  Upload up to 5 additional images to showcase your campaign (
-                  {campaignImages.length}/5)
+                  Upload up to 5 additional images to showcase your campaign
+                  (PNG, JPG, JPEG, max 10MB each) ({campaignImages.length}/5)
                 </p>
 
                 {/* Display uploaded campaign images */}
@@ -482,29 +541,58 @@ export default function CreateCampaignPage() {
             </div>
           </div>
 
-          {/* Funding Settings */}
+          {/* Funding & Timeline Settings */}
           <div className="bg-white rounded-lg shadow-md p-6">
             <h2 className="text-xl font-semibold text-gray-900 mb-6">
-              Funding Settings
+              Funding & Timeline Settings
             </h2>
 
             <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Funding Goal (MYR) *
+                </label>
+                <input
+                  type="number"
+                  name="goal_amount"
+                  required
+                  min="100"
+                  step="0.01"
+                  value={formData.goal_amount}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
+                  placeholder="e.g. 10000"
+                />
+              </div>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Funding Goal (MYR) *
+                    Campaign Start Date *
                   </label>
                   <input
-                    type="number"
-                    name="goal_amount"
+                    type="date"
+                    name="start_date"
                     required
-                    min="100"
-                    step="0.01"
-                    value={formData.goal_amount}
+                    min={getMinStartDate()}
+                    max={getMaxStartDate()}
+                    value={formData.start_date}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
-                    placeholder="e.g. 10000"
+                    onBlur={validateDates}
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
+                      dateErrors.start_date
+                        ? 'border-red-300'
+                        : 'border-gray-300'
+                    }`}
                   />
+                  <p className="text-sm text-gray-600 mt-1">
+                    Must be 3-10 days from today
+                  </p>
+                  {dateErrors.start_date && (
+                    <p className="text-sm text-red-600 mt-1">
+                      {dateErrors.start_date}
+                    </p>
+                  )}
                 </div>
 
                 <div>
@@ -516,14 +604,44 @@ export default function CreateCampaignPage() {
                     name="end_date"
                     required
                     min={getMinEndDate()}
+                    max={getMaxEndDate()}
                     value={formData.end_date}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    onBlur={validateDates}
+                    disabled={!formData.start_date}
+                    className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed ${
+                      dateErrors.end_date ? 'border-red-300' : 'border-gray-300'
+                    }`}
                   />
                   <p className="text-sm text-gray-600 mt-1">
-                    Minimum 30 days from today
+                    Must be 7-60 days after start date
                   </p>
+                  {dateErrors.end_date && (
+                    <p className="text-sm text-red-600 mt-1">
+                      {dateErrors.end_date}
+                    </p>
+                  )}
                 </div>
+              </div>
+
+              {/* Date validation summary */}
+              <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
+                <h4 className="text-sm font-medium text-blue-900 mb-2">
+                  Campaign Timeline Guidelines:
+                </h4>
+                <ul className="text-sm text-blue-800 space-y-1">
+                  <li>
+                    • Start date: 3-10 days from today (allows time for final
+                    preparations)
+                  </li>
+                  <li>
+                    • End date: 7-60 days after start date (optimal campaign
+                    duration)
+                  </li>
+                  <li>
+                    • Your campaign will be reviewed before the start date
+                  </li>
+                </ul>
               </div>
             </div>
           </div>
@@ -539,7 +657,9 @@ export default function CreateCampaignPage() {
             </button>
             <button
               type="submit"
-              disabled={loading || uploading}
+              disabled={
+                loading || uploading || Object.keys(dateErrors).length > 0
+              }
               className="px-6 py-3 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 disabled:opacity-50 transition duration-300"
             >
               {loading ? 'Creating Campaign...' : 'Create Campaign'}

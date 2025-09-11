@@ -11,7 +11,15 @@ interface Campaign {
   goal: number;
   raised: number;
   donorCount: number;
-  status: 'draft' | 'pending' | 'active' | 'successful' | 'failed';
+  status:
+    | 'draft'
+    | 'pending'
+    | 'active'
+    | 'successful'
+    | 'failed'
+    | 'approved'
+    | 'rejected'
+    | 'cancelled';
   endDate: string;
   createdDate: string;
 }
@@ -22,6 +30,9 @@ export default function MyCampaignsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
 
   useEffect(() => {
     const fetchData = async () => {
@@ -89,15 +100,63 @@ export default function MyCampaignsPage() {
         return 'text-gray-600 bg-gray-100';
       case 'pending':
         return 'text-yellow-600 bg-yellow-100';
+      case 'approved':
+        return 'text-green-600 bg-green-100';
+      case 'rejected':
+        return 'text-red-600 bg-red-100';
+      case 'cancelled':
+        return 'text-gray-600 bg-gray-100';
       default:
         return 'text-gray-600 bg-gray-100';
     }
   };
 
-  const filteredCampaigns =
-    filter === 'all'
-      ? campaigns
-      : campaigns.filter((campaign) => campaign.status === filter);
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  // Filter and search campaigns
+  const filteredCampaigns = campaigns
+    .filter((campaign) => {
+      const matchesFilter = filter === 'all' || campaign.status === filter;
+      const matchesSearch = campaign.title
+        .toLowerCase()
+        .includes(searchQuery.toLowerCase());
+      return matchesFilter && matchesSearch;
+    })
+    .sort(
+      (a, b) =>
+        new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime()
+    ); // Latest first
+
+  // Pagination
+  const totalPages = Math.ceil(filteredCampaigns.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const paginatedCampaigns = filteredCampaigns.slice(
+    startIndex,
+    startIndex + itemsPerPage
+  );
+
+  // Reset pagination when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, searchQuery]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleFilterChange = (newFilter: string) => {
+    setFilter(newFilter);
+  };
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   if (loading) {
     return (
@@ -163,60 +222,53 @@ export default function MyCampaignsPage() {
           </Link>
         </div>
 
-        {/* Filter Tabs */}
+        {/* Search Bar */}
         <div className="mb-6">
-          <div className="border-b border-gray-200">
-            <nav className="-mb-px flex space-x-8">
-              {[
-                {
-                  key: 'all',
-                  label: 'All Campaigns',
-                },
-                {
-                  key: 'pending',
-                  label: 'Pending Approval',
-                },
-                {
-                  key: 'active',
-                  label: 'Active',
-                },
-                {
-                  key: 'successful',
-                  label: 'Successful',
-                },
-                {
-                  key: 'failed',
-                  label: 'Failed',
-                },
-                {
-                  key: 'draft',
-                  label: 'Draft',
-                },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setFilter(tab.key)}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    filter === tab.key
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {tab.label}
-                  {tab.key === 'pending' && (
-                    <span className="ml-1 bg-yellow-100 text-yellow-800 text-xs px-2 py-0.5 rounded-full">
-                      {campaigns.filter((c) => c.status === 'pending').length}
-                    </span>
-                  )}
-                </button>
-              ))}
-            </nav>
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search campaigns..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              className="w-full px-4 py-3 pl-10 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+            />
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <span className="text-gray-400">🔍</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Filter Tabs */}
+        <div className="bg-white rounded-lg shadow-sm border mb-6">
+          <div className="flex border-b overflow-x-auto">
+            {[
+              'All',
+              'Pending',
+              'Approved',
+              'Active',
+              'Rejected',
+              'Cancelled',
+              'Successful',
+              'Failed',
+            ].map((tab) => (
+              <button
+                key={tab}
+                onClick={() => handleFilterChange(tab.toLowerCase())}
+                className={`px-6 py-3 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  filter === tab.toLowerCase()
+                    ? 'border-blue-500 text-blue-600 bg-blue-50'
+                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50'
+                }`}
+              >
+                {tab}
+              </button>
+            ))}
           </div>
         </div>
 
         {/* Campaigns List */}
         <div className="space-y-6">
-          {filteredCampaigns.map((campaign) => (
+          {paginatedCampaigns.map((campaign) => (
             <div
               key={campaign.id}
               className="bg-white rounded-lg shadow-md p-6"
@@ -245,53 +297,49 @@ export default function MyCampaignsPage() {
                   )}
                 </div>
                 <div className="flex space-x-2">
-                  {campaign.status !== 'pending' && (
-                    <>
-                      <Link
-                        href={`/campaigns/${campaign.id}/edit`}
-                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                      >
-                        Edit
-                      </Link>
+                  {(campaign.status === 'pending' ||
+                    campaign.status === 'rejected') && (
+                    <Link
+                      href={`/campaigns/${campaign.id}/edit`}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                    >
+                      {campaign.status === 'rejected' ? 'Resubmit' : 'Edit'}
+                    </Link>
+                  )}
+                  {campaign.status !== 'pending' &&
+                    campaign.status !== 'rejected' && (
                       <Link
                         href={`/campaigns/${campaign.id}`}
                         className="text-green-600 hover:text-green-700 text-sm font-medium"
                       >
                         View Campaign
                       </Link>
-                    </>
-                  )}
-                  {campaign.status === 'pending' && (
-                    <Link
-                      href={`/campaigns/${campaign.id}/edit`}
-                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                    >
-                      Edit Draft
-                    </Link>
-                  )}
+                    )}
                 </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
                 <div>
-                  <p className="text-sm text-gray-500">Raised</p>
-                  <p className="font-semibold">
+                  <p className="text-sm text-gray-700 font-medium">Raised</p>
+                  <p className="font-semibold text-gray-900">
                     {formatCurrency(campaign.raised)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Goal</p>
-                  <p className="font-semibold">
+                  <p className="text-sm text-gray-700 font-medium">Goal</p>
+                  <p className="font-semibold text-gray-900">
                     {formatCurrency(campaign.goal)}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Donors</p>
-                  <p className="font-semibold">{campaign.donorCount}</p>
+                  <p className="text-sm text-gray-700 font-medium">Donors</p>
+                  <p className="font-semibold text-gray-900">
+                    {campaign.donorCount}
+                  </p>
                 </div>
                 <div>
-                  <p className="text-sm text-gray-500">Progress</p>
-                  <p className="font-semibold">
+                  <p className="text-sm text-gray-700 font-medium">Progress</p>
+                  <p className="font-semibold text-gray-900">
                     {((campaign.raised / campaign.goal) * 100).toFixed(1)}%
                   </p>
                 </div>
@@ -311,11 +359,11 @@ export default function MyCampaignsPage() {
 
               <div className="flex justify-between items-center">
                 <span className="text-sm text-gray-500">
-                  Created: {new Date(campaign.createdDate).toLocaleDateString()}
+                  Created: {formatDate(campaign.createdDate)}
                 </span>
                 <div className="flex items-center space-x-4">
                   <span className="text-sm text-gray-500">
-                    End Date: {new Date(campaign.endDate).toLocaleDateString()}
+                    End Date: {formatDate(campaign.endDate)}
                   </span>
                   {campaign.status === 'pending' && (
                     <span className="text-xs text-yellow-600 font-medium">
@@ -328,22 +376,71 @@ export default function MyCampaignsPage() {
           ))}
         </div>
 
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-8 flex justify-center">
+            <nav className="flex items-center space-x-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Previous
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`px-3 py-2 text-sm font-medium rounded-md ${
+                      currentPage === page
+                        ? 'bg-blue-600 text-white'
+                        : 'text-gray-500 bg-white border border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </nav>
+          </div>
+        )}
+
         {/* Empty State */}
         {filteredCampaigns.length === 0 && (
           <div className="text-center py-12">
             <div className="text-gray-400 text-6xl mb-4">
-              {filter === 'pending' ? '⏳' : '📋'}
+              {searchQuery ? '🔍' : filter === 'pending' ? '⏳' : '📋'}
             </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               No campaigns found
             </h3>
             <p className="text-gray-600 mb-4">
-              {filter === 'all'
+              {searchQuery
+                ? `No campaigns match "${searchQuery}". Try a different search term.`
+                : filter === 'all'
                 ? "You haven't created any campaigns yet. Start your first campaign!"
                 : filter === 'pending'
                 ? 'No campaigns are pending approval.'
                 : `No ${filter} campaigns found. Try a different filter.`}
             </p>
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery('')}
+                className="text-blue-600 hover:text-blue-700 font-medium mr-4"
+              >
+                Clear search
+              </button>
+            )}
             <Link
               href="/create-campaign"
               className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition duration-300"

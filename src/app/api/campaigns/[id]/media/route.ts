@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { RowDataPacket } from 'mysql2';
 
 export async function GET(
   request: NextRequest,
@@ -8,36 +7,20 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const campaignId = parseInt(id);
 
-    if (isNaN(campaignId)) {
-      return NextResponse.json(
-        { error: 'Invalid campaign ID' },
-        { status: 400 }
-      );
-    }
+    const images = await db.query(
+      `SELECT id, image_url, caption, sort_order
+       FROM campaign_images 
+       WHERE campaign_id = ? 
+       ORDER BY sort_order ASC`,
+      [id]
+    );
 
-    // Fetch campaign images
-    const images = (await db.query(
-      `SELECT 
-        id,
-        image_url,
-        caption,
-        sort_order
-      FROM campaign_images 
-      WHERE campaign_id = ?
-      ORDER BY sort_order ASC
-      LIMIT 5`,
-      [campaignId]
-    )) as RowDataPacket[];
-
-    return NextResponse.json({
-      images: images,
-    });
+    return NextResponse.json({ images: images || [] });
   } catch (error) {
     console.error('Error fetching campaign media:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch campaign media' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

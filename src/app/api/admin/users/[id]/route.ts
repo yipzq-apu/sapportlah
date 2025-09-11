@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { Resend } from 'resend';
+
+const resend = new Resend(process.env.RESEND_API_KEY);
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
 
     const users = await db.query(
       `SELECT 
@@ -58,10 +61,10 @@ export async function GET(
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = params;
+    const { id } = await params;
     const { status, rejection_reason } = await request.json();
 
     if (!status) {
@@ -77,15 +80,17 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid status' }, { status: 400 });
     }
 
-    // Check if user exists
+    // Check if user exists and get user details
     const existingUser = await db.query(
-      'SELECT id, status FROM users WHERE id = ?',
+      'SELECT id, status, email, first_name, last_name FROM users WHERE id = ?',
       [id]
     );
 
     if (!Array.isArray(existingUser) || existingUser.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
+
+    const user = existingUser[0] as any;
 
     // Update user status
     let updateQuery = 'UPDATE users SET status = ?, updated_at = NOW()';
@@ -103,6 +108,60 @@ export async function PATCH(
     updateParams.push(id);
 
     await db.query(updateQuery, updateParams);
+
+    // Send email notification if status is rejected
+    if (status === 'rejected' && user.email) {
+      try {
+        await resend.emails.send({
+          from: 'SapportLah <onboarding@resend.dev>',
+          to: [user.email],
+          subject: 'Application Status Update - SapportLah',
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: #dc2626;">Application Rejected</h2>
+              
+              <p>Dear ${user.first_name} ${user.last_name},</p>
+              
+              <p>We regret to inform you that your application to join SapportLah has been rejected.</p>
+              
+              <div style="background-color: #fef2f2; border: 1px solid #fecaca; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                <h3 style="color: #dc2626; margin: 0 0 8px 0;">Reason for rejection:</h3>
+                <p style="margin: 0; color: #991b1b;">${
+                  rejection_reason || 'No specific reason provided.'
+                }</p>
+              </div>
+              
+              <p>If you believe this decision was made in error or if you have additional information to provide, you can:</p>
+              
+              <ul>
+                <li>Update your application with the correct information</li>
+                <li>Contact our support team for clarification</li>
+              </ul>
+              
+              <div style="background-color: #f3f4f6; border-radius: 8px; padding: 16px; margin: 16px 0;">
+                <p style="margin: 0;"><strong>Need help?</strong></p>
+                <p style="margin: 8px 0 0 0;">Contact us at <a href="mailto:support@sapportlah.com">support@sapportlah.com</a></p>
+              </div>
+              
+              <p>Thank you for your interest in SapportLah.</p>
+              
+              <p>Best regards,<br>
+              The SapportLah Team</p>
+              
+              <hr style="margin: 32px 0; border: none; border-top: 1px solid #e5e7eb;">
+              <p style="font-size: 12px; color: #6b7280;">
+                This is an automated message. Please do not reply to this email.
+              </p>
+            </div>
+          `,
+        });
+
+        console.log(`Rejection email sent to ${user.email}`);
+      } catch (emailError) {
+        console.error('Error sending rejection email:', emailError);
+        // Don't fail the request if email fails
+      }
+    }
 
     // Fetch updated user data
     const updatedUser = await db.query(

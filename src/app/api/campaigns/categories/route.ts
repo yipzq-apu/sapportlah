@@ -6,7 +6,7 @@ export async function GET(request: NextRequest) {
   try {
     // Fetch all categories
     const categories = (await db.query(
-      'SELECT id, name FROM categories ORDER BY name ASC'
+      'SELECT id, name FROM categories'
     )) as RowDataPacket[];
 
     return NextResponse.json({

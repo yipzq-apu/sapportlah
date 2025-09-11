@@ -437,7 +437,7 @@ export default function CampaignDetailPage() {
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
-        <nav className="mb-6">
+        {/* <nav className="mb-6">
           <ol className="flex items-center space-x-2 text-sm text-gray-500">
             <li>
               <Link href="/" className="hover:text-blue-600">
@@ -453,7 +453,7 @@ export default function CampaignDetailPage() {
             <li>›</li>
             <li className="text-gray-900">{campaign.title}</li>
           </ol>
-        </nav>
+        </nav> */}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Main Content */}
@@ -543,16 +543,14 @@ export default function CampaignDetailPage() {
               <div className="flex items-center mb-4">
                 <div className="w-12 h-12 rounded-full bg-gray-300 mr-4 flex items-center justify-center">
                   <span className="text-gray-600 font-semibold">
-                    {campaign.creator_name.charAt(0)}
+                    {campaign.creator_name?.charAt(0) || 'U'}
                   </span>
                 </div>
                 <div>
-                  <div className="flex items-center">
-                    <span className="font-semibold text-gray-900">
-                      {campaign.creator_name}
-                    </span>
-                  </div>
-                  <p className="text-sm text-gray-500">Campaign Creator</p>
+                  <p className="font-medium text-gray-900">
+                    {campaign.creator_name || 'Unknown Creator'}
+                  </p>
+                  <p className="text-sm text-gray-600">Campaign Creator</p>
                 </div>
               </div>
 

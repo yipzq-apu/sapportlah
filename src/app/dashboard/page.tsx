@@ -112,6 +112,14 @@ function DashboardContent() {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -309,54 +317,6 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Link
-            href="/create-campaign"
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition duration-300"
-          >
-            <div className="text-center">
-              <div className="text-blue-600 text-4xl mb-4">🚀</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Create New Campaign
-              </h3>
-              <p className="text-gray-600 text-sm">
-                Launch a new fundraising campaign
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/my-campaigns"
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition duration-300"
-          >
-            <div className="text-center">
-              <div className="text-green-600 text-4xl mb-4">📊</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Manage Campaigns
-              </h3>
-              <p className="text-gray-600 text-sm">
-                View and edit your campaigns
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/analytics"
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition duration-300"
-          >
-            <div className="text-center">
-              <div className="text-purple-600 text-4xl mb-4">📈</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                View Analytics
-              </h3>
-              <p className="text-gray-600 text-sm">
-                Track performance and insights
-              </p>
-            </div>
-          </Link>
-        </div>
-
         {/* Recent Campaigns */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex justify-between items-center mb-6">
@@ -393,24 +353,32 @@ function DashboardContent() {
 
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
                     <div>
-                      <p className="text-sm text-gray-500">Raised</p>
-                      <p className="font-semibold">
+                      <p className="text-sm text-gray-700 font-medium">
+                        Raised
+                      </p>
+                      <p className="font-semibold text-gray-900">
                         {formatCurrency(campaign.raised)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Goal</p>
-                      <p className="font-semibold">
+                      <p className="text-sm text-gray-700 font-medium">Goal</p>
+                      <p className="font-semibold text-gray-900">
                         {formatCurrency(campaign.goal)}
                       </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Donors</p>
-                      <p className="font-semibold">{campaign.donorCount}</p>
+                      <p className="text-sm text-gray-700 font-medium">
+                        Donors
+                      </p>
+                      <p className="font-semibold text-gray-900">
+                        {campaign.donorCount}
+                      </p>
                     </div>
                     <div>
-                      <p className="text-sm text-gray-500">Progress</p>
-                      <p className="font-semibold">
+                      <p className="text-sm text-gray-700 font-medium">
+                        Progress
+                      </p>
+                      <p className="font-semibold text-gray-900">
                         {((campaign.raised / campaign.goal) * 100).toFixed(1)}%
                       </p>
                     </div>
@@ -430,8 +398,7 @@ function DashboardContent() {
 
                   <div className="flex justify-between items-center">
                     <span className="text-sm text-gray-500">
-                      Created:{' '}
-                      {new Date(campaign.createdDate).toLocaleDateString()}
+                      Created: {formatDate(campaign.createdDate)}
                     </span>
                     <div className="space-x-2">
                       <Link

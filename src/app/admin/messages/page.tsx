@@ -7,7 +7,7 @@ interface ContactMessage {
   name: string;
   email: string;
   message: string;
-  status: 'new' | 'in_progress' | 'resolved';
+  status: 'new' | 'in progress' | 'resolved';
   created_at: string;
   updated_at: string;
 }
@@ -33,70 +33,38 @@ export default function AdminMessagesPage() {
     total: 0,
     totalPages: 0,
   });
+  const [stats, setStats] = useState({
+    total: 0,
+    new: 0,
+    inProgress: 0,
+    resolved: 0,
+  });
 
   useEffect(() => {
     fetchMessages();
+    fetchStats();
   }, [filter, pagination.page]);
 
   const fetchMessages = async () => {
     setLoading(true);
     try {
-      // For testing, use mock data
-      const mockMessages: ContactMessage[] = [
-        {
-          id: 1,
-          name: 'John Doe',
-          email: 'john@example.com',
-          message:
-            'I have a question about creating a campaign for my charity organization. Could you help me understand the process?',
-          status: 'new',
-          created_at: '2024-04-20T10:30:00Z',
-          updated_at: '2024-04-20T10:30:00Z',
-        },
-        {
-          id: 2,
-          name: 'Sarah Johnson',
-          email: 'sarah@nonprofit.org',
-          message:
-            "Hi, I submitted a campaign last week but it's still pending approval. When can I expect a response?",
-          status: 'in_progress',
-          created_at: '2024-04-19T14:20:00Z',
-          updated_at: '2024-04-20T09:15:00Z',
-        },
-        {
-          id: 3,
-          name: 'Mike Chen',
-          email: 'mike.chen@email.com',
-          message:
-            'Thank you for approving my campaign! Everything is working perfectly now.',
-          status: 'resolved',
-          created_at: '2024-04-18T16:45:00Z',
-          updated_at: '2024-04-19T11:30:00Z',
-        },
-        {
-          id: 4,
-          name: 'Lisa Williams',
-          email: 'lisa.w@gmail.com',
-          message:
-            "I'm having trouble uploading images to my campaign. The file size seems to be within limits but it keeps failing.",
-          status: 'new',
-          created_at: '2024-04-20T08:15:00Z',
-          updated_at: '2024-04-20T08:15:00Z',
-        },
-      ];
-
-      const filteredMessages =
-        filter === 'all'
-          ? mockMessages
-          : mockMessages.filter((msg) => msg.status === filter);
-
-      setMessages(filteredMessages);
-      setPagination({
-        page: 1,
-        limit: 20,
-        total: filteredMessages.length,
-        totalPages: Math.ceil(filteredMessages.length / 20),
+      const params = new URLSearchParams({
+        page: pagination.page.toString(),
+        limit: pagination.limit.toString(),
       });
+
+      if (filter !== 'all') {
+        params.append('status', filter);
+      }
+
+      const response = await fetch(`/api/admin/messages?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        setMessages(data.messages || []);
+        setPagination(data.pagination);
+      } else {
+        setError('Failed to load messages');
+      }
     } catch (error) {
       console.error('Error fetching messages:', error);
       setError('Failed to load messages. Please try again.');
@@ -105,31 +73,58 @@ export default function AdminMessagesPage() {
     }
   };
 
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('/api/admin/messages/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
+
   const updateMessageStatus = async (messageId: number, newStatus: string) => {
     try {
-      // Update locally for testing
-      setMessages((prev) =>
-        prev.map((msg) =>
-          msg.id === messageId
-            ? {
-                ...msg,
-                status: newStatus as any,
-                updated_at: new Date().toISOString(),
-              }
-            : msg
-        )
-      );
+      const response = await fetch(`/api/admin/messages/${messageId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ status: newStatus }),
+      });
 
-      if (selectedMessage?.id === messageId) {
-        setSelectedMessage((prev) =>
-          prev
-            ? {
-                ...prev,
-                status: newStatus as any,
-                updated_at: new Date().toISOString(),
-              }
-            : null
+      if (response.ok) {
+        setMessages((prev) =>
+          prev.map((msg) =>
+            msg.id === messageId
+              ? {
+                  ...msg,
+                  status: newStatus as any,
+                  updated_at: new Date().toISOString(),
+                }
+              : msg
+          )
         );
+
+        if (selectedMessage?.id === messageId) {
+          setSelectedMessage((prev) =>
+            prev
+              ? {
+                  ...prev,
+                  status: newStatus as any,
+                  updated_at: new Date().toISOString(),
+                }
+              : null
+          );
+        }
+
+        // Refresh stats
+        fetchStats();
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.error}`);
       }
     } catch (error) {
       console.error('Error updating status:', error);
@@ -141,7 +136,7 @@ export default function AdminMessagesPage() {
     switch (status) {
       case 'new':
         return 'bg-blue-100 text-blue-800';
-      case 'in_progress':
+      case 'in progress':
         return 'bg-yellow-100 text-yellow-800';
       case 'resolved':
         return 'bg-green-100 text-green-800';
@@ -185,7 +180,7 @@ export default function AdminMessagesPage() {
           >
             <option value="all">All Messages</option>
             <option value="new">New</option>
-            <option value="in_progress">In Progress</option>
+            <option value="in progress">In Progress</option>
             <option value="resolved">Resolved</option>
           </select>
         </div>
@@ -195,25 +190,21 @@ export default function AdminMessagesPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Total Messages</h3>
-          <p className="text-2xl font-bold text-gray-900">{pagination.total}</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.total}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">New</h3>
-          <p className="text-2xl font-bold text-blue-600">
-            {messages.filter((m) => m.status === 'new').length}
-          </p>
+          <p className="text-2xl font-bold text-blue-600">{stats.new}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">In Progress</h3>
           <p className="text-2xl font-bold text-yellow-600">
-            {messages.filter((m) => m.status === 'in_progress').length}
+            {stats.inProgress}
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Resolved</h3>
-          <p className="text-2xl font-bold text-green-600">
-            {messages.filter((m) => m.status === 'resolved').length}
-          </p>
+          <p className="text-2xl font-bold text-green-600">{stats.resolved}</p>
         </div>
       </div>
 
@@ -293,7 +284,7 @@ export default function AdminMessagesPage() {
                           className="text-xs border border-gray-300 rounded px-2 py-1"
                         >
                           <option value="new">New</option>
-                          <option value="in_progress">In Progress</option>
+                          <option value="in progress">In Progress</option>
                           <option value="resolved">Resolved</option>
                         </select>
                       )}
@@ -305,6 +296,35 @@ export default function AdminMessagesPage() {
           </div>
         )}
       </div>
+
+      {/* Pagination */}
+      {pagination.totalPages > 1 && (
+        <div className="flex justify-center items-center space-x-4 mt-6">
+          <button
+            onClick={() =>
+              setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
+            }
+            disabled={pagination.page === 1}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+          >
+            Previous
+          </button>
+
+          <span className="text-sm text-gray-700">
+            Page {pagination.page} of {pagination.totalPages}
+          </span>
+
+          <button
+            onClick={() =>
+              setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
+            }
+            disabled={pagination.page === pagination.totalPages}
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
+          >
+            Next
+          </button>
+        </div>
+      )}
 
       {/* Message Detail Modal */}
       {selectedMessage && (

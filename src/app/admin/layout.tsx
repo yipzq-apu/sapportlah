@@ -17,15 +17,24 @@ export default function AdminLayout({
   const router = useRouter();
 
   useEffect(() => {
-    // Set temporary admin user for testing - NO AUTHENTICATION REQUIRED
+    // Check if user is logged in
+    const userData = localStorage.getItem('userData');
+    if (!userData) {
+      router.push('/login?returnUrl=' + window.location.pathname);
+      return;
+    }
+
+    const parsedUser = JSON.parse(userData);
+    if (parsedUser.role !== 'admin') {
+      router.push('/unauthorized');
+      return;
+    }
+
     setUser({
-      id: 'temp-admin',
-      name: 'Temporary Admin',
-      email: 'admin@temp.com',
-      role: 'admin',
+      ...parsedUser,
       avatar: '/api/placeholder/40/40',
     });
-  }, []);
+  }, [router]);
 
   const handleLogout = () => {
     setShowLogoutConfirm(true);
@@ -55,9 +64,15 @@ export default function AdminLayout({
       icon: '⭐',
     },
     { name: 'Campaign Reviews', href: '/admin/campaigns', icon: '📋' },
+    {
+      name: 'Status Updater',
+      href: '/admin/campaigns/status-updater',
+      icon: '🔄',
+    },
     { name: 'User Management', href: '/admin/users', icon: '👥' },
     { name: 'Contact Messages', href: '/admin/messages', icon: '💬' },
     { name: 'Reports', href: '/admin/reports', icon: '📈' },
+    { name: 'Profile', href: '/admin/profile', icon: '👤' },
     { name: 'Settings', href: '/admin/settings', icon: '⚙️' },
   ];
 
