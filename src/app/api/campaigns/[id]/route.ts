@@ -11,13 +11,11 @@ export async function GET(
     const campaigns = await db.query(
       `SELECT 
         c.*,
-        cat.name as category_name,
+        u.organization_name,
         CONCAT(u.first_name, ' ', u.last_name) as creator_name,
-        u.first_name,
-        u.last_name
+        u.email as creator_email
       FROM campaigns c
-      LEFT JOIN categories cat ON c.category_id = cat.id
-      LEFT JOIN users u ON c.user_id = u.id
+      JOIN users u ON c.user_id = u.id
       WHERE c.id = ?`,
       [id]
     );

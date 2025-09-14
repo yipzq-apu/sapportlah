@@ -15,6 +15,8 @@ interface User {
   total_donations?: number;
   campaigns_created?: number;
   phone?: string;
+  organization_name?: string;
+  supporting_document?: string;
 }
 
 export default function AdminUsersPage() {
@@ -350,9 +352,27 @@ export default function AdminUsersPage() {
                         {user.first_name} {user.last_name}
                       </div>
                       <div className="text-sm text-gray-500">{user.email}</div>
+                      {user.organization_name && (
+                        <div className="text-sm text-gray-600 font-medium">
+                          {user.organization_name}
+                        </div>
+                      )}
                       {user.phone && (
-                        <div className="text-xs text-gray-400">
+                        <div className="text-sm text-gray-500">
                           {user.phone}
+                        </div>
+                      )}
+                      {user.supporting_document && (
+                        <div className="mt-2">
+                          <a
+                            href={user.supporting_document}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700"
+                          >
+                            <span className="mr-1">📄</span>
+                            View Supporting Document
+                          </a>
                         </div>
                       )}
                     </div>

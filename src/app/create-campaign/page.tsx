@@ -149,6 +149,7 @@ export default function CreateCampaignPage() {
     try {
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
+      uploadFormData.append('type', 'image'); // Specify image type
 
       const response = await fetch('/api/upload', {
         method: 'POST',
@@ -202,6 +203,7 @@ export default function CreateCampaignPage() {
     try {
       const uploadFormData = new FormData();
       uploadFormData.append('file', file);
+      uploadFormData.append('type', 'image'); // Specify image type
 
       const response = await fetch('/api/upload', {
         method: 'POST',

@@ -8,27 +8,13 @@ export async function GET(request: NextRequest) {
 
     let query = `
       SELECT 
-        c.id,
-        c.user_id,
-        c.category_id,
-        c.title,
-        c.description,
-        c.short_description,
-        c.goal_amount,
-        c.current_amount,
-        c.end_date,
-        c.featured_image,
-        c.status,
-        c.reason,
-        c.is_featured,
-        c.backers_count,
-        c.created_at,
-        c.updated_at,
+        c.*,
+        u.organization_name,
         CONCAT(u.first_name, ' ', u.last_name) as creator_name,
         u.email as creator_email,
         cat.name as category_name
       FROM campaigns c
-      LEFT JOIN users u ON c.user_id = u.id
+      JOIN users u ON c.user_id = u.id
       LEFT JOIN categories cat ON c.category_id = cat.id
     `;
 

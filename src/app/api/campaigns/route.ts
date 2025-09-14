@@ -51,16 +51,19 @@ export async function GET(request: NextRequest) {
         c.goal_amount,
         c.current_amount,
         c.featured_image,
-        c.category_id,
-        c.end_date,
+        c.status,
         c.is_featured,
-        CONCAT(u.first_name, ' ', u.last_name) as creator_name,
+        c.created_at,
+        c.end_date,
         c.backers_count,
-        c.created_at
+        u.organization_name,
+        CONCAT(u.first_name, ' ', u.last_name) as creator_name,
+        cat.name as category_name
       FROM campaigns c
       JOIN users u ON c.user_id = u.id
+      LEFT JOIN categories cat ON c.category_id = cat.id
       WHERE ${whereClause}
-      ORDER BY c.is_featured DESC, c.created_at DESC
+      ORDER BY c.created_at DESC
       LIMIT ? OFFSET ?`,
       [...queryParams, limit, offset]
     )) as RowDataPacket[];

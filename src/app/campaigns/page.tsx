@@ -23,6 +23,7 @@ interface Campaign {
   creator_name?: string;
   creator_email?: string;
   category_name?: string;
+  organization_name?: string;
 }
 
 interface Category {
@@ -395,7 +396,7 @@ export default function CampaignsPage() {
                       {campaign.title}
                     </h3>
                     <p className="text-sm text-gray-500 mb-3">
-                      by {campaign.creator_name}
+                      by {campaign.organization_name || campaign.creator_name}
                     </p>
 
                     {/* Description - Fixed height */}

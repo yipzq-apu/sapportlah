@@ -22,6 +22,7 @@ interface Campaign {
   created_at: string;
   creator_name: string;
   creator_email: string;
+  organization_name?: string; // Add organization_name field
   user_id?: number;
 }
 
@@ -215,10 +216,18 @@ export default function CampaignDetailPage() {
   };
 
   const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString('en-SG', {
+    return new Date(dateString).toLocaleDateString('en-GB', {
       year: 'numeric',
-      month: 'long',
-      day: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+  };
+
+  const formatDateWithTime = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-GB', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -395,6 +404,23 @@ export default function CampaignDetailPage() {
     }
   };
 
+  const handleDonationAmountChange = (
+    e: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const value = e.target.value;
+    // Allow empty string for clearing the field
+    if (value === '') {
+      setDonationAmount('');
+      return;
+    }
+
+    // Check if the value matches the pattern for up to 2 decimal places
+    const regex = /^\d+(\.\d{0,2})?$/;
+    if (regex.test(value)) {
+      setDonationAmount(value);
+    }
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
@@ -482,7 +508,7 @@ export default function CampaignDetailPage() {
                   }
                   className="w-full h-64 md:h-96 object-cover rounded-lg"
                 />
-                {campaign?.is_featured && (
+                {campaign?.is_featured === true && (
                   <div className="absolute top-4 left-4 bg-blue-600 text-white px-3 py-1 text-sm font-semibold rounded">
                     Featured
                   </div>
@@ -547,14 +573,22 @@ export default function CampaignDetailPage() {
               <div className="flex items-center mb-4">
                 <div className="w-12 h-12 rounded-full bg-gray-300 mr-4 flex items-center justify-center">
                   <span className="text-gray-600 font-semibold">
-                    {campaign.creator_name?.charAt(0) || 'U'}
+                    {(
+                      campaign.organization_name || campaign.creator_name
+                    )?.charAt(0) || 'U'}
                   </span>
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">
-                    {campaign.creator_name || 'Unknown Creator'}
+                    {campaign.organization_name ||
+                      campaign.creator_name ||
+                      'Unknown Creator'}
                   </p>
-                  <p className="text-sm text-gray-600">Campaign Creator</p>
+                  <p className="text-sm text-gray-600">
+                    {campaign.organization_name
+                      ? 'Organization'
+                      : 'Campaign Creator'}
+                  </p>
                 </div>
               </div>
 
@@ -568,13 +602,13 @@ export default function CampaignDetailPage() {
                 <div>
                   <span className="text-gray-500">Created:</span>
                   <p className="font-semibold text-gray-900">
-                    {new Date(campaign.created_at).toLocaleDateString()}
+                    {formatDate(campaign.created_at)}
                   </p>
                 </div>
                 <div>
                   <span className="text-gray-500">End Date:</span>
                   <p className="font-semibold text-gray-900">
-                    {new Date(campaign.end_date).toLocaleDateString()}
+                    {formatDate(campaign.end_date)}
                   </p>
                 </div>
               </div>
@@ -665,7 +699,7 @@ export default function CampaignDetailPage() {
                                 </p>
                               )}
                               <p className="text-gray-400 text-xs">
-                                {formatDate(donation.date)}
+                                {formatDateWithTime(donation.date)}
                               </p>
                             </div>
                           </div>
@@ -732,7 +766,7 @@ export default function CampaignDetailPage() {
                               {update.title}
                             </h3>
                             <span className="text-sm text-gray-500 whitespace-nowrap ml-4">
-                              {formatDate(update.createdAt)}
+                              {formatDateWithTime(update.createdAt)}
                             </span>
                           </div>
 
@@ -790,9 +824,14 @@ export default function CampaignDetailPage() {
                       <textarea
                         value={newQuestion}
                         onChange={(e) => setNewQuestion(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-600"
+                        disabled={!user}
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-600 disabled:bg-gray-100 disabled:cursor-not-allowed"
                         rows={3}
-                        placeholder="Ask the campaign creator a question..."
+                        placeholder={
+                          user
+                            ? 'Ask the campaign creator a question...'
+                            : 'Please log in to ask a question'
+                        }
                         required
                       />
                       <div className="flex items-center justify-between">
@@ -803,7 +842,8 @@ export default function CampaignDetailPage() {
                             onChange={(e) =>
                               setIsQuestionAnonymous(e.target.checked)
                             }
-                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+                            disabled={!user}
+                            className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded disabled:cursor-not-allowed"
                           />
                           <span className="ml-2 text-sm text-gray-700">
                             Ask anonymously
@@ -811,7 +851,12 @@ export default function CampaignDetailPage() {
                         </label>
                         <button
                           type="submit"
-                          className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition duration-300"
+                          disabled={!user}
+                          className={`px-4 py-2 rounded-md text-sm font-medium transition duration-300 ${
+                            user
+                              ? 'bg-blue-600 text-white hover:bg-blue-700'
+                              : 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                          }`}
                         >
                           {user ? 'Submit Question' : 'Login to Ask'}
                         </button>
@@ -829,7 +874,7 @@ export default function CampaignDetailPage() {
                           campaign={campaign}
                           isCreator={isCreator}
                           onAnswerSubmit={handleAnswerQuestion}
-                          formatDate={formatDate}
+                          formatDate={formatDateWithTime}
                         />
                       ))}
                     </div>
@@ -917,7 +962,7 @@ export default function CampaignDetailPage() {
             {(!user || isDonor) && (
               <div className="bg-white rounded-lg shadow-md p-6 sticky top-4">
                 <div className="mb-6">
-                  <div className="flex justify-between text-lg font-semibold mb-2">
+                  <div className="flex justify-between text-lg font-semibold mb-2 text-gray-900">
                     <span>
                       Raised: {formatCurrency(campaign.current_amount)}
                     </span>
@@ -953,12 +998,12 @@ export default function CampaignDetailPage() {
                       type="number"
                       id="amount"
                       min="1"
-                      step="1"
+                      step="0.01"
                       required
                       value={donationAmount}
-                      onChange={(e) => setDonationAmount(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                      placeholder="Enter amount"
+                      onChange={handleDonationAmountChange}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-600 text-gray-900"
+                      placeholder="Enter amount (e.g. 10.50)"
                       disabled={user && user.role !== 'donor'}
                     />
                   </div>
@@ -975,7 +1020,7 @@ export default function CampaignDetailPage() {
                       rows={3}
                       value={donationMessage}
                       onChange={(e) => setDonationMessage(e.target.value)}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-600 text-gray-900"
                       placeholder="Leave a message of support"
                       disabled={user && user.role !== 'donor'}
                     />
@@ -1000,11 +1045,9 @@ export default function CampaignDetailPage() {
 
                   <button
                     type="submit"
-                    disabled={user && user.role !== 'donor'}
+                    disabled={!user || user.role !== 'donor'}
                     className={`w-full py-3 px-4 rounded-md font-semibold transition duration-300 ${
-                      !user
-                        ? 'bg-blue-600 text-white hover:bg-blue-700'
-                        : user.role === 'donor'
+                      user && user.role === 'donor'
                         ? 'bg-blue-600 text-white hover:bg-blue-700'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}

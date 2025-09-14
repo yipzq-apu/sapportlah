@@ -20,6 +20,7 @@ interface NavbarProps {
 export default function Navbar({ user: propUser }: NavbarProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [user, setUser] = useState<User | null>(propUser || null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   // Load user data from localStorage on component mount
@@ -158,6 +159,12 @@ export default function Navbar({ user: propUser }: NavbarProps) {
         className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
       >
         FAQ
+      </Link>
+      <Link
+        href="/about"
+        className="text-gray-700 hover:text-blue-600 px-3 py-2 text-sm font-medium"
+      >
+        About Us
       </Link>
     </div>
   );
@@ -378,8 +385,66 @@ export default function Navbar({ user: propUser }: NavbarProps) {
             </Link>
           </div>
 
-          <div className="hidden md:block">
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center space-x-8">
             {user ? renderAuthenticatedNav() : renderGuestNav()}
+          </div>
+
+          {/* Mobile Navigation */}
+          <div className="md:hidden">
+            <button
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              className="p-2 rounded-md hover:bg-gray-100 transition duration-300"
+            >
+              <svg
+                className="w-6 h-6 text-gray-500"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M4 6h16M4 12h16m-7 6h7"
+                />
+              </svg>
+            </button>
+
+            {isMobileMenuOpen && (
+              <div className="absolute top-full left-0 right-0 bg-white shadow-lg border-t z-50">
+                <div className="px-4 py-2 space-y-1">
+                  <Link
+                    href="/"
+                    className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Home
+                  </Link>
+                  <Link
+                    href="/campaigns"
+                    className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    Browse Campaigns
+                  </Link>
+                  <Link
+                    href="/about"
+                    className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    About Us
+                  </Link>
+                  <Link
+                    href="/faq"
+                    className="block px-3 py-2 text-gray-700 hover:text-blue-600 hover:bg-gray-50 rounded-md"
+                    onClick={() => setIsMobileMenuOpen(false)}
+                  >
+                    FAQ
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
 
           {renderAuthButtons()}

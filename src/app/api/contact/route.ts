@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
         status, 
         created_at, 
         updated_at
-      ) VALUES (?, ?, ?, 'pending', NOW(), NOW())`,
+      ) VALUES (?, ?, ?, 'new', NOW(), NOW())`,
       [name, email, message]
     );
 

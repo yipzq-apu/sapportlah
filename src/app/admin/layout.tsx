@@ -13,7 +13,6 @@ export default function AdminLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
-  const [poolStatus, setPoolStatus] = useState<any>(null);
   const pathname = usePathname();
   const router = useRouter();
 
@@ -36,34 +35,6 @@ export default function AdminLayout({
       avatar: '/api/placeholder/40/40',
     });
   }, [router]);
-
-  // Monitor connection pool status in development
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'development') {
-      const checkPoolStatus = async () => {
-        try {
-          const response = await fetch('/api/admin/debug/pool-status');
-          if (response.ok) {
-            const data = await response.json();
-            setPoolStatus(data.poolStatus);
-
-            // Log warning if connections are getting high
-            if (data.poolStatus.totalConnections > 7) {
-              console.warn('High connection count detected:', data.poolStatus);
-            }
-          }
-        } catch (error) {
-          console.error('Failed to check pool status:', error);
-        }
-      };
-
-      // Check pool status every 30 seconds in development
-      const interval = setInterval(checkPoolStatus, 30000);
-      checkPoolStatus(); // Initial check
-
-      return () => clearInterval(interval);
-    }
-  }, []);
 
   const handleLogout = () => {
     setShowLogoutConfirm(true);
@@ -239,26 +210,6 @@ export default function AdminLayout({
           <div className="p-4 border-t">
             {!sidebarCollapsed ? (
               <>
-                {/* Development pool status indicator */}
-                {process.env.NODE_ENV === 'development' && poolStatus && (
-                  <div className="mb-3 p-2 bg-gray-50 rounded text-xs">
-                    <div className="font-medium text-gray-700 mb-1">
-                      DB Pool:
-                    </div>
-                    <div className="text-gray-600">
-                      Active: {poolStatus.totalConnections}/10
-                    </div>
-                    <div className="text-gray-600">
-                      Free: {poolStatus.freeConnections}
-                    </div>
-                    {poolStatus.totalConnections > 7 && (
-                      <div className="text-red-600 font-medium">
-                        ⚠️ High usage
-                      </div>
-                    )}
-                  </div>
-                )}
-
                 <div className="flex items-center mb-3">
                   <img
                     src={user.avatar || '/api/placeholder/40/40'}

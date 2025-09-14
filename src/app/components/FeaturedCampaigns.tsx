@@ -12,6 +12,7 @@ interface Campaign {
   current_amount: number;
   featured_image?: string;
   creator_name: string;
+  organization_name?: string;
 }
 
 export default function FeaturedCampaigns() {
@@ -22,14 +23,32 @@ export default function FeaturedCampaigns() {
     const fetchFeaturedCampaigns = async () => {
       try {
         const response = await fetch('/api/campaigns/featured?limit=3');
+
         if (response.ok) {
-          const data = await response.json();
-          setCampaigns(data.campaigns || []);
+          const text = await response.text();
+
+          // Check if response is empty or invalid JSON
+          if (!text.trim()) {
+            console.warn('Empty response from featured campaigns API');
+            setCampaigns([]);
+            return;
+          }
+
+          try {
+            const data = JSON.parse(text);
+            setCampaigns(data.campaigns || []);
+          } catch (parseError) {
+            console.error('JSON parse error:', parseError);
+            console.error('Response text:', text);
+            setCampaigns([]);
+          }
         } else {
-          console.error('Failed to fetch featured campaigns');
+          console.error('Failed to fetch featured campaigns:', response.status);
+          setCampaigns([]);
         }
       } catch (error) {
         console.error('Error fetching featured campaigns:', error);
+        setCampaigns([]);
       } finally {
         setLoading(false);
       }
@@ -73,11 +92,19 @@ export default function FeaturedCampaigns() {
         </div>
 
         {campaigns.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div
+            className={`grid gap-8 ${
+              campaigns.length === 1
+                ? 'grid-cols-1 justify-items-center max-w-md mx-auto'
+                : campaigns.length === 2
+                ? 'grid-cols-1 md:grid-cols-2 justify-items-center max-w-2xl mx-auto'
+                : 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3'
+            }`}
+          >
             {campaigns.map((campaign) => (
               <div
                 key={campaign.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300 flex flex-col h-full"
+                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300 flex flex-col h-full w-full max-w-sm"
               >
                 <img
                   src={campaign.featured_image || '/api/placeholder/300/200'}
@@ -89,7 +116,7 @@ export default function FeaturedCampaigns() {
                     {campaign.title}
                   </h3>
                   <p className="text-sm text-gray-500 mb-2">
-                    by {campaign.creator_name}
+                    by {campaign.organization_name || campaign.creator_name}
                   </p>
                   <p className="text-gray-600 mb-4 flex-grow line-clamp-2">
                     {campaign.short_description || campaign.description}

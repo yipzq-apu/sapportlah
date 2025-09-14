@@ -7,31 +7,53 @@ export async function GET(request: NextRequest) {
     const email = searchParams.get('email');
 
     if (!email) {
-      return NextResponse.json({ error: 'Email is required' }, { status: 400 });
+      return NextResponse.json(
+        { error: 'Email parameter is required' },
+        { status: 400 }
+      );
     }
 
-    // Fetch user data (excluding password)
+    // Fetch user data from database using correct column names
     const users = await db.query(
       `SELECT 
-        id, email, first_name, last_name, phone, date_of_birth,
-        ic_passport_number, ic_passport_type, address, role, status
-       FROM users WHERE email = ? AND status = 'rejected'`,
+        id,
+        first_name,
+        last_name,
+        email,
+        phone,
+        date_of_birth,
+        ic_passport_type,
+        ic_passport_number,
+        address,
+        role,
+        organization_name,
+        supporting_document,
+        status,
+        created_at
+      FROM users 
+      WHERE email = ?`,
       [email]
     );
 
     if (!Array.isArray(users) || users.length === 0) {
-      return NextResponse.json(
-        { error: 'User not found or not eligible for update' },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: 'User not found' }, { status: 404 });
+    }
+
+    const user = users[0] as any;
+
+    // The date_of_birth is already in YYYY-MM-DD format from database
+    // No conversion needed, just use it directly
+    if (user.date_of_birth) {
+      // Ensure it's a string and just take the date part
+      user.date_of_birth = String(user.date_of_birth).split('T')[0];
     }
 
     return NextResponse.json({
       success: true,
-      user: users[0],
+      user: user,
     });
   } catch (error) {
-    console.error('Error fetching user data:', error);
+    console.error('User data fetch error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
       { status: 500 }
