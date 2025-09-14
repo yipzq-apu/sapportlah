@@ -12,6 +12,7 @@ export async function GET(
       `SELECT 
         c.*,
         cat.name as category_name,
+        CONCAT(u.first_name, ' ', u.last_name) as creator_name,
         u.first_name,
         u.last_name
       FROM campaigns c
@@ -20,6 +21,8 @@ export async function GET(
       WHERE c.id = ?`,
       [id]
     );
+
+    console.log(campaigns);
 
     if (!Array.isArray(campaigns) || campaigns.length === 0) {
       return NextResponse.json(

@@ -340,7 +340,7 @@ export default function CampaignsPage() {
               return (
                 <div
                   key={campaign.id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300"
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300 flex flex-col h-full"
                 >
                   {/* Campaign Image */}
                   <div className="relative">
@@ -351,7 +351,7 @@ export default function CampaignsPage() {
                       alt={campaign.title}
                       className="w-full h-48 object-cover"
                     />
-                    {campaign.is_featured && (
+                    {campaign.is_featured === true && (
                       <div className="absolute top-3 left-3 bg-blue-600 text-white px-2 py-1 text-xs font-semibold rounded">
                         Featured
                       </div>
@@ -389,19 +389,21 @@ export default function CampaignsPage() {
                     </button>
                   </div>
 
-                  <div className="p-6">
+                  <div className="p-6 flex flex-col flex-1">
                     {/* Title and Creator */}
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-1">
                       {campaign.title}
                     </h3>
                     <p className="text-sm text-gray-500 mb-3">
                       by {campaign.creator_name}
                     </p>
 
-                    {/* Description */}
-                    <p className="text-gray-600 mb-4 line-clamp-3">
-                      {campaign.short_description || campaign.description}
-                    </p>
+                    {/* Description - Fixed height */}
+                    <div className="mb-4 flex-1">
+                      <p className="text-gray-600 line-clamp-2 h-[3rem] overflow-hidden">
+                        {campaign.short_description || campaign.description}
+                      </p>
+                    </div>
 
                     {/* Progress */}
                     <div className="mb-4">
@@ -441,10 +443,10 @@ export default function CampaignsPage() {
                       <span>{campaign.backers_count} backers</span>
                     </div>
 
-                    {/* Action Button */}
+                    {/* Action Button - Always at bottom */}
                     <Link
                       href={`/campaigns/${campaign.id}`}
-                      className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-medium"
+                      className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-medium mt-auto"
                     >
                       View Campaign
                     </Link>

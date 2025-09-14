@@ -22,6 +22,7 @@ interface Campaign {
   created_at: string;
   creator_name: string;
   creator_email: string;
+  user_id?: number;
 }
 
 interface Donation {
@@ -79,11 +80,14 @@ export default function CampaignDetailPage() {
   const [newQuestion, setNewQuestion] = useState('');
   const [isQuestionAnonymous, setIsQuestionAnonymous] = useState(false);
   const [campaignImages, setCampaignImages] = useState<CampaignImage[]>([]);
-  const [selectedImageIndex, setSelectedImageIndex] = useState(0);
+  const [selectedImageIndex, setSelectedImageIndex] = useState(-1); // Changed from 0 to -1
 
   // Helper variables for user roles
   const isCreator =
-    user && user.role === 'creator' && user.email === campaign?.creator_email;
+    user &&
+    user.role === 'creator' &&
+    campaign &&
+    (user.email === campaign.creator_email || user.id === campaign.user_id);
   const isAdmin = user && user.role === 'admin';
   const isDonor = user && user.role === 'donor';
   const canEditCampaign = isCreator && campaign?.status === 'pending';
@@ -485,9 +489,17 @@ export default function CampaignDetailPage() {
                 )}
               </div>
 
+              {/* Image Caption */}
+              {selectedImageIndex >= 0 &&
+                campaignImages[selectedImageIndex]?.caption && (
+                  <div className="mt-2 text-sm text-gray-600 text-center italic">
+                    {campaignImages[selectedImageIndex].caption}
+                  </div>
+                )}
+
               {/* Thumbnail Gallery */}
               {campaignImages.length > 0 && (
-                <div className="flex space-x-2 overflow-x-auto pb-2">
+                <div className="flex space-x-2 overflow-x-auto pb-2 mt-4">
                   {/* Main featured image thumbnail */}
                   <button
                     onClick={() => setSelectedImageIndex(-1)}
@@ -524,14 +536,6 @@ export default function CampaignDetailPage() {
                   ))}
                 </div>
               )}
-
-              {/* Image Caption */}
-              {selectedImageIndex >= 0 &&
-                campaignImages[selectedImageIndex]?.caption && (
-                  <div className="mt-2 text-sm text-gray-600 text-center italic">
-                    {campaignImages[selectedImageIndex].caption}
-                  </div>
-                )}
             </div>
 
             {/* Campaign Info */}
@@ -557,17 +561,19 @@ export default function CampaignDetailPage() {
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6 text-sm">
                 <div>
                   <span className="text-gray-500">Status:</span>
-                  <p className="font-semibold capitalize">{campaign.status}</p>
+                  <p className="font-semibold capitalize text-gray-900">
+                    {campaign.status}
+                  </p>
                 </div>
                 <div>
                   <span className="text-gray-500">Created:</span>
-                  <p className="font-semibold">
+                  <p className="font-semibold text-gray-900">
                     {new Date(campaign.created_at).toLocaleDateString()}
                   </p>
                 </div>
                 <div>
                   <span className="text-gray-500">End Date:</span>
-                  <p className="font-semibold">
+                  <p className="font-semibold text-gray-900">
                     {new Date(campaign.end_date).toLocaleDateString()}
                   </p>
                 </div>
@@ -784,7 +790,7 @@ export default function CampaignDetailPage() {
                       <textarea
                         value={newQuestion}
                         onChange={(e) => setNewQuestion(e.target.value)}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-600"
                         rows={3}
                         placeholder="Ask the campaign creator a question..."
                         required
@@ -854,23 +860,23 @@ export default function CampaignDetailPage() {
                 <div className="space-y-3">
                   {isCreator && (
                     <>
-                      {canEditCampaign ? (
-                        <Link
-                          href={`/my-campaigns/${campaign.id}/edit`}
-                          className="block w-full text-center bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300 font-medium"
-                        >
-                          Edit Campaign
-                        </Link>
-                      ) : (
-                        <div className="block w-full text-center bg-gray-300 text-gray-500 py-2 px-4 rounded-md cursor-not-allowed font-medium">
-                          Edit Campaign (Only in Pending State)
-                        </div>
-                      )}
+                      <Link
+                        href={`/campaigns/${campaign.id}/edit`}
+                        className="block w-full text-center bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300 font-medium"
+                      >
+                        Edit Campaign
+                      </Link>
                       <Link
                         href={`/my-campaigns/${campaign.id}/post-update`}
                         className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-medium"
                       >
                         Post Update
+                      </Link>
+                      <Link
+                        href={`/my-campaigns/${campaign.id}/donors`}
+                        className="block w-full text-center bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition duration-300 font-medium"
+                      >
+                        View Donors ({campaign.backers_count})
                       </Link>
                       <div className="text-center">
                         <span className="text-sm text-gray-600">
@@ -1031,44 +1037,58 @@ export default function CampaignDetailPage() {
                 </h3>
                 <div className="space-y-4">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Goal Amount</span>
-                    <span className="font-semibold">
+                    <span className="text-sm text-gray-700 font-medium">
+                      Goal Amount
+                    </span>
+                    <span className="font-semibold text-gray-900">
                       {formatCurrency(campaign.goal_amount)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Raised Amount</span>
+                    <span className="text-sm text-gray-700 font-medium">
+                      Raised Amount
+                    </span>
                     <span className="font-semibold text-green-600">
                       {formatCurrency(campaign.current_amount)}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Progress</span>
+                    <span className="text-sm text-gray-700 font-medium">
+                      Progress
+                    </span>
                     <span className="font-semibold text-blue-600">
                       {percentage.toFixed(1)}%
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Total Backers</span>
-                    <span className="font-semibold">
+                    <span className="text-sm text-gray-700 font-medium">
+                      Total Backers
+                    </span>
+                    <span className="font-semibold text-gray-900">
                       {campaign.backers_count}
                     </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">
+                    <span className="text-sm text-gray-700 font-medium">
                       Days Remaining
                     </span>
-                    <span className="font-semibold">{daysLeft} days</span>
+                    <span className="font-semibold text-gray-900">
+                      {daysLeft} days
+                    </span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-500">Status</span>
-                    <span className="font-semibold capitalize">
+                    <span className="text-sm text-gray-700 font-medium">
+                      Status
+                    </span>
+                    <span className="font-semibold capitalize text-gray-900">
                       {campaign.status}
                     </span>
                   </div>
                   {campaign.is_featured && (
                     <div className="flex justify-between items-center">
-                      <span className="text-sm text-gray-500">Featured</span>
+                      <span className="text-sm text-gray-700 font-medium">
+                        Featured
+                      </span>
                       <span className="font-semibold text-blue-600">Yes</span>
                     </div>
                   )}

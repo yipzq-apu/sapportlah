@@ -173,7 +173,7 @@ export default function EditCampaignPage() {
 
   const canEdit =
     formData.status === 'pending' || formData.status === 'rejected';
-  const canCancel = ['pending', 'approved', 'rejected'].includes(
+  const canCancel = ['pending', 'approved', 'rejected', 'active'].includes(
     formData.status
   );
 
@@ -379,9 +379,48 @@ export default function EditCampaignPage() {
     );
   };
 
-  const removeImage = (imageId: number) => {
+  const removeImage = async (imageId: number) => {
     if (!canEdit) return;
-    setCampaignImages((prev) => prev.filter((img) => img.id !== imageId));
+
+    // Check if this is a new image (not yet saved to database)
+    const isNewImage = imageId > 1000000;
+
+    if (isNewImage) {
+      // Just remove from local state for new images
+      setCampaignImages((prev) => prev.filter((img) => img.id !== imageId));
+      return;
+    }
+
+    // For existing images, confirm deletion
+    if (
+      !confirm(
+        'Are you sure you want to delete this image? This action cannot be undone.'
+      )
+    ) {
+      return;
+    }
+
+    try {
+      // Delete from database and Cloudinary
+      const response = await fetch(
+        `/api/campaigns/${campaignId}/images/${imageId}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      if (response.ok) {
+        // Remove from local state
+        setCampaignImages((prev) => prev.filter((img) => img.id !== imageId));
+        alert('Image deleted successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to delete image');
+      }
+    } catch (error) {
+      console.error('Error deleting image:', error);
+      alert('Failed to delete image. Please try again.');
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -415,25 +454,40 @@ export default function EditCampaignPage() {
       });
 
       if (response.ok) {
-        // Update campaign images
-        if (campaignImages.length > 0) {
-          for (let i = 0; i < campaignImages.length; i++) {
-            const image = campaignImages[i];
-            if (!image.id || image.id > 1000000) {
-              // New image
-              await fetch(`/api/campaigns/${campaignId}/images`, {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                  image_url: image.url,
-                  caption: image.caption,
-                  sort_order: i + 1,
-                }),
-              });
-            }
+        // Update campaign images - only add new images
+        const newImages = campaignImages.filter((image) => image.id > 1000000);
+
+        if (newImages.length > 0) {
+          for (let i = 0; i < newImages.length; i++) {
+            const image = newImages[i];
+            await fetch(`/api/campaigns/${campaignId}/images`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                image_url: image.url,
+                caption: image.caption,
+                sort_order: campaignImages.indexOf(image) + 1,
+              }),
+            });
           }
+        }
+
+        // Update captions for existing images
+        const existingImages = campaignImages.filter(
+          (image) => image.id <= 1000000
+        );
+        for (const image of existingImages) {
+          await fetch(`/api/campaigns/${campaignId}/images/${image.id}`, {
+            method: 'PATCH',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              caption: image.caption,
+            }),
+          });
         }
 
         alert('Campaign updated successfully!');
@@ -637,7 +691,12 @@ export default function EditCampaignPage() {
                   disabled={!canEdit}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="Enter a compelling campaign title"
+                  maxLength={100}
                 />
+                <p className="text-sm text-gray-600 mt-1">
+                  Keep it concise and compelling ({formData.title.length}/100
+                  characters)
+                </p>
               </div>
 
               <div>

@@ -21,6 +21,7 @@ interface Campaign {
 export default function FeaturedCampaignsAdminPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Replace single filter with multiple checkbox filters
   const [filters, setFilters] = useState({
@@ -131,6 +132,13 @@ export default function FeaturedCampaignsAdminPage() {
   };
 
   const filteredCampaigns = campaigns.filter((campaign) => {
+    // Check search term
+    const searchMatch =
+      searchTerm === '' ||
+      campaign.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      campaign.creator_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      campaign.category_name.toLowerCase().includes(searchTerm.toLowerCase());
+
     // Check featured filter
     const featuredMatch =
       (campaign.is_featured && filters.featured.featured) ||
@@ -140,7 +148,7 @@ export default function FeaturedCampaignsAdminPage() {
     const statusMatch =
       filters.status[campaign.status as keyof typeof filters.status];
 
-    return featuredMatch && statusMatch;
+    return searchMatch && featuredMatch && statusMatch;
   });
 
   const featuredCount = campaigns.filter((c) => c.is_featured).length;
@@ -168,6 +176,38 @@ export default function FeaturedCampaignsAdminPage() {
         <p className="text-lg text-gray-600">
           Add or remove campaigns from the featured section (Max: 3)
         </p>
+      </div>
+
+      {/* Search Bar */}
+      <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+        <div className="flex items-center space-x-4">
+          <div className="flex-1">
+            <label htmlFor="search" className="sr-only">
+              Search campaigns
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="text-gray-400">🔍</span>
+              </div>
+              <input
+                id="search"
+                type="text"
+                placeholder="Search by campaign title, creator name, or category..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="block w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md leading-5 bg-white placeholder-gray-500 focus:outline-none focus:placeholder-gray-400 focus:ring-1 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+              />
+            </div>
+          </div>
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm('')}
+              className="px-3 py-2 text-sm bg-gray-100 text-gray-700 rounded hover:bg-gray-200 transition duration-200"
+            >
+              Clear
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Stats and Filters */}
@@ -302,6 +342,9 @@ export default function FeaturedCampaignsAdminPage() {
               <div className="text-sm text-gray-600">
                 Showing {filteredCampaigns.length} of {campaigns.length}{' '}
                 campaigns
+                {searchTerm && (
+                  <span className="ml-1">(filtered by "{searchTerm}")</span>
+                )}
               </div>
               <div className="flex space-x-2">
                 <button
@@ -404,7 +447,7 @@ export default function FeaturedCampaignsAdminPage() {
                         >
                           {campaign.status}
                         </span>
-                        {campaign.is_featured && (
+                        {campaign.is_featured === true && (
                           <span className="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-800">
                             Featured
                           </span>
@@ -482,17 +525,29 @@ export default function FeaturedCampaignsAdminPage() {
           </div>
         ) : (
           <div className="text-center py-12">
-            <div className="text-gray-400 text-6xl mb-4">📋</div>
+            <div className="text-gray-400 text-6xl mb-4">
+              {searchTerm ? '🔍' : '📋'}
+            </div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
-              No campaigns found
+              {searchTerm ? 'No campaigns found' : 'No campaigns found'}
             </h3>
             <p className="text-gray-600">
-              {filters.featured.featured && !filters.featured.notFeatured
+              {searchTerm
+                ? `No campaigns match "${searchTerm}" with the current filters`
+                : filters.featured.featured && !filters.featured.notFeatured
                 ? 'No not featured campaigns available'
                 : !filters.featured.featured && filters.featured.notFeatured
                 ? 'No featured campaigns available'
                 : 'No campaigns available'}
             </p>
+            {searchTerm && (
+              <button
+                onClick={() => setSearchTerm('')}
+                className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition duration-200"
+              >
+                Clear search
+              </button>
+            )}
           </div>
         )}
       </div>

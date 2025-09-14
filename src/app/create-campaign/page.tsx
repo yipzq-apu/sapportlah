@@ -374,7 +374,12 @@ export default function CreateCampaignPage() {
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
                   placeholder="Enter a compelling campaign title"
+                  maxLength={100}
                 />
+                <p className="text-sm text-gray-600 mt-1">
+                  Keep it concise and compelling ({formData.title.length}/100
+                  characters)
+                </p>
               </div>
 
               <div>

@@ -275,17 +275,21 @@ export default function AdminPage() {
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-gray-600">New Users (This Month)</span>
-              <span className="font-semibold">
+              <span className="font-semibold text-gray-900">
                 {userStats.newUsersThisMonth}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Active Donors</span>
-              <span className="font-semibold">{userStats.activeDonors}</span>
+              <span className="font-semibold text-gray-900">
+                {userStats.activeDonors}
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Active Creators</span>
-              <span className="font-semibold">{userStats.activeCreators}</span>
+              <span className="font-semibold text-gray-900">
+                {userStats.activeCreators}
+              </span>
             </div>
           </div>
         </div>
@@ -298,19 +302,19 @@ export default function AdminPage() {
           <div className="space-y-3">
             <div className="flex justify-between">
               <span className="text-gray-600">Total Donations</span>
-              <span className="font-semibold">
+              <span className="font-semibold text-gray-900">
                 {financialStats.totalDonations}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Average Donation</span>
-              <span className="font-semibold">
+              <span className="font-semibold text-gray-900">
                 {formatCurrency(financialStats.avgDonation)}
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-gray-600">Platform Fees</span>
-              <span className="font-semibold">
+              <span className="font-semibold text-gray-900">
                 {formatCurrency(financialStats.platformFees)}
               </span>
             </div>

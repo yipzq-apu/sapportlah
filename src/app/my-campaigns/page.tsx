@@ -365,11 +365,6 @@ export default function MyCampaignsPage() {
                   <span className="text-sm text-gray-500">
                     End Date: {formatDate(campaign.endDate)}
                   </span>
-                  {campaign.status === 'pending' && (
-                    <span className="text-xs text-yellow-600 font-medium">
-                      ⏳ Awaiting Review
-                    </span>
-                  )}
                 </div>
               </div>
             </div>

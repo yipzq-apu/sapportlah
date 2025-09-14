@@ -176,7 +176,7 @@ export default function AdminMessagesPage() {
           <select
             value={filter}
             onChange={(e) => setFilter(e.target.value)}
-            className="px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500"
+            className="px-3 py-2 text-gray-600 border border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500"
           >
             <option value="all">All Messages</option>
             <option value="new">New</option>
@@ -281,7 +281,7 @@ export default function AdminMessagesPage() {
                           onChange={(e) =>
                             updateMessageStatus(message.id, e.target.value)
                           }
-                          className="text-xs border border-gray-300 rounded px-2 py-1"
+                          className="text-xs border border-gray-600 rounded px-2 py-1 text-gray-600"
                         >
                           <option value="new">New</option>
                           <option value="in progress">In Progress</option>
