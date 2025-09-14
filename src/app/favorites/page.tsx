@@ -30,61 +30,29 @@ export default function FavoritesPage() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        // Set temporary user for testing - NO AUTHENTICATION REQUIRED
-        setUser({
-          id: 'temp-donor',
-          name: 'Temporary Donor',
-          email: 'donor@temp.com',
-          role: 'donor',
-        });
+        // Check if user is logged in
+        const userData = localStorage.getItem('userData');
+        if (!userData) {
+          setError('Please log in to view your favorites');
+          setLoading(false);
+          return;
+        }
 
-        // Mock favorites data
-        const mockFavorites: FavoriteCampaign[] = [
-          {
-            id: '1',
-            title: 'Clean Water for Rural Communities',
-            shortDescription: 'Providing clean water access to remote villages',
-            goal: 50000,
-            raised: 32500,
-            progress: 65,
-            endDate: '2024-06-15',
-            image: '/api/placeholder/300/200',
-            status: 'active',
-            backersCount: 245,
-            creatorName: 'Water For All Foundation',
-            favoritedAt: '2024-04-20T10:30:00Z',
-          },
-          {
-            id: '2',
-            title: 'Education Technology Initiative',
-            shortDescription: 'Bringing modern technology to schools',
-            goal: 25000,
-            raised: 18750,
-            progress: 75,
-            endDate: '2024-07-20',
-            image: '/api/placeholder/300/200',
-            status: 'active',
-            backersCount: 180,
-            creatorName: 'TechEd Foundation',
-            favoritedAt: '2024-04-18T14:20:00Z',
-          },
-          {
-            id: '3',
-            title: 'Community Garden Project',
-            shortDescription: 'Creating sustainable community gardens',
-            goal: 15000,
-            raised: 15000,
-            progress: 100,
-            endDate: '2024-05-30',
-            image: '/api/placeholder/300/200',
-            status: 'successful',
-            backersCount: 67,
-            creatorName: 'Green Community',
-            favoritedAt: '2024-04-15T09:15:00Z',
-          },
-        ];
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
 
-        setFavorites(mockFavorites);
+        // Fetch favorites from backend
+        const response = await fetch(
+          `/api/favorites/campaigns?userId=${parsedUser.id}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setFavorites(data.favorites || []);
+        } else {
+          const errorData = await response.json();
+          setError(errorData.error || 'Failed to load favorites');
+        }
       } catch (error) {
         console.error('Error fetching favorites:', error);
         setError('Failed to load favorites. Please try again.');
@@ -97,9 +65,9 @@ export default function FavoritesPage() {
   }, []);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-SG', {
+    return new Intl.NumberFormat('en-MY', {
       style: 'currency',
-      currency: 'SGD',
+      currency: 'MYR',
     }).format(amount);
   };
 
@@ -124,8 +92,26 @@ export default function FavoritesPage() {
     }
   };
 
-  const removeFavorite = (campaignId: string) => {
-    setFavorites((prev) => prev.filter((fav) => fav.id !== campaignId));
+  const removeFavorite = async (campaignId: string) => {
+    if (!user) return;
+
+    try {
+      const response = await fetch(
+        `/api/favorites?userId=${user.id}&campaignId=${campaignId}`,
+        {
+          method: 'DELETE',
+        }
+      );
+
+      if (response.ok) {
+        setFavorites((prev) => prev.filter((fav) => fav.id !== campaignId));
+      } else {
+        alert('Failed to remove from favorites');
+      }
+    } catch (error) {
+      console.error('Error removing favorite:', error);
+      alert('Something went wrong. Please try again.');
+    }
   };
 
   if (loading) {
@@ -153,6 +139,28 @@ export default function FavoritesPage() {
             >
               Try Again
             </button>
+          </div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar user={null} />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-xl text-gray-600 mb-4">
+              Please log in to view your favorites
+            </div>
+            <Link
+              href="/login"
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            >
+              Login
+            </Link>
           </div>
         </div>
         <Footer />

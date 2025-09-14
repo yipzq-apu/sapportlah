@@ -1,114 +1,96 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryService } from '../../../database';
+import { db } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
 export async function GET(request: NextRequest) {
   try {
-    console.log('Campaigns API called');
+    const { searchParams } = new URL(request.url);
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '12');
+    const categoryId = searchParams.get('category_id');
+    const status = searchParams.get('status') || 'active';
+    const search = searchParams.get('search');
 
-    // Test database connection first
-    try {
-      await queryService.customQuery('SELECT 1 as test');
-      console.log('Database connection successful');
-    } catch (dbError) {
-      console.error('Database connection failed:', dbError);
-      return NextResponse.json(
-        {
-          error: 'Database connection failed',
-          details: dbError instanceof Error ? dbError.message : 'Unknown error',
-        },
-        { status: 500 }
-      );
+    console.log('API received params:', {
+      page,
+      limit,
+      categoryId,
+      status,
+      search,
+    });
+
+    const offset = (page - 1) * limit;
+
+    // Build query conditions
+    let whereConditions = ['c.status = ?'];
+    let queryParams: any[] = [status];
+
+    if (categoryId && categoryId !== 'all') {
+      whereConditions.push('c.category_id = ?');
+      queryParams.push(parseInt(categoryId));
+      console.log('Added category filter:', categoryId);
     }
 
-    const { searchParams } = new URL(request.url);
+    if (search) {
+      whereConditions.push('(c.title LIKE ? OR c.description LIKE ?)');
+      queryParams.push(`%${search}%`, `%${search}%`);
+      console.log('Added search filter:', search);
+    }
 
-    const search = searchParams.get('search');
-    const category_id = searchParams.get('category_id');
-    const page = parseInt(searchParams.get('page') || '1');
-    const limit = parseInt(searchParams.get('limit') || '6');
+    const whereClause = whereConditions.join(' AND ');
+    console.log('Final WHERE clause:', whereClause);
+    console.log('Query params:', queryParams);
 
-    console.log('Query params:', { search, category_id, page, limit });
-
-    // Build the main query without parameters first (safer approach)
-    let query = `
-      SELECT 
-        c.*,
+    // Fetch campaigns with creator information
+    const campaigns = (await db.query(
+      `SELECT 
+        c.id,
+        c.title,
+        c.description,
+        c.short_description,
+        c.goal_amount,
+        c.current_amount,
+        c.featured_image,
+        c.category_id,
+        c.end_date,
+        c.is_featured,
         CONCAT(u.first_name, ' ', u.last_name) as creator_name,
-        u.email as creator_email
+        c.backers_count,
+        c.created_at
       FROM campaigns c
       JOIN users u ON c.user_id = u.id
-      WHERE c.status = 'active'
-    `;
-
-    // Add search filter
-    if (search) {
-      const searchEscaped = search.replace(/'/g, "''"); // Basic SQL injection protection
-      query += ` AND (c.title LIKE '%${searchEscaped}%' OR c.description LIKE '%${searchEscaped}%' OR c.short_description LIKE '%${searchEscaped}%')`;
-    }
-
-    // Add category filter
-    if (category_id && category_id !== 'all') {
-      const categoryNum = parseInt(category_id);
-      if (!isNaN(categoryNum)) {
-        query += ` AND c.category_id = ${categoryNum}`;
-      }
-    }
-
-    // Add ordering and pagination
-    const cleanLimit = Math.max(1, Math.min(limit, 100));
-    const cleanOffset = Math.max(0, (page - 1) * cleanLimit);
-
-    query += ` ORDER BY c.is_featured DESC, c.created_at DESC LIMIT ${cleanLimit} OFFSET ${cleanOffset}`;
-
-    console.log('Executing query:', query);
-
-    const campaigns = await queryService.customQuery(query);
-    console.log('Campaigns result:', campaigns);
+      WHERE ${whereClause}
+      ORDER BY c.is_featured DESC, c.created_at DESC
+      LIMIT ? OFFSET ?`,
+      [...queryParams, limit, offset]
+    )) as RowDataPacket[];
 
     // Get total count for pagination
-    let countQuery = `
-      SELECT COUNT(*) as total
-      FROM campaigns c
-      WHERE c.status = 'active'
-    `;
+    const totalResult = (await db.query(
+      `SELECT COUNT(*) as total 
+      FROM campaigns c 
+      JOIN users u ON c.user_id = u.id 
+      WHERE ${whereClause}`,
+      queryParams
+    )) as RowDataPacket[];
 
-    if (search) {
-      const searchEscaped = search.replace(/'/g, "''");
-      countQuery += ` AND (c.title LIKE '%${searchEscaped}%' OR c.description LIKE '%${searchEscaped}%' OR c.short_description LIKE '%${searchEscaped}%')`;
-    }
+    const total = totalResult[0].total;
+    const totalPages = Math.ceil(total / limit);
 
-    if (category_id && category_id !== 'all') {
-      const categoryNum = parseInt(category_id);
-      if (!isNaN(categoryNum)) {
-        countQuery += ` AND c.category_id = ${categoryNum}`;
-      }
-    }
-
-    console.log('Executing count query:', countQuery);
-
-    const countResult = await queryService.customQuery(countQuery);
-    console.log('Count result:', countResult);
-
-    const total = (countResult as any[])[0]?.total || 0;
-
-    return NextResponse.json(
-      {
-        campaigns,
-        pagination: {
-          total,
-          page,
-          limit: cleanLimit,
-          totalPages: Math.ceil(total / cleanLimit),
-        },
+    return NextResponse.json({
+      campaigns: campaigns,
+      pagination: {
+        current_page: page,
+        total_pages: totalPages,
+        total_campaigns: total,
+        has_next: page < totalPages,
+        has_prev: page > 1,
       },
-      { status: 200 }
-    );
-  } catch (error: any) {
-    console.error('Get campaigns error:', error);
-    console.error('Error stack:', error.stack);
-
+    });
+  } catch (error) {
+    console.error('Error fetching campaigns:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch campaigns', details: error.message },
+      { error: 'Failed to fetch campaigns' },
       { status: 500 }
     );
   }

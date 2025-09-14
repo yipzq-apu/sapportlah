@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryService } from '../../../../../database';
+import { db } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
 export async function GET(
   request: NextRequest,
@@ -16,42 +17,46 @@ export async function GET(
       );
     }
 
-    // Fetch donations from database
-    const query = `
-      SELECT 
+    const { searchParams } = new URL(request.url);
+    const limit = parseInt(searchParams.get('limit') || '10');
+
+    // Fetch recent donations for the campaign
+    const donations = (await db.query(
+      `SELECT 
         d.id,
         d.amount,
         d.message,
         d.anonymous,
-        d.created_at as date,
-        CONCAT(u.first_name, ' ', u.last_name) as donor_name
+        d.created_at,
+        CASE 
+          WHEN d.anonymous = 1 THEN 'Anonymous'
+          ELSE CONCAT(u.first_name, ' ', u.last_name)
+        END as donor_name
       FROM donations d
       LEFT JOIN users u ON d.user_id = u.id
-      WHERE d.campaign_id = ${campaignId} AND d.payment_status = 'completed'
+      WHERE d.campaign_id = ? AND d.payment_status = 'completed'
       ORDER BY d.created_at DESC
-      LIMIT 20
-    `;
-
-    const donations = await queryService.customQuery(query);
+      LIMIT ?`,
+      [campaignId, limit]
+    )) as RowDataPacket[];
 
     // Format donations for frontend
-    const formattedDonations = (donations as any[]).map((donation: any) => ({
+    const formattedDonations = donations.map((donation) => ({
       id: donation.id.toString(),
-      donorName: donation.anonymous ? 'Anonymous' : donation.donor_name,
-      amount: parseFloat(donation.amount),
+      donorName: donation.donor_name,
+      amount: donation.amount,
       message: donation.message || '',
-      date: donation.date,
+      date: donation.created_at,
       anonymous: donation.anonymous === 1,
     }));
 
+    return NextResponse.json({
+      donations: formattedDonations,
+    });
+  } catch (error) {
+    console.error('Error fetching donations:', error);
     return NextResponse.json(
-      { donations: formattedDonations },
-      { status: 200 }
-    );
-  } catch (error: any) {
-    console.error('Get donations error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch donations', details: error.message },
+      { error: 'Failed to fetch donations' },
       { status: 500 }
     );
   }

@@ -39,9 +39,9 @@ export default function FeaturedCampaigns() {
   }, []);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-SG', {
+    return new Intl.NumberFormat('en-MY', {
       style: 'currency',
-      currency: 'SGD',
+      currency: 'MYR',
     }).format(amount);
   };
 
@@ -85,13 +85,13 @@ export default function FeaturedCampaigns() {
                   className="w-full h-48 object-cover"
                 />
                 <div className="p-6 flex flex-col flex-grow">
-                  <h3 className="text-xl font-semibold text-gray-900 mb-2 h-14 flex items-start">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-1">
                     {campaign.title}
                   </h3>
                   <p className="text-sm text-gray-500 mb-2">
                     by {campaign.creator_name}
                   </p>
-                  <p className="text-gray-600 mb-4 flex-grow">
+                  <p className="text-gray-600 mb-4 flex-grow line-clamp-2">
                     {campaign.short_description || campaign.description}
                   </p>
                   <div className="mb-4 mt-auto">

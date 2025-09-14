@@ -1,14 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryService } from '../../../../database';
-import { verifyPassword, generateToken } from '../../../../lib/auth';
+import { db } from '@/lib/db';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    console.log('Login attempt for email:', body.email);
+    const { email, password } = await request.json();
 
-    // Validate required fields
-    if (!body.email || !body.password) {
+    if (!email || !password) {
       return NextResponse.json(
         { error: 'Email and password are required' },
         { status: 400 }
@@ -16,9 +15,13 @@ export async function POST(request: NextRequest) {
     }
 
     // Find user by email
-    const users = await queryService.findWhere('users', { email: body.email });
+    const users = await db.query(
+      `SELECT id, email, password, first_name, last_name, role, status, rejection_reason 
+       FROM users WHERE email = ?`,
+      [email]
+    );
 
-    if (!users || !Array.isArray(users) || users.length === 0) {
+    if (!Array.isArray(users) || users.length === 0) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
         { status: 401 }
@@ -28,8 +31,7 @@ export async function POST(request: NextRequest) {
     const user = users[0] as any;
 
     // Verify password
-    const isValidPassword = await verifyPassword(body.password, user.password);
-
+    const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
@@ -37,47 +39,80 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Generate JWT token
-    const token = generateToken(user.id, user.email, user.role);
-
-    // Remove password from response
-    const { password, ...userWithoutPassword } = user;
-
-    // Determine redirect URL based on role
-    let redirectUrl = '/';
-    if (user.role === 'admin') {
-      redirectUrl = '/admin';
-      console.log('Admin user detected, redirecting to:', redirectUrl);
-    } else if (user.role === 'creator') {
-      redirectUrl = '/dashboard';
-      console.log('Creator user detected, redirecting to:', redirectUrl);
-    } else if (user.role === 'donor') {
-      redirectUrl = '/';
-      console.log('Donor user detected, redirecting to:', redirectUrl);
+    // Check user status
+    if (user.status === 'pending') {
+      return NextResponse.json(
+        {
+          error: 'account_pending',
+          message:
+            'Your account is still under review. Please wait for admin approval.',
+          status: 'pending',
+        },
+        { status: 403 }
+      );
     }
 
-    console.log(
-      'Login successful - User role:',
-      user.role,
-      'Redirect URL:',
-      redirectUrl
-    );
+    if (user.status === 'rejected') {
+      return NextResponse.json(
+        {
+          error: 'account_rejected',
+          message: 'Your account has been rejected.',
+          reason: user.rejection_reason || 'No reason provided',
+          status: 'rejected',
+          email: user.email,
+        },
+        { status: 403 }
+      );
+    }
 
-    // Return success response
-    return NextResponse.json(
+    if (user.status === 'suspended') {
+      return NextResponse.json(
+        {
+          error: 'account_suspended',
+          message: 'Your account has been suspended. Please contact support.',
+          status: 'suspended',
+        },
+        { status: 403 }
+      );
+    }
+
+    if (user.status !== 'active') {
+      return NextResponse.json(
+        { error: 'Account access denied' },
+        { status: 403 }
+      );
+    }
+
+    // Generate JWT token
+    const token = jwt.sign(
       {
-        message: 'Login successful',
-        user: userWithoutPassword,
-        token,
-        redirectUrl,
+        userId: user.id,
+        email: user.email,
+        role: user.role,
       },
-      { status: 200 }
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
     );
-  } catch (error: any) {
-    console.error('Login error:', error);
 
+    // Return user data without password
+    const userData = {
+      id: user.id,
+      email: user.email,
+      firstName: user.first_name,
+      lastName: user.last_name,
+      role: user.role,
+      status: user.status,
+    };
+
+    return NextResponse.json({
+      success: true,
+      token,
+      user: userData,
+    });
+  } catch (error) {
+    console.error('Login error:', error);
     return NextResponse.json(
-      { error: 'Login failed', details: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

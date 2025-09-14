@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryService } from '../../../../../database';
-import { verifyToken } from '../../../../../lib/auth';
+import { db } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
 export async function POST(
   request: NextRequest,
@@ -9,6 +9,8 @@ export async function POST(
   try {
     const { id } = await params;
     const campaignId = parseInt(id);
+    const body = await request.json();
+    const { image_url, caption, sort_order } = body;
 
     if (isNaN(campaignId)) {
       return NextResponse.json(
@@ -17,27 +19,6 @@ export async function POST(
       );
     }
 
-    // Get and verify token
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    let decoded;
-
-    try {
-      decoded = verifyToken(token);
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const body = await request.json();
-    const { image_url, caption, sort_order } = body;
-
     if (!image_url) {
       return NextResponse.json(
         { error: 'Image URL is required' },
@@ -45,29 +26,50 @@ export async function POST(
       );
     }
 
-    // Escape strings for SQL
-    const escapedImageUrl = image_url.replace(/'/g, "''");
-    const escapedCaption = caption ? caption.replace(/'/g, "''") : '';
+    // Verify campaign exists
+    const campaigns = (await db.query('SELECT id FROM campaigns WHERE id = ?', [
+      campaignId,
+    ])) as RowDataPacket[];
 
-    // Insert campaign image into database
-    const insertQuery = `
-      INSERT INTO campaign_images (campaign_id, image_url, caption, sort_order, created_at)
-      VALUES (${campaignId}, '${escapedImageUrl}', '${escapedCaption}', ${
-      sort_order || 0
-    }, NOW())
-    `;
+    if (campaigns.length === 0) {
+      return NextResponse.json(
+        { error: 'Campaign not found' },
+        { status: 404 }
+      );
+    }
 
-    await queryService.customQuery(insertQuery);
+    // Check current image count
+    const imageCount = (await db.query(
+      'SELECT COUNT(*) as count FROM campaign_images WHERE campaign_id = ?',
+      [campaignId]
+    )) as RowDataPacket[];
 
-    return NextResponse.json(
-      { message: 'Campaign image added successfully' },
-      { status: 201 }
+    if (imageCount[0].count >= 5) {
+      return NextResponse.json(
+        { error: 'Maximum 5 images allowed per campaign' },
+        { status: 400 }
+      );
+    }
+
+    // Insert campaign image
+    await db.query(
+      `INSERT INTO campaign_images (
+        campaign_id,
+        image_url,
+        caption,
+        sort_order,
+        created_at
+      ) VALUES (?, ?, ?, ?, NOW())`,
+      [campaignId, image_url, caption || null, sort_order || 1]
     );
-  } catch (error: any) {
-    console.error('Add campaign image error:', error);
 
+    return NextResponse.json({
+      message: 'Campaign image added successfully',
+    });
+  } catch (error) {
+    console.error('Error adding campaign image:', error);
     return NextResponse.json(
-      { error: 'Failed to add campaign image', details: error.message },
+      { error: 'Failed to add campaign image' },
       { status: 500 }
     );
   }

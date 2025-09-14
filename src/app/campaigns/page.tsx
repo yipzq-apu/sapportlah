@@ -40,24 +40,19 @@ export default function CampaignsPage() {
   const [loading, setLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [totalCampaigns, setTotalCampaigns] = useState(0);
+  const [favorites, setFavorites] = useState<number[]>([]);
   const campaignsPerPage = 6;
 
-  // Check if user is logged in
+  // Check if user is logged in (simplified - no token auth)
   useEffect(() => {
-    const checkAuth = async () => {
-      const token = localStorage.getItem('authToken');
-      if (token) {
-        try {
-          const response = await fetch('/api/auth/me', {
-            headers: { Authorization: `Bearer ${token}` },
-          });
-          if (response.ok) {
-            const data = await response.json();
-            setUser(data.user);
-          }
-        } catch (error) {
-          console.error('Auth check failed:', error);
+    const checkAuth = () => {
+      try {
+        const userData = localStorage.getItem('userData');
+        if (userData) {
+          setUser(JSON.parse(userData));
         }
+      } catch (error) {
+        console.error('Error loading user data:', error);
       }
     };
 
@@ -92,10 +87,13 @@ export default function CampaignsPage() {
         });
 
         if (searchTerm) params.append('search', searchTerm);
-        if (selectedCategory !== 'all')
+        if (selectedCategory !== 'all') {
           params.append('category_id', selectedCategory);
+          console.log('Adding category_id to params:', selectedCategory);
+        }
 
         console.log('Fetching campaigns with URL:', `/api/campaigns?${params}`);
+        console.log('Selected category:', selectedCategory);
 
         const response = await fetch(`/api/campaigns?${params}`);
 
@@ -106,8 +104,8 @@ export default function CampaignsPage() {
           const data = await response.json();
           console.log('Campaigns data:', data);
           setCampaigns(data.campaigns || []);
-          setTotalPages(data.pagination?.totalPages || 1);
-          setTotalCampaigns(data.pagination?.total || 0);
+          setTotalPages(data.pagination?.total_pages || 1);
+          setTotalCampaigns(data.pagination?.total_campaigns || 0);
         } else {
           const errorText = await response.text();
           console.error('Failed to fetch campaigns. Status:', response.status);
@@ -125,6 +123,25 @@ export default function CampaignsPage() {
     fetchCampaigns();
   }, [searchTerm, selectedCategory, currentPage]);
 
+  // Fetch user favorites
+  useEffect(() => {
+    const fetchFavorites = async () => {
+      if (user) {
+        try {
+          const response = await fetch(`/api/favorites?userId=${user.id}`);
+          if (response.ok) {
+            const data = await response.json();
+            setFavorites(data.favorites || []);
+          }
+        } catch (error) {
+          console.error('Failed to fetch favorites:', error);
+        }
+      }
+    };
+
+    fetchFavorites();
+  }, [user]);
+
   // Pagination calculations
   const startIndex = (currentPage - 1) * campaignsPerPage;
   const endIndex = startIndex + campaignsPerPage;
@@ -136,6 +153,7 @@ export default function CampaignsPage() {
   };
 
   const handleCategoryChange = (value: string) => {
+    console.log('Category changed to:', value);
     setSelectedCategory(value);
     setCurrentPage(1);
   };
@@ -180,9 +198,9 @@ export default function CampaignsPage() {
   };
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-SG', {
+    return new Intl.NumberFormat('en-MY', {
       style: 'currency',
-      currency: 'SGD',
+      currency: 'MYR',
     }).format(amount);
   };
 
@@ -192,6 +210,54 @@ export default function CampaignsPage() {
     const diffTime = end.getTime() - today.getTime();
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     return diffDays > 0 ? diffDays : 0;
+  };
+
+  const toggleFavorite = async (campaignId: number) => {
+    if (!user) {
+      alert('Please log in to add favorites');
+      return;
+    }
+
+    const isFavorited = favorites.includes(campaignId);
+
+    try {
+      if (isFavorited) {
+        // Remove from favorites
+        const response = await fetch(
+          `/api/favorites?userId=${user.id}&campaignId=${campaignId}`,
+          {
+            method: 'DELETE',
+          }
+        );
+
+        if (response.ok) {
+          setFavorites(favorites.filter((id) => id !== campaignId));
+        } else {
+          alert('Failed to remove from favorites');
+        }
+      } else {
+        // Add to favorites
+        const response = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            campaignId: campaignId,
+          }),
+        });
+
+        if (response.ok) {
+          setFavorites([...favorites, campaignId]);
+        } else {
+          alert('Failed to add to favorites');
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      alert('Something went wrong. Please try again.');
+    }
   };
 
   return (
@@ -269,11 +335,12 @@ export default function CampaignsPage() {
                 campaign.goal_amount
               );
               const daysLeft = getDaysLeft(campaign.end_date);
+              const isFavorited = favorites.includes(campaign.id);
 
               return (
                 <div
                   key={campaign.id}
-                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300"
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300 flex flex-col h-full"
                 >
                   {/* Campaign Image */}
                   <div className="relative">
@@ -284,26 +351,59 @@ export default function CampaignsPage() {
                       alt={campaign.title}
                       className="w-full h-48 object-cover"
                     />
-                    {campaign.is_featured && (
+                    {campaign.is_featured === true && (
                       <div className="absolute top-3 left-3 bg-blue-600 text-white px-2 py-1 text-xs font-semibold rounded">
                         Featured
                       </div>
                     )}
+                    {/* Heart Icon for Favorites */}
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        toggleFavorite(campaign.id);
+                      }}
+                      className="absolute top-3 right-3 p-2 rounded-full bg-white/80 hover:bg-white transition duration-200"
+                      title={
+                        isFavorited
+                          ? 'Remove from favorites'
+                          : 'Add to favorites'
+                      }
+                    >
+                      <svg
+                        className={`w-5 h-5 transition duration-200 ${
+                          isFavorited
+                            ? 'text-red-500 fill-current'
+                            : 'text-gray-400 hover:text-red-500'
+                        }`}
+                        fill={isFavorited ? 'currentColor' : 'none'}
+                        stroke="currentColor"
+                        viewBox="0 0 24 24"
+                      >
+                        <path
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
+                        />
+                      </svg>
+                    </button>
                   </div>
 
-                  <div className="p-6">
+                  <div className="p-6 flex flex-col flex-1">
                     {/* Title and Creator */}
-                    <h3 className="text-xl font-semibold text-gray-900 mb-2">
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-1">
                       {campaign.title}
                     </h3>
                     <p className="text-sm text-gray-500 mb-3">
                       by {campaign.creator_name}
                     </p>
 
-                    {/* Description */}
-                    <p className="text-gray-600 mb-4 line-clamp-3">
-                      {campaign.short_description || campaign.description}
-                    </p>
+                    {/* Description - Fixed height */}
+                    <div className="mb-4 flex-1">
+                      <p className="text-gray-600 line-clamp-2 h-[3rem] overflow-hidden">
+                        {campaign.short_description || campaign.description}
+                      </p>
+                    </div>
 
                     {/* Progress */}
                     <div className="mb-4">
@@ -343,10 +443,10 @@ export default function CampaignsPage() {
                       <span>{campaign.backers_count} backers</span>
                     </div>
 
-                    {/* Action Button */}
+                    {/* Action Button - Always at bottom */}
                     <Link
                       href={`/campaigns/${campaign.id}`}
-                      className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-medium"
+                      className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-medium mt-auto"
                     >
                       View Campaign
                     </Link>

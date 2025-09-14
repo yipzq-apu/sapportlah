@@ -1,6 +1,8 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
@@ -14,6 +16,7 @@ interface FAQItem {
 export default function FAQPage() {
   const [activeCategory, setActiveCategory] = useState('all');
   const [openItems, setOpenItems] = useState<string[]>([]);
+  const router = useRouter();
 
   const faqItems: FAQItem[] = [
     {
@@ -124,6 +127,18 @@ export default function FAQPage() {
     );
   };
 
+  const handleContactClick = () => {
+    // Navigate to home page with hash
+    router.push('/');
+    // Wait for navigation to complete, then scroll
+    setTimeout(() => {
+      const contactElement = document.getElementById('contact');
+      if (contactElement) {
+        contactElement.scrollIntoView({ behavior: 'smooth' });
+      }
+    }, 500); // Increased timeout to ensure page loads
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <Navbar />
@@ -219,63 +234,12 @@ export default function FAQPage() {
             >
               Email Support
             </a>
-            <a
-              href="/contact"
+            <Link
+              href="/#contact"
               className="bg-white text-blue-600 border border-blue-600 px-6 py-3 rounded-lg font-medium hover:bg-blue-50 transition duration-300"
             >
               Contact Form
-            </a>
-          </div>
-        </div>
-
-        {/* Quick Links */}
-        <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-white rounded-lg p-6 shadow-md text-center">
-            <div className="text-blue-600 text-3xl mb-4">🚀</div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Start a Campaign
-            </h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Ready to bring your project to life? Launch your campaign today.
-            </p>
-            <a
-              href="/register"
-              className="text-blue-600 font-medium hover:underline"
-            >
-              Get Started →
-            </a>
-          </div>
-
-          <div className="bg-white rounded-lg p-6 shadow-md text-center">
-            <div className="text-blue-600 text-3xl mb-4">💡</div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Creator Guide
-            </h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Learn best practices for running a successful campaign.
-            </p>
-            <a
-              href="/guide"
-              className="text-blue-600 font-medium hover:underline"
-            >
-              Learn More →
-            </a>
-          </div>
-
-          <div className="bg-white rounded-lg p-6 shadow-md text-center">
-            <div className="text-blue-600 text-3xl mb-4">🔍</div>
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Browse Campaigns
-            </h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Discover amazing projects and support causes you care about.
-            </p>
-            <a
-              href="/campaigns"
-              className="text-blue-600 font-medium hover:underline"
-            >
-              Explore →
-            </a>
+            </Link>
           </div>
         </div>
       </main>

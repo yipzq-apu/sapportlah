@@ -12,30 +12,96 @@ export default function AdminLayout({
   const [user, setUser] = useState<any>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [poolStatus, setPoolStatus] = useState<any>(null);
   const pathname = usePathname();
   const router = useRouter();
 
   useEffect(() => {
-    // Set temporary admin user for testing - NO AUTHENTICATION REQUIRED
+    // Check if user is logged in
+    const userData = localStorage.getItem('userData');
+    if (!userData) {
+      router.push('/login?returnUrl=' + window.location.pathname);
+      return;
+    }
+
+    const parsedUser = JSON.parse(userData);
+    if (parsedUser.role !== 'admin') {
+      router.push('/unauthorized');
+      return;
+    }
+
     setUser({
-      id: 'temp-admin',
-      name: 'Temporary Admin',
-      email: 'admin@temp.com',
-      role: 'admin',
+      ...parsedUser,
       avatar: '/api/placeholder/40/40',
     });
+  }, [router]);
+
+  // Monitor connection pool status in development
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'development') {
+      const checkPoolStatus = async () => {
+        try {
+          const response = await fetch('/api/admin/debug/pool-status');
+          if (response.ok) {
+            const data = await response.json();
+            setPoolStatus(data.poolStatus);
+
+            // Log warning if connections are getting high
+            if (data.poolStatus.totalConnections > 7) {
+              console.warn('High connection count detected:', data.poolStatus);
+            }
+          }
+        } catch (error) {
+          console.error('Failed to check pool status:', error);
+        }
+      };
+
+      // Check pool status every 30 seconds in development
+      const interval = setInterval(checkPoolStatus, 30000);
+      checkPoolStatus(); // Initial check
+
+      return () => clearInterval(interval);
+    }
   }, []);
 
   const handleLogout = () => {
-    router.push('/');
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = () => {
+    try {
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('userData');
+      setUser(null); // Update local state
+      window.location.href = '/';
+    } catch (error) {
+      console.error('Error during logout:', error);
+      window.location.href = '/';
+    }
+  };
+
+  const cancelLogout = () => {
+    setShowLogoutConfirm(false);
   };
 
   const navigation = [
     { name: 'Dashboard', href: '/admin', icon: '📊' },
+    {
+      name: 'Featured Campaigns',
+      href: '/admin/featured-campaigns',
+      icon: '⭐',
+    },
     { name: 'Campaign Reviews', href: '/admin/campaigns', icon: '📋' },
+    {
+      name: 'Status Updater',
+      href: '/admin/campaigns/status-updater',
+      icon: '🔄',
+    },
     { name: 'User Management', href: '/admin/users', icon: '👥' },
     { name: 'Contact Messages', href: '/admin/messages', icon: '💬' },
     { name: 'Reports', href: '/admin/reports', icon: '📈' },
+    { name: 'Profile', href: '/admin/profile', icon: '👤' },
     { name: 'Settings', href: '/admin/settings', icon: '⚙️' },
   ];
 
@@ -50,6 +116,46 @@ export default function AdminLayout({
 
   return (
     <div className="min-h-screen bg-gray-50">
+      {/* Logout Confirmation Dialog */}
+      {showLogoutConfirm && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center">
+          <div
+            className="fixed inset-0 bg-black bg-opacity-50"
+            onClick={cancelLogout}
+          />
+          <div className="relative bg-white rounded-lg shadow-xl p-6 m-4 max-w-sm w-full">
+            <div className="text-center">
+              <div className="mb-4">
+                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-red-100">
+                  <span className="text-2xl">🚪</span>
+                </div>
+              </div>
+              <h3 className="text-lg font-medium text-gray-900 mb-2">
+                Confirm Logout
+              </h3>
+              <p className="text-sm text-gray-500 mb-6">
+                Are you sure you want to logout? You will need to login again to
+                access the admin panel.
+              </p>
+              <div className="flex space-x-3">
+                <button
+                  onClick={cancelLogout}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 hover:bg-gray-200 rounded-md transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmLogout}
+                  className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-md transition-colors"
+                >
+                  Logout
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Mobile sidebar overlay */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-40 lg:hidden">
@@ -133,6 +239,26 @@ export default function AdminLayout({
           <div className="p-4 border-t">
             {!sidebarCollapsed ? (
               <>
+                {/* Development pool status indicator */}
+                {process.env.NODE_ENV === 'development' && poolStatus && (
+                  <div className="mb-3 p-2 bg-gray-50 rounded text-xs">
+                    <div className="font-medium text-gray-700 mb-1">
+                      DB Pool:
+                    </div>
+                    <div className="text-gray-600">
+                      Active: {poolStatus.totalConnections}/10
+                    </div>
+                    <div className="text-gray-600">
+                      Free: {poolStatus.freeConnections}
+                    </div>
+                    {poolStatus.totalConnections > 7 && (
+                      <div className="text-red-600 font-medium">
+                        ⚠️ High usage
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="flex items-center mb-3">
                   <img
                     src={user.avatar || '/api/placeholder/40/40'}

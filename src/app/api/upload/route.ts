@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile } from 'fs/promises';
-import path from 'path';
+import cloudinary from '@/lib/cloudinary';
 
 export async function POST(request: NextRequest) {
   try {
@@ -8,68 +7,65 @@ export async function POST(request: NextRequest) {
     const file = formData.get('file') as File;
 
     if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
     // Validate file type
-    const allowedTypes = [
-      'image/jpeg',
-      'image/png',
-      'image/gif',
-      'video/mp4',
-      'video/webm',
-      'video/ogg',
-    ];
+    const allowedTypes = ['image/png', 'image/jpg', 'image/jpeg'];
     if (!allowedTypes.includes(file.type)) {
       return NextResponse.json(
-        {
-          error:
-            'Invalid file type. Only images (JPEG, PNG, GIF) and videos (MP4, WebM, OGG) are allowed.',
-        },
+        { error: 'Invalid file type. Only PNG, JPG, and JPEG are allowed.' },
         { status: 400 }
       );
     }
 
-    // Validate file size (10MB limit)
-    const maxSize = 10 * 1024 * 1024; // 10MB
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB in bytes
     if (file.size > maxSize) {
       return NextResponse.json(
-        { error: 'File too large. Maximum size is 10MB.' },
+        { error: 'File size too large. Maximum size is 10MB.' },
         { status: 400 }
       );
     }
 
-    // Generate unique filename
-    const timestamp = Date.now();
-    const randomString = Math.random().toString(36).substring(2, 15);
-    const extension = path.extname(file.name);
-    const filename = `${timestamp}_${randomString}${extension}`;
+    // Convert file to buffer
+    const bytes = await file.arrayBuffer();
+    const buffer = Buffer.from(bytes);
 
-    // Create uploads directory if it doesn't exist
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads');
+    // Upload to Cloudinary
+    const uploadResponse = await new Promise((resolve, reject) => {
+      cloudinary.uploader
+        .upload_stream(
+          {
+            resource_type: 'image',
+            folder: 'sapportlah/campaigns', // Organize uploads in folders
+            transformation: [
+              { width: 1200, height: 800, crop: 'limit' }, // Limit max dimensions
+              { quality: 'auto' }, // Auto optimize quality
+              { format: 'auto' }, // Auto optimize format
+            ],
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        )
+        .end(buffer);
+    });
 
-    try {
-      const bytes = await file.arrayBuffer();
-      const buffer = Buffer.from(bytes);
+    const result = uploadResponse as any;
 
-      const filePath = path.join(uploadDir, filename);
-      await writeFile(filePath, buffer);
-
-      // Return the public URL
-      const fileUrl = `/uploads/${filename}`;
-
-      return NextResponse.json({ url: fileUrl, filename }, { status: 200 });
-    } catch (error) {
-      console.error('File write error:', error);
-      return NextResponse.json(
-        { error: 'Failed to save file' },
-        { status: 500 }
-      );
-    }
-  } catch (error: any) {
+    return NextResponse.json({
+      success: true,
+      url: result.secure_url,
+      public_id: result.public_id,
+      width: result.width,
+      height: result.height,
+    });
+  } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(
-      { error: 'Failed to upload file', details: error.message },
+      { error: 'Failed to upload image. Please try again.' },
       { status: 500 }
     );
   }

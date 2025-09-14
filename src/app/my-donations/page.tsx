@@ -34,52 +34,54 @@ export default function MyDonationsPage() {
   });
 
   useEffect(() => {
-    const loadData = () => {
-      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
-      setUser({
-        id: 'temp-donor',
-        name: 'Temporary Donor',
-        email: 'donor@temp.com',
-        role: 'donor',
-      });
+    const loadData = async () => {
+      try {
+        // Check if user is logged in
+        const userData = localStorage.getItem('userData');
+        if (!userData) {
+          setError('Please log in to view your donations');
+          setLoading(false);
+          return;
+        }
 
-      // Mock donations data
-      const mockDonations: Donation[] = [
-        {
-          id: '1',
-          campaignId: '1',
-          campaignTitle: 'Clean Water for Rural Communities',
-          campaignImage: '/api/placeholder/300/200',
-          amount: 500,
-          date: '2024-04-20T10:30:00Z',
-          message:
-            'This is such an important cause. Hope this helps reach the goal!',
-          anonymous: false,
-          campaignStatus: 'active',
-          campaignProgress: 65,
-          campaignGoal: 50000,
-          campaignRaised: 32500,
-        },
-        // ...add more mock donations as needed...
-      ];
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
 
-      setDonations(mockDonations);
-      setStats({
-        totalDonated: 1000,
-        campaignsSupported: 3,
-        averageDonation: 333,
-        totalDonations: 3,
-      });
-      setLoading(false);
+        // Fetch donations from backend
+        const response = await fetch(
+          `/api/donations/my-donations?userId=${parsedUser.id}&status=${filter}`
+        );
+
+        if (response.ok) {
+          const data = await response.json();
+          setDonations(data.donations || []);
+          setStats(
+            data.stats || {
+              totalDonated: 0,
+              campaignsSupported: 0,
+              averageDonation: 0,
+              totalDonations: 0,
+            }
+          );
+        } else {
+          const errorData = await response.json();
+          setError(errorData.error || 'Failed to load donations');
+        }
+      } catch (error) {
+        console.error('Error loading donations:', error);
+        setError('Failed to load donations');
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadData();
-  }, []);
+  }, [filter]);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-SG', {
+    return new Intl.NumberFormat('en-MY', {
       style: 'currency',
-      currency: 'SGD',
+      currency: 'MYR',
     }).format(amount);
   };
 
@@ -149,53 +151,122 @@ Generated on: ${new Date().toLocaleDateString()}
   };
 
   const generatePDFReceipt = (donation: Donation) => {
-    // Simple HTML content for PDF generation
     const htmlContent = `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Donation Receipt</title>
-          <style>
-            body { font-family: Arial, sans-serif; padding: 20px; }
-            .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; }
-            .content { margin: 20px 0; }
-            .field { margin: 10px 0; }
-            .amount { font-size: 18px; font-weight: bold; color: #2563eb; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <h1>DONATION RECEIPT</h1>
-            <p>SapportLah Platform</p>
-          </div>
-          <div class="content">
-            <div class="field"><strong>Receipt ID:</strong> ${donation.id}</div>
-            <div class="field"><strong>Date:</strong> ${formatDate(
-              donation.date
-            )}</div>
-            <div class="field"><strong>Donor:</strong> ${
-              user?.name || 'Anonymous'
-            }</div>
-            <div class="field"><strong>Email:</strong> ${user?.email}</div>
-            <div class="field"><strong>Campaign:</strong> ${
-              donation.campaignTitle
-            }</div>
-            <div class="field amount"><strong>Donation Amount:</strong> ${formatCurrency(
-              donation.amount
-            )}</div>
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <title>Donation Receipt</title>
+        <style>
+          body {
+            font-family: Arial, sans-serif;
+            padding: 30px;
+            color: #333;
+          }
+          .header {
+            text-align: center;
+            border-bottom: 2px solid #000;
+            padding-bottom: 15px;
+            margin-bottom: 20px;
+          }
+          .header img {
+            max-width: 120px;
+            margin-bottom: 10px;
+          }
+          h1 {
+            margin: 0;
+            font-size: 22px;
+            color: #111;
+          }
+          .platform-info {
+            font-size: 12px;
+            color: #555;
+          }
+          .content {
+            margin: 20px 0;
+          }
+          table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+          }
+          table td {
+            padding: 8px;
+            vertical-align: top;
+          }
+          table tr:nth-child(odd) {
+            background: #f9f9f9;
+          }
+          .amount {
+            font-size: 18px;
+            font-weight: bold;
+            color: #2563eb;
+          }
+          .footer {
+            margin-top: 40px;
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <img src="/logo.png" alt="SapportLah Logo" />
+          <h1>Donation Receipt</h1>
+          <p class="platform-info">SapportLah Platform | support@sapportlah.com</p>
+          <p><small>This receipt acknowledges your contribution</small></p>
+        </div>
+
+        <div class="content">
+          <table>
+            <tr>
+              <td><strong>Receipt ID:</strong></td>
+              <td>${donation.id}</td>
+            </tr>
+            <tr>
+              <td><strong>Date:</strong></td>
+              <td>${formatDate(donation.date)}</td>
+            </tr>
+            <tr>
+              <td><strong>Donor:</strong></td>
+              <td>${user?.name || 'Anonymous'}</td>
+            </tr>
+            <tr>
+              <td><strong>Email:</strong></td>
+              <td>${user?.email || '-'}</td>
+            </tr>
+            <tr>
+              <td><strong>Campaign:</strong></td>
+              <td>${donation.campaignTitle}</td>
+            </tr>
+            <tr>
+              <td><strong>Donation Amount:</strong></td>
+              <td class="amount">${formatCurrency(donation.amount)}</td>
+            </tr>
             ${
               donation.message
-                ? `<div class="field"><strong>Message:</strong> ${donation.message}</div>`
+                ? `<tr>
+                     <td><strong>Message:</strong></td>
+                     <td>${donation.message}</td>
+                   </tr>`
                 : ''
             }
-            <div class="field" style="margin-top: 30px;">
-              <p>Thank you for your generous donation!</p>
-              <p><small>Generated on: ${new Date().toLocaleDateString()}</small></p>
-            </div>
+          </table>
+
+          <div style="margin-top: 25px;">
+            <p><em>Thank you for your generous donation.  
+            Your support helps us continue making a difference.</em></p>
+            <p><small>Please keep this receipt for your records.  
+            Generated on: ${new Date().toLocaleDateString()}</small></p>
           </div>
-        </body>
-      </html>
-    `;
+        </div>
+
+        <div class="footer">
+          <p>SapportLah © ${new Date().getFullYear()} | www.sapportlah.com</p>
+        </div>
+      </body>
+    </html>
+  `;
 
     // Open in new window for printing/saving as PDF
     const printWindow = window.open('', '_blank');
@@ -238,12 +309,10 @@ Generated on: ${new Date().toLocaleDateString()}
     );
   }
 
-  // Stats calculations
-  const totalDonated = getTotalDonated();
-  const campaignsSupported = donations.length;
-  const averageDonation = donations.length
-    ? totalDonated / donations.length
-    : 0;
+  // Stats calculations - use stats from API instead of local calculation
+  const totalDonated = stats.totalDonated;
+  const campaignsSupported = stats.campaignsSupported;
+  const averageDonation = stats.averageDonation;
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -460,14 +529,6 @@ Generated on: ${new Date().toLocaleDateString()}
                       >
                         View Campaign
                       </Link>
-                      {donation.campaignStatus === 'active' && (
-                        <Link
-                          href={`/campaigns/${donation.campaignId}`}
-                          className="bg-gray-200 text-gray-700 px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-300 transition duration-300"
-                        >
-                          Donate Again
-                        </Link>
-                      )}
                     </div>
                   </div>
                 </div>

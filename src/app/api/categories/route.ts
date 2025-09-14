@@ -1,29 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryService } from '../../../database';
+import { db } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
 export async function GET(request: NextRequest) {
   try {
-    // If you have a categories table, use this:
-    // const query = 'SELECT id, name FROM categories ORDER BY name';
+    const categories = (await db.query(
+      'SELECT id, name FROM categories'
+    )) as RowDataPacket[];
 
-    // For now, return static categories that match your database
-    const categories = [
-      { id: 1, name: 'Education' },
-      { id: 2, name: 'Healthcare' },
-      { id: 3, name: 'Environment' },
-      { id: 4, name: 'Community' },
-      { id: 5, name: 'Technology' },
-      { id: 6, name: 'Arts & Culture' },
-      { id: 7, name: 'Sports' },
-      { id: 8, name: 'Emergency' },
-    ];
-
-    return NextResponse.json({ categories }, { status: 200 });
-  } catch (error: any) {
-    console.error('Get categories error:', error);
-
+    return NextResponse.json({
+      categories: categories,
+    });
+  } catch (error) {
+    console.error('Error fetching categories:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch categories', details: error.message },
+      { error: 'Failed to fetch categories' },
       { status: 500 }
     );
   }

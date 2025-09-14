@@ -1,134 +1,98 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryService } from '../../../../database';
-import { verifyToken } from '../../../../lib/auth';
+import { db } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
-    // Get and verify token
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    let decoded;
-
-    try {
-      decoded = verifyToken(token);
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const userId = decoded.userId;
-    const body = await request.json();
-
     const {
+      userId,
       title,
       description,
       short_description,
       goal_amount,
       category_id,
+      start_date,
       end_date,
       featured_image,
-      video_url,
-    } = body;
+    } = await request.json();
 
     // Validate required fields
     if (
+      !userId ||
       !title ||
       !description ||
-      !short_description ||
       !goal_amount ||
       !category_id ||
+      !start_date ||
       !end_date
     ) {
       return NextResponse.json(
-        { error: 'Required fields missing' },
+        { error: 'Missing required fields' },
         { status: 400 }
       );
     }
 
-    // Test database connection
-    try {
-      await queryService.customQuery('SELECT 1 as test');
-    } catch (dbError) {
-      console.error('Database connection failed:', dbError);
+    // Validate date ranges
+    const today = new Date();
+    const startDate = new Date(start_date);
+    const endDate = new Date(end_date);
+
+    // Validate start date (3-10 days from today)
+    const minStartDate = new Date();
+    minStartDate.setDate(today.getDate() + 3);
+    const maxStartDate = new Date();
+    maxStartDate.setDate(today.getDate() + 10);
+
+    if (startDate < minStartDate || startDate > maxStartDate) {
       return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 500 }
+        { error: 'Start date must be between 3-10 days from today' },
+        { status: 400 }
       );
     }
 
-    // Escape strings for SQL
-    const escapedTitle = title.replace(/'/g, "''");
-    const escapedDescription = description.replace(/'/g, "''");
-    const escapedShortDescription = short_description.replace(/'/g, "''");
-    const escapedFeaturedImage = featured_image
-      ? featured_image.replace(/'/g, "''")
-      : null;
-    const escapedVideoUrl = video_url ? video_url.replace(/'/g, "''") : null;
+    // Validate end date (7-60 days from start date)
+    const minEndDate = new Date(startDate);
+    minEndDate.setDate(startDate.getDate() + 7);
+    const maxEndDate = new Date(startDate);
+    maxEndDate.setDate(startDate.getDate() + 60);
 
-    // Insert campaign into database and get the ID
-    const insertQuery = `
-      INSERT INTO campaigns (
-        user_id, 
-        category_id, 
-        title, 
-        description, 
-        short_description, 
-        goal_amount, 
-        current_amount, 
-        end_date, 
-        featured_image, 
-        video_url, 
-        status, 
-        is_featured, 
-        backers_count, 
-        created_at
-      ) VALUES (
-        ${userId}, 
-        ${parseInt(category_id)}, 
-        '${escapedTitle}', 
-        '${escapedDescription}', 
-        '${escapedShortDescription}', 
-        ${parseFloat(goal_amount)}, 
-        0, 
-        '${end_date}', 
-        ${escapedFeaturedImage ? `'${escapedFeaturedImage}'` : 'NULL'}, 
-        ${escapedVideoUrl ? `'${escapedVideoUrl}'` : 'NULL'}, 
-        'draft', 
-        0, 
-        0, 
-        NOW()
-      )
-    `;
+    if (endDate < minEndDate || endDate > maxEndDate) {
+      return NextResponse.json(
+        { error: 'End date must be between 7-60 days after start date' },
+        { status: 400 }
+      );
+    }
 
-    await queryService.customQuery(insertQuery);
-
-    // Get the campaign ID
-    const getIdQuery = 'SELECT LAST_INSERT_ID() as campaign_id';
-    const result = (await queryService.customQuery(getIdQuery)) as any[];
-    const campaignId = result[0]?.campaign_id;
-
-    console.log(
-      'Campaign created successfully for user:',
-      userId,
-      'Campaign ID:',
-      campaignId
+    // Insert campaign into database
+    const result = await db.query(
+      `INSERT INTO campaigns (
+        user_id, category_id, title, description, short_description,
+        goal_amount, current_amount, start_date, end_date, featured_image,
+        status, is_featured, backers_count, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, 0, ?, ?, ?, 'pending', false, 0, NOW(), NOW())`,
+      [
+        userId,
+        category_id,
+        title,
+        description,
+        short_description,
+        parseFloat(goal_amount),
+        start_date,
+        end_date,
+        featured_image,
+      ]
     );
 
-    return NextResponse.json(
-      { message: 'Campaign created successfully', campaignId },
-      { status: 201 }
-    );
-  } catch (error: any) {
-    console.error('Create campaign error:', error);
+    const campaignId = (result as any).insertId;
 
+    return NextResponse.json({
+      success: true,
+      message: 'Campaign created successfully and is pending review',
+      campaignId,
+    });
+  } catch (error) {
+    console.error('Error creating campaign:', error);
     return NextResponse.json(
-      { error: 'Failed to create campaign', details: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

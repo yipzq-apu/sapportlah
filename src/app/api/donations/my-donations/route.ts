@@ -1,49 +1,38 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryService } from '../../../../database';
-import { verifyToken } from '../../../../lib/auth';
+import { db } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
 export async function GET(request: NextRequest) {
   try {
-    // Get and verify token
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+    const status = searchParams.get('status');
+
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
+        { error: 'User ID is required' },
+        { status: 400 }
       );
     }
 
-    const token = authHeader.substring(7);
-    let decoded;
+    // Build query conditions
+    let whereConditions = ['d.user_id = ? AND d.payment_status = ?'];
+    let queryParams: any[] = [userId, 'completed'];
 
-    try {
-      decoded = verifyToken(token);
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
+    if (status && status !== 'all') {
+      whereConditions.push('c.status = ?');
+      queryParams.push(status);
     }
 
-    const userId = decoded.userId;
-    console.log('Fetching donations for user:', userId);
+    const whereClause = whereConditions.join(' AND ');
 
-    // Test database connection
-    try {
-      await queryService.customQuery('SELECT 1 as test');
-    } catch (dbError) {
-      console.error('Database connection failed:', dbError);
-      return NextResponse.json(
-        { error: 'Database connection failed' },
-        { status: 500 }
-      );
-    }
-
-    // Fetch user's donations with campaign information
-    const query = `
-      SELECT 
+    // Fetch user's donations with campaign details
+    const donations = (await db.query(
+      `SELECT 
         d.id,
         d.amount,
         d.message,
         d.anonymous,
-        d.payment_status,
         d.created_at as date,
         c.id as campaign_id,
         c.title as campaign_title,
@@ -53,71 +42,54 @@ export async function GET(request: NextRequest) {
         c.current_amount as campaign_raised
       FROM donations d
       JOIN campaigns c ON d.campaign_id = c.id
-      WHERE d.user_id = ${userId} AND d.payment_status = 'completed'
-      ORDER BY d.created_at DESC
-    `;
+      WHERE ${whereClause}
+      ORDER BY d.created_at DESC`,
+      queryParams
+    )) as RowDataPacket[];
 
-    const donationsResult = await queryService.customQuery(query);
-    const donations = Array.isArray(donationsResult)
-      ? donationsResult
-      : (donationsResult as any).rows || [];
+    // Calculate campaign progress and format data
+    const formattedDonations = donations.map((donation) => ({
+      id: donation.id.toString(),
+      campaignId: donation.campaign_id.toString(),
+      campaignTitle: donation.campaign_title,
+      campaignImage: donation.campaign_image || '/api/placeholder/300/200',
+      amount: donation.amount,
+      date: donation.date,
+      message: donation.message || '',
+      anonymous: donation.anonymous === 1,
+      campaignStatus: donation.campaign_status,
+      campaignProgress: Math.min(
+        (donation.campaign_raised / donation.campaign_goal) * 100,
+        100
+      ),
+      campaignGoal: donation.campaign_goal,
+      campaignRaised: donation.campaign_raised,
+    }));
 
-    // Format donations for frontend
-    const formattedDonations = donations.map((donation: any) => {
-      const campaignProgress =
-        donation.campaign_goal > 0
-          ? Math.min(
-              (donation.campaign_raised / donation.campaign_goal) * 100,
-              100
-            )
-          : 0;
-
-      return {
-        id: donation.id.toString(),
-        campaignId: donation.campaign_id.toString(),
-        campaignTitle: donation.campaign_title,
-        campaignImage: donation.campaign_image || '/api/placeholder/300/200',
-        amount: parseFloat(donation.amount),
-        date: donation.date,
-        message: donation.message || '',
-        anonymous: donation.anonymous === 1,
-        campaignStatus: donation.campaign_status,
-        campaignProgress: Math.round(campaignProgress),
-        campaignGoal: parseFloat(donation.campaign_goal),
-        campaignRaised: parseFloat(donation.campaign_raised),
-      };
-    });
-
-    // Calculate stats
-    const totalDonated = formattedDonations.reduce(
-      (sum: number, d: any) => sum + d.amount,
+    // Calculate statistics
+    const totalDonated = donations.reduce(
+      (sum, d) => sum + parseFloat(d.amount),
       0
     );
-    const campaignsSupported = new Set(
-      formattedDonations.map((d: any) => d.campaignId)
-    ).size;
+    const uniqueCampaigns = new Set(donations.map((d) => d.campaign_id)).size;
     const averageDonation =
-      formattedDonations.length > 0
-        ? totalDonated / formattedDonations.length
-        : 0;
+      donations.length > 0 ? totalDonated / donations.length : 0;
 
-    return NextResponse.json(
-      {
-        donations: formattedDonations,
-        stats: {
-          totalDonated,
-          campaignsSupported,
-          averageDonation,
-          totalDonations: formattedDonations.length,
-        },
-      },
-      { status: 200 }
-    );
-  } catch (error: any) {
-    console.error('Get user donations error:', error);
+    const stats = {
+      totalDonated: totalDonated || 0,
+      campaignsSupported: uniqueCampaigns || 0,
+      averageDonation: averageDonation || 0,
+      totalDonations: donations.length || 0,
+    };
 
+    return NextResponse.json({
+      donations: formattedDonations,
+      stats: stats,
+    });
+  } catch (error) {
+    console.error('Error fetching user donations:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch donations', details: error.message },
+      { error: 'Failed to fetch donations' },
       { status: 500 }
     );
   }

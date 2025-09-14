@@ -9,7 +9,7 @@ interface User {
   last_name: string;
   email: string;
   role: 'donor' | 'creator' | 'admin';
-  status: 'active' | 'suspended' | 'pending';
+  status: 'active' | 'suspended' | 'pending' | 'rejected';
   created_at: string;
   last_login: string;
   total_donations?: number;
@@ -26,6 +26,15 @@ export default function AdminUsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [showModal, setShowModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectionReason, setRejectionReason] = useState('');
+  const [userToReject, setUserToReject] = useState<User | null>(null);
+  const [stats, setStats] = useState({
+    totalUsers: 0,
+    activeUsers: 0,
+    creators: 0,
+    pendingUsers: 0,
+  });
   const [createForm, setCreateForm] = useState({
     first_name: '',
     last_name: '',
@@ -36,104 +45,133 @@ export default function AdminUsersPage() {
   const [creating, setCreating] = useState(false);
 
   useEffect(() => {
-    const loadUsers = () => {
-      // Mock users data
-      const mockUsers: User[] = [
-        {
-          id: 1,
-          first_name: 'John',
-          last_name: 'Doe',
-          email: 'john.doe@email.com',
-          role: 'donor',
-          status: 'active',
-          created_at: '2024-01-15T10:30:00Z',
-          last_login: '2024-04-20T14:25:00Z',
-          total_donations: 1500,
-          phone: '+65 9123 4567',
-        },
-        {
-          id: 2,
-          first_name: 'Sarah',
-          last_name: 'Johnson',
-          email: 'sarah.johnson@nonprofit.org',
-          role: 'creator',
-          status: 'active',
-          created_at: '2024-02-01T09:15:00Z',
-          last_login: '2024-04-19T16:30:00Z',
-          campaigns_created: 3,
-          phone: '+65 8234 5678',
-        },
-        {
-          id: 3,
-          first_name: 'Mike',
-          last_name: 'Chen',
-          email: 'mike.chen@admin.com',
-          role: 'admin',
-          status: 'active',
-          created_at: '2023-12-01T08:00:00Z',
-          last_login: '2024-04-21T10:00:00Z',
-        },
-        {
-          id: 4,
-          first_name: 'Lisa',
-          last_name: 'Williams',
-          email: 'lisa.williams@email.com',
-          role: 'donor',
-          status: 'suspended',
-          created_at: '2024-03-10T11:45:00Z',
-          last_login: '2024-04-10T13:20:00Z',
-          total_donations: 250,
-        },
-        {
-          id: 5,
-          first_name: 'David',
-          last_name: 'Brown',
-          email: 'david.brown@charity.org',
-          role: 'creator',
-          status: 'pending',
-          created_at: '2024-04-18T15:30:00Z',
-          last_login: '2024-04-18T15:30:00Z',
-          campaigns_created: 0,
-        },
-        {
-          id: 6,
-          first_name: 'Emma',
-          last_name: 'Davis',
-          email: 'emma.davis@email.com',
-          role: 'donor',
-          status: 'active',
-          created_at: '2024-02-20T12:00:00Z',
-          last_login: '2024-04-21T09:15:00Z',
-          total_donations: 750,
-        },
-      ];
+    fetchUsers();
+    fetchStats();
+  }, [searchTerm, roleFilter, statusFilter]);
 
-      setUsers(mockUsers);
+  const fetchUsers = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (searchTerm) params.append('search', searchTerm);
+      if (roleFilter !== 'all') params.append('role', roleFilter);
+      if (statusFilter !== 'all') params.append('status', statusFilter);
+
+      const response = await fetch(`/api/admin/users?${params}`);
+      if (response.ok) {
+        const data = await response.json();
+        setUsers(data.users || []);
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error);
+    } finally {
       setLoading(false);
-    };
+    }
+  };
 
-    loadUsers();
-  }, []);
+  const fetchStats = async () => {
+    try {
+      const response = await fetch('/api/admin/users/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (error) {
+      console.error('Error fetching stats:', error);
+    }
+  };
 
-  const filteredUsers = users.filter((user) => {
-    const matchesSearch =
-      user.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchTerm.toLowerCase());
+  const updateUserStatus = async (
+    userId: number,
+    newStatus: string,
+    reason?: string
+  ) => {
+    try {
+      const response = await fetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          status: newStatus,
+          rejection_reason: reason,
+        }),
+      });
 
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
-    const matchesStatus =
-      statusFilter === 'all' || user.status === statusFilter;
+      if (response.ok) {
+        const data = await response.json();
+        setUsers((prev) =>
+          prev.map((user) =>
+            user.id === userId ? { ...user, status: newStatus as any } : user
+          )
+        );
+        fetchStats(); // Refresh stats
+        alert(`User status updated to ${newStatus} successfully!`);
+      } else {
+        const error = await response.json();
+        alert(`Error: ${error.error}`);
+      }
+    } catch (error) {
+      console.error('Error updating user status:', error);
+      alert('Failed to update user status. Please try again.');
+    }
+  };
 
-    return matchesSearch && matchesRole && matchesStatus;
-  });
+  const handleRejectUser = (user: User) => {
+    setUserToReject(user);
+    setRejectionReason('');
+    setShowRejectModal(true);
+  };
 
-  const updateUserStatus = (userId: number, newStatus: string) => {
-    setUsers((prev) =>
-      prev.map((user) =>
-        user.id === userId ? { ...user, status: newStatus as any } : user
-      )
-    );
+  const confirmRejectUser = async () => {
+    if (!userToReject || !rejectionReason.trim()) {
+      alert('Please provide a reason for rejection');
+      return;
+    }
+
+    await updateUserStatus(userToReject.id, 'rejected', rejectionReason.trim());
+    setShowRejectModal(false);
+    setUserToReject(null);
+    setRejectionReason('');
+  };
+
+  const handleCreateAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setCreating(true);
+
+    try {
+      const response = await fetch('/api/admin/users', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(createForm),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setCreateForm({
+          first_name: '',
+          last_name: '',
+          email: '',
+          role: 'admin',
+          phone: '',
+        });
+        setShowCreateModal(false);
+        fetchUsers(); // Refresh user list
+        fetchStats(); // Refresh stats
+        alert(
+          `Account created successfully! Temporary password: ${data.tempPassword}`
+        );
+      } else {
+        alert(`Error: ${data.error}`);
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert('Failed to create account. Please try again.');
+    } finally {
+      setCreating(false);
+    }
   };
 
   const getStatusColor = (status: string) => {
@@ -144,6 +182,8 @@ export default function AdminUsersPage() {
         return 'bg-red-100 text-red-800';
       case 'pending':
         return 'bg-yellow-100 text-yellow-800';
+      case 'rejected':
+        return 'bg-gray-100 text-gray-800';
       default:
         return 'bg-gray-100 text-gray-800';
     }
@@ -179,42 +219,6 @@ export default function AdminUsersPage() {
     setCreateForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  const handleCreateAdmin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setCreating(true);
-
-    try {
-      // Mock creating new admin
-      const newAdmin: User = {
-        id: Date.now(),
-        first_name: createForm.first_name,
-        last_name: createForm.last_name,
-        email: createForm.email,
-        role: createForm.role as any,
-        status: 'active',
-        created_at: new Date().toISOString(),
-        last_login: new Date().toISOString(),
-        phone: createForm.phone || undefined,
-      };
-
-      setUsers((prev) => [newAdmin, ...prev]);
-      setCreateForm({
-        first_name: '',
-        last_name: '',
-        email: '',
-        role: 'admin',
-        phone: '',
-      });
-      setShowCreateModal(false);
-      alert('Admin account created successfully!');
-    } catch (error) {
-      console.error('Error creating admin:', error);
-      alert('Failed to create admin account. Please try again.');
-    } finally {
-      setCreating(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -245,24 +249,22 @@ export default function AdminUsersPage() {
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Total Users</h3>
-          <p className="text-2xl font-bold text-gray-900">{users.length}</p>
+          <p className="text-2xl font-bold text-gray-900">{stats.totalUsers}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Active Users</h3>
           <p className="text-2xl font-bold text-green-600">
-            {users.filter((u) => u.status === 'active').length}
+            {stats.activeUsers}
           </p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Creators</h3>
-          <p className="text-2xl font-bold text-blue-600">
-            {users.filter((u) => u.role === 'creator').length}
-          </p>
+          <p className="text-2xl font-bold text-blue-600">{stats.creators}</p>
         </div>
         <div className="bg-white p-4 rounded-lg shadow">
           <h3 className="text-sm font-medium text-gray-500">Pending Review</h3>
           <p className="text-2xl font-bold text-yellow-600">
-            {users.filter((u) => u.status === 'pending').length}
+            {stats.pendingUsers}
           </p>
         </div>
       </div>
@@ -278,7 +280,7 @@ export default function AdminUsersPage() {
               type="text"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-600"
               placeholder="Search by name or email..."
             />
           </div>
@@ -289,7 +291,7 @@ export default function AdminUsersPage() {
             <select
               value={roleFilter}
               onChange={(e) => setRoleFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-600"
             >
               <option value="all">All Roles</option>
               <option value="donor">Donors</option>
@@ -304,12 +306,13 @@ export default function AdminUsersPage() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-600"
             >
               <option value="all">All Status</option>
               <option value="active">Active</option>
               <option value="pending">Pending</option>
               <option value="suspended">Suspended</option>
+              <option value="rejected">Rejected</option>
             </select>
           </div>
         </div>
@@ -339,7 +342,7 @@ export default function AdminUsersPage() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {filteredUsers.map((user) => (
+              {users.map((user) => (
                 <tr key={user.id} className="hover:bg-gray-50">
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div>
@@ -398,7 +401,7 @@ export default function AdminUsersPage() {
                     >
                       View
                     </button>
-                    {user.status !== 'suspended' && user.role !== 'admin' && (
+                    {user.status === 'active' && user.role !== 'admin' && (
                       <button
                         onClick={() => updateUserStatus(user.id, 'suspended')}
                         className="text-red-600 hover:text-red-900"
@@ -415,12 +418,20 @@ export default function AdminUsersPage() {
                       </button>
                     )}
                     {user.status === 'pending' && (
-                      <button
-                        onClick={() => updateUserStatus(user.id, 'active')}
-                        className="text-green-600 hover:text-green-900"
-                      >
-                        Approve
-                      </button>
+                      <>
+                        <button
+                          onClick={() => updateUserStatus(user.id, 'active')}
+                          className="text-green-600 hover:text-green-900"
+                        >
+                          Approve
+                        </button>
+                        <button
+                          onClick={() => handleRejectUser(user)}
+                          className="text-red-600 hover:text-red-900"
+                        >
+                          Reject
+                        </button>
+                      </>
                     )}
                   </td>
                 </tr>
@@ -429,7 +440,7 @@ export default function AdminUsersPage() {
           </table>
         </div>
 
-        {filteredUsers.length === 0 && (
+        {users.length === 0 && !loading && (
           <div className="p-6 text-center text-gray-500">
             No users found matching your search criteria.
           </div>
@@ -510,20 +521,6 @@ export default function AdminUsersPage() {
                     <option value="creator">Creator</option>
                     <option value="donor">Donor</option>
                   </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Phone (Optional)
-                  </label>
-                  <input
-                    type="tel"
-                    name="phone"
-                    value={createForm.phone}
-                    onChange={handleCreateInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="+65 XXXX XXXX"
-                  />
                 </div>
 
                 <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
@@ -682,6 +679,60 @@ export default function AdminUsersPage() {
                     Send Email
                   </a>
                 </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reject User Modal */}
+      {showRejectModal && userToReject && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-96 shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <div className="flex justify-between items-center mb-4">
+                <h3 className="text-lg font-medium text-gray-900">
+                  Reject User Application
+                </h3>
+                <button
+                  onClick={() => setShowRejectModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+
+              <p className="text-sm text-gray-600 mb-4">
+                You are about to reject the application for{' '}
+                <strong>
+                  {userToReject.first_name} {userToReject.last_name}
+                </strong>
+                . Please provide a reason for rejection.
+              </p>
+
+              <textarea
+                value={rejectionReason}
+                onChange={(e) => setRejectionReason(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                rows={4}
+                placeholder="Enter reason for rejection..."
+                required
+              />
+
+              <div className="flex justify-end space-x-2 pt-4">
+                <button
+                  onClick={() => setShowRejectModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmRejectUser}
+                  disabled={!rejectionReason.trim()}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-md hover:bg-red-700 disabled:opacity-50"
+                >
+                  Reject User
+                </button>
               </div>
             </div>
           </div>

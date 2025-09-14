@@ -20,11 +20,17 @@ export default function HomePage() {
 
   return (
     <div className="min-h-screen bg-white">
-      <Navbar user={user} />
+      <Navbar user={user as any} />
       <main>
-        <HeroSection />
-        <FeaturedCampaigns />
-        <ContactUs />
+        <section id="hero">
+          <HeroSection />
+        </section>
+        <section id="featured-campaigns">
+          <FeaturedCampaigns />
+        </section>
+        <section id="contact">
+          <ContactUs />
+        </section>
       </main>
       <Footer />
     </div>

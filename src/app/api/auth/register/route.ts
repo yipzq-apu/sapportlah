@@ -1,138 +1,107 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryService } from '../../../../database';
-import { hashPassword, generateToken } from '../../../../lib/auth';
+import bcrypt from 'bcryptjs';
+import jwt from 'jsonwebtoken';
+import { db } from '@/lib/db'; // Adjust import path based on your database setup
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    console.log('Received registration data:', {
-      ...body,
-      password: '[HIDDEN]',
-    });
+
+    const {
+      firstName,
+      lastName,
+      email,
+      phone,
+      dateOfBirth,
+      idType,
+      idNumber,
+      address,
+      password,
+      role,
+    } = body;
 
     // Validate required fields
-    const requiredFields = [
-      'email',
-      'password',
-      'firstName',
-      'lastName',
-      'phone',
-      'dateOfBirth',
-      'idNumber',
-      'idType',
-      'address',
-      'role',
-    ];
-    for (const field of requiredFields) {
-      if (!body[field]) {
-        return NextResponse.json(
-          { error: `${field} is required` },
-          { status: 400 }
-        );
-      }
-    }
-
-    // Test database connection
-    try {
-      console.log('Testing database connection...');
-      await queryService.customQuery('SELECT 1 as test');
-      console.log('Database connection successful');
-    } catch (dbError: any) {
-      console.error('Database connection failed:', dbError);
-
-      if (dbError.code === 'ER_BAD_DB_ERROR') {
-        return NextResponse.json(
-          {
-            error: 'Database not found',
-            details:
-              'Please create the "sapportlah" database in phpMyAdmin first',
-            instructions: [
-              '1. Open phpMyAdmin',
-              '2. Click on "Databases" tab',
-              '3. Create new database named "sapportlah"',
-              '4. Run the SQL migration to create the users table',
-            ],
-          },
-          { status: 500 }
-        );
-      }
-
+    if (
+      !firstName ||
+      !lastName ||
+      !email ||
+      !phone ||
+      !dateOfBirth ||
+      !idType ||
+      !idNumber ||
+      !address ||
+      !password ||
+      !role
+    ) {
       return NextResponse.json(
-        { error: 'Database connection failed', details: dbError.message },
-        { status: 500 }
+        { error: 'All fields are required' },
+        { status: 400 }
       );
     }
 
-    // Check if user already exists
-    console.log('Checking for existing user with email:', body.email);
-    const existingUsers = await queryService.findWhere('users', {
-      email: body.email,
-    });
-    console.log('Existing users found:', existingUsers);
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return NextResponse.json(
+        { error: 'Invalid email format' },
+        { status: 400 }
+      );
+    }
 
-    if (Array.isArray(existingUsers) && existingUsers.length > 0) {
+    // Validate role
+    if (!['donor', 'creator'].includes(role)) {
+      return NextResponse.json({ error: 'Invalid role' }, { status: 400 });
+    }
+
+    // Validate ID type
+    if (!['ic', 'passport'].includes(idType)) {
+      return NextResponse.json({ error: 'Invalid ID type' }, { status: 400 });
+    }
+
+    // Check if user already exists
+    const existingUser = await db.query(
+      'SELECT id FROM users WHERE email = ?',
+      [email]
+    );
+
+    if (Array.isArray(existingUser) && existingUser.length > 0) {
       return NextResponse.json(
         { error: 'User with this email already exists' },
-        { status: 409 }
+        { status: 400 }
       );
     }
 
     // Hash password
-    console.log('Hashing password...');
-    const hashedPassword = await hashPassword(body.password);
-    console.log('Password hashed successfully');
+    const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Prepare user data for database insertion
-    const userData = {
-      email: body.email,
-      password: hashedPassword,
-      first_name: body.firstName,
-      last_name: body.lastName,
-      phone: body.phone,
-      date_of_birth: body.dateOfBirth,
-      ic_passport_number: body.idNumber,
-      ic_passport_type: body.idType,
-      address: body.address,
-      role: body.role,
-    };
-
-    console.log('Attempting to insert user data:', {
-      ...userData,
-      password: '[HIDDEN]',
-    });
-
-    // Insert user into database
-    const newUser = await queryService.insert('users', userData);
-    console.log('User inserted successfully:', {
-      ...newUser,
-      password: '[HIDDEN]',
-    });
-
-    if (!newUser || !newUser.id) {
-      throw new Error('User insertion failed - no user returned');
-    }
-
-    // Generate JWT token
-    const token = generateToken(newUser.id, newUser.email);
-
-    // Remove password from response
-    const { password, ...userResponse } = newUser;
-
-    // Return success response
-    return NextResponse.json(
-      {
-        message: 'User registered successfully',
-        user: userResponse,
-        token,
-      },
-      { status: 201 }
+    // Insert new user with pending status
+    await db.query(
+      `INSERT INTO users (
+        email, password, first_name, last_name, phone, date_of_birth,
+        ic_passport_number, ic_passport_type, address, role, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())`,
+      [
+        email,
+        hashedPassword,
+        firstName,
+        lastName,
+        phone,
+        dateOfBirth,
+        idNumber,
+        idType,
+        address,
+        role,
+      ]
     );
-  } catch (error: any) {
-    console.error('Registration error:', error);
-    console.error('Error stack:', error.stack);
 
+    return NextResponse.json({
+      success: true,
+      message: 'Registration successful. Your account is pending approval.',
+    });
+  } catch (error) {
+    console.error('Registration error:', error);
     return NextResponse.json(
-      { error: 'Failed to register user', details: error.message },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

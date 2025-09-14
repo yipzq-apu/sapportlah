@@ -1,184 +1,110 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryService } from '../../../database';
-import { verifyToken } from '../../../lib/auth';
+import { db } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
-// Get user's favorite campaigns
 export async function GET(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
+
+    if (!userId) {
       return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
+        { error: 'User ID is required' },
+        { status: 400 }
       );
     }
 
-    const token = authHeader.substring(7);
-    let decoded;
+    // Fetch user's favorite campaign IDs
+    const favorites = (await db.query(
+      'SELECT campaign_id FROM user_favorites WHERE user_id = ?',
+      [userId]
+    )) as RowDataPacket[];
 
-    try {
-      decoded = verifyToken(token);
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
+    const favoriteCampaignIds = favorites.map((fav) => fav.campaign_id);
 
-    const userId = decoded.userId;
-
-    // Fetch favorite campaigns with campaign details
-    const query = `
-      SELECT 
-        c.id,
-        c.title,
-        c.short_description,
-        c.goal_amount,
-        c.current_amount,
-        c.end_date,
-        c.featured_image,
-        c.status,
-        c.backers_count,
-        f.created_at as favorited_at,
-        CONCAT(u.first_name, ' ', u.last_name) as creator_name
-      FROM favorites f
-      JOIN campaigns c ON f.campaign_id = c.id
-      JOIN users u ON c.user_id = u.id
-      WHERE f.user_id = ${userId}
-      ORDER BY f.created_at DESC
-    `;
-
-    const result = await queryService.customQuery(query);
-    const favorites = Array.isArray(result) ? result : [];
-
-    // Format favorites for frontend
-    const formattedFavorites = favorites.map((fav: any) => ({
-      id: fav.id.toString(),
-      title: fav.title,
-      shortDescription: fav.short_description,
-      goal: parseFloat(fav.goal_amount),
-      raised: parseFloat(fav.current_amount),
-      progress:
-        fav.goal_amount > 0
-          ? Math.min((fav.current_amount / fav.goal_amount) * 100, 100)
-          : 0,
-      endDate: fav.end_date,
-      image: fav.featured_image || '/api/placeholder/300/200',
-      status: fav.status,
-      backersCount: fav.backers_count,
-      creatorName: fav.creator_name,
-      favoritedAt: fav.favorited_at,
-    }));
-
+    return NextResponse.json({
+      favorites: favoriteCampaignIds,
+    });
+  } catch (error) {
+    console.error('Error fetching favorites:', error);
     return NextResponse.json(
-      { favorites: formattedFavorites },
-      { status: 200 }
-    );
-  } catch (error: any) {
-    console.error('Get favorites error:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch favorites', details: error.message },
+      { error: 'Failed to fetch favorites' },
       { status: 500 }
     );
   }
 }
 
-// Add campaign to favorites
 export async function POST(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    let decoded;
-
-    try {
-      decoded = verifyToken(token);
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const userId = decoded.userId;
     const body = await request.json();
-    const { campaignId } = body;
+    const { userId, campaignId } = body;
 
-    if (!campaignId) {
+    if (!userId || !campaignId) {
       return NextResponse.json(
-        { error: 'Campaign ID is required' },
+        { error: 'User ID and Campaign ID are required' },
         { status: 400 }
       );
     }
 
-    // Insert favorite
-    const insertQuery = `
-      INSERT IGNORE INTO favorites (user_id, campaign_id, created_at)
-      VALUES (${userId}, ${parseInt(campaignId)}, NOW())
-    `;
+    // Check if already favorited
+    const existing = (await db.query(
+      'SELECT id FROM user_favorites WHERE user_id = ? AND campaign_id = ?',
+      [userId, campaignId]
+    )) as RowDataPacket[];
 
-    await queryService.customQuery(insertQuery);
+    if (existing.length > 0) {
+      return NextResponse.json(
+        { error: 'Campaign already in favorites' },
+        { status: 409 }
+      );
+    }
+
+    // Add to favorites
+    await db.query(
+      'INSERT INTO user_favorites (user_id, campaign_id, created_at) VALUES (?, ?, NOW())',
+      [userId, campaignId]
+    );
 
     return NextResponse.json(
       { message: 'Campaign added to favorites' },
       { status: 201 }
     );
-  } catch (error: any) {
-    console.error('Add favorite error:', error);
+  } catch (error) {
+    console.error('Error adding to favorites:', error);
     return NextResponse.json(
-      { error: 'Failed to add favorite', details: error.message },
+      { error: 'Failed to add to favorites' },
       { status: 500 }
     );
   }
 }
 
-// Remove campaign from favorites
 export async function DELETE(request: NextRequest) {
   try {
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    let decoded;
-
-    try {
-      decoded = verifyToken(token);
-    } catch (error) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 });
-    }
-
-    const userId = decoded.userId;
     const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
     const campaignId = searchParams.get('campaignId');
 
-    if (!campaignId) {
+    if (!userId || !campaignId) {
       return NextResponse.json(
-        { error: 'Campaign ID is required' },
+        { error: 'User ID and Campaign ID are required' },
         { status: 400 }
       );
     }
 
-    // Delete favorite
-    const deleteQuery = `
-      DELETE FROM favorites 
-      WHERE user_id = ${userId} AND campaign_id = ${parseInt(campaignId)}
-    `;
-
-    await queryService.customQuery(deleteQuery);
+    // Remove from favorites
+    await db.query(
+      'DELETE FROM user_favorites WHERE user_id = ? AND campaign_id = ?',
+      [userId, campaignId]
+    );
 
     return NextResponse.json(
       { message: 'Campaign removed from favorites' },
       { status: 200 }
     );
-  } catch (error: any) {
-    console.error('Remove favorite error:', error);
+  } catch (error) {
+    console.error('Error removing from favorites:', error);
     return NextResponse.json(
-      { error: 'Failed to remove favorite', details: error.message },
+      { error: 'Failed to remove from favorites' },
       { status: 500 }
     );
   }

@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { queryService } from '../../../../../database';
-import { verifyToken } from '../../../../../lib/auth';
+import { db } from '@/lib/db';
+import { RowDataPacket } from 'mysql2';
 
-// Get campaign updates
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -10,6 +9,8 @@ export async function GET(
   try {
     const { id } = await params;
     const campaignId = parseInt(id);
+    const { searchParams } = new URL(request.url);
+    const userId = searchParams.get('userId');
 
     if (isNaN(campaignId)) {
       return NextResponse.json(
@@ -18,115 +19,54 @@ export async function GET(
       );
     }
 
-    // Fetch campaign updates
-    const query = `
-      SELECT 
+    // Check if user is a backer (has donated to this campaign)
+    let isBacker = false;
+    if (userId) {
+      const donations = (await db.query(
+        'SELECT id FROM donations WHERE user_id = ? AND campaign_id = ? AND payment_status = "completed"',
+        [userId, campaignId]
+      )) as RowDataPacket[];
+      isBacker = donations.length > 0;
+    }
+
+    // Fetch campaign updates based on user status
+    let whereClause = 'WHERE campaign_id = ?';
+    let queryParams: any[] = [campaignId];
+
+    if (!isBacker) {
+      whereClause += ' AND is_backers_only = 0';
+    }
+
+    const updates = (await db.query(
+      `SELECT 
         id,
         title,
         content,
-        image_url,
-        created_at,
-        updated_at
+        is_backers_only,
+        created_at
       FROM campaign_updates
-      WHERE campaign_id = ${campaignId}
-      ORDER BY created_at DESC
-    `;
+      ${whereClause}
+      ORDER BY created_at DESC`,
+      queryParams
+    )) as RowDataPacket[];
 
-    const updates = await queryService.customQuery(query);
+    // Format updates for frontend
+    const formattedUpdates = updates.map((update) => ({
+      id: update.id.toString(),
+      title: update.title,
+      content: update.content,
+      isBackersOnly: update.is_backers_only === 1,
+      createdAt: update.created_at,
+    }));
 
-    return NextResponse.json({ updates }, { status: 200 });
-  } catch (error: any) {
-    console.error('Get campaign updates error:', error);
+    return NextResponse.json({
+      updates: formattedUpdates,
+      isBacker: isBacker,
+    });
+  } catch (error) {
+    console.error('Error fetching campaign updates:', error);
     return NextResponse.json(
-      { error: 'Failed to fetch updates', details: error.message },
-      { status: 500 }
-    );
-  }
-}
-
-// Add campaign update
-export async function POST(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    const campaignId = parseInt(id);
-
-    if (isNaN(campaignId)) {
-      return NextResponse.json(
-        { error: 'Invalid campaign ID' },
-        { status: 400 }
-      );
-    }
-
-    // For testing, skip authentication
-    /*
-    const authHeader = request.headers.get('authorization');
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      return NextResponse.json(
-        { error: 'Authorization header required' },
-        { status: 401 }
-      );
-    }
-
-    const token = authHeader.substring(7);
-    let decoded;
-    
-    try {
-      decoded = verifyToken(token);
-    } catch (error) {
-      return NextResponse.json(
-        { error: 'Invalid token' },
-        { status: 401 }
-      );
-    }
-
-    // Verify user owns the campaign
-    const campaignQuery = `SELECT user_id FROM campaigns WHERE id = ${campaignId}`;
-    const campaign = await queryService.customQuery(campaignQuery);
-    
-    if (!campaign.length || campaign[0].user_id !== decoded.userId) {
-      return NextResponse.json(
-        { error: 'Unauthorized to update this campaign' },
-        { status: 403 }
-      );
-    }
-    */
-
-    const body = await request.json();
-    const { title, content, image_url } = body;
-
-    if (!title || !content) {
-      return NextResponse.json(
-        { error: 'Title and content are required' },
-        { status: 400 }
-      );
-    }
-
-    // Escape strings for SQL
-    const escapedTitle = title.replace(/'/g, "''");
-    const escapedContent = content.replace(/'/g, "''");
-    const escapedImageUrl = image_url ? image_url.replace(/'/g, "''") : null;
-
-    // Insert campaign update
-    const insertQuery = `
-      INSERT INTO campaign_updates (campaign_id, title, content, image_url, created_at)
-      VALUES (${campaignId}, '${escapedTitle}', '${escapedContent}', ${
-      escapedImageUrl ? `'${escapedImageUrl}'` : 'NULL'
-    }, NOW())
-    `;
-
-    await queryService.customQuery(insertQuery);
-
-    return NextResponse.json(
-      { message: 'Update posted successfully' },
-      { status: 201 }
-    );
-  } catch (error: any) {
-    console.error('Post campaign update error:', error);
-    return NextResponse.json(
-      { error: 'Failed to post update', details: error.message },
+      { error: 'Failed to fetch campaign updates' },
       { status: 500 }
     );
   }

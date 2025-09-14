@@ -31,72 +31,69 @@ function DashboardContent() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadData = () => {
-      // Set temporary user for testing - NO AUTHENTICATION REQUIRED
-      setUser({
-        id: 'temp-creator',
-        name: 'Temporary Creator',
-        email: 'creator@temp.com',
-        role: 'creator',
-        avatar: '/api/placeholder/150/150',
-      });
+    const loadData = async () => {
+      try {
+        // Check if user is logged in
+        const userData = localStorage.getItem('userData');
+        if (!userData) {
+          setLoading(false);
+          return;
+        }
 
-      // TODO: Replace with actual API calls to fetch campaigns and stats
-      // For now, using mock data until campaigns table is created
-      const mockCampaigns: Campaign[] = [
-        {
-          id: '1',
-          title: 'Clean Water for Rural Communities',
-          goal: 50000,
-          raised: 32500,
-          donorCount: 245,
-          status: 'active',
-          endDate: '2024-06-15',
-          createdDate: '2024-03-15',
-        },
-        {
-          id: '2',
-          title: 'Education Technology Initiative',
-          goal: 25000,
-          raised: 25000,
-          donorCount: 180,
-          status: 'successful',
-          endDate: '2024-04-30',
-          createdDate: '2024-02-01',
-        },
-        {
-          id: '3',
-          title: 'Community Garden Project',
-          goal: 15000,
-          raised: 8500,
-          donorCount: 67,
-          status: 'active',
-          endDate: '2024-07-20',
-          createdDate: '2024-04-01',
-        },
-      ];
+        const parsedUser = JSON.parse(userData);
+        setUser(parsedUser);
 
-      const mockStats: DashboardStats = {
-        totalCampaigns: mockCampaigns.length,
-        activeCampaigns: mockCampaigns.filter((c) => c.status === 'active')
-          .length,
-        totalRaised: mockCampaigns.reduce((sum, c) => sum + c.raised, 0),
-        totalDonors: mockCampaigns.reduce((sum, c) => sum + c.donorCount, 0),
-        pendingQuestions: 5,
-      };
+        // Fetch dashboard data from backend
+        const response = await fetch(
+          `/api/dashboard/creator?creatorId=${parsedUser.id}`
+        );
 
-      setCampaigns(mockCampaigns);
-      setStats(mockStats);
-      setLoading(false);
+        if (response.ok) {
+          const data = await response.json();
+          setCampaigns(data.campaigns || []);
+          setStats(
+            data.stats || {
+              totalCampaigns: 0,
+              activeCampaigns: 0,
+              totalRaised: 0,
+              totalDonors: 0,
+              pendingQuestions: 0,
+            }
+          );
+        } else {
+          console.error('Failed to fetch dashboard data');
+          // Fallback to empty data
+          setCampaigns([]);
+          setStats({
+            totalCampaigns: 0,
+            activeCampaigns: 0,
+            totalRaised: 0,
+            totalDonors: 0,
+            pendingQuestions: 0,
+          });
+        }
+      } catch (error) {
+        console.error('Error loading dashboard data:', error);
+        setCampaigns([]);
+        setStats({
+          totalCampaigns: 0,
+          activeCampaigns: 0,
+          totalRaised: 0,
+          totalDonors: 0,
+          pendingQuestions: 0,
+        });
+      } finally {
+        setLoading(false);
+      }
     };
 
     loadData();
   }, []);
 
   const formatCurrency = (amount: number) => {
-    return new Intl.NumberFormat('en-SG', {
+    return new Intl.NumberFormat('en-MY', {
       style: 'currency',
-      currency: 'SGD',
+      currency: 'MYR',
     }).format(amount);
   };
 
@@ -115,12 +112,42 @@ function DashboardContent() {
     }
   };
 
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50">
         <Navbar user={user} />
         <div className="flex items-center justify-center h-64">
           <div className="text-xl text-gray-600">Loading dashboard...</div>
+        </div>
+        <Footer />
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-gray-50">
+        <Navbar user={null} />
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className="text-xl text-gray-600 mb-4">
+              Please log in to view your dashboard
+            </div>
+            <Link
+              href="/login"
+              className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700"
+            >
+              Login
+            </Link>
+          </div>
         </div>
         <Footer />
       </div>
@@ -290,54 +317,6 @@ function DashboardContent() {
           </div>
         )}
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Link
-            href="/create-campaign"
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition duration-300"
-          >
-            <div className="text-center">
-              <div className="text-blue-600 text-4xl mb-4">🚀</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Create New Campaign
-              </h3>
-              <p className="text-gray-600 text-sm">
-                Launch a new fundraising campaign
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/my-campaigns"
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition duration-300"
-          >
-            <div className="text-center">
-              <div className="text-green-600 text-4xl mb-4">📊</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Manage Campaigns
-              </h3>
-              <p className="text-gray-600 text-sm">
-                View and edit your campaigns
-              </p>
-            </div>
-          </Link>
-
-          <Link
-            href="/analytics"
-            className="bg-white rounded-lg shadow-md p-6 hover:shadow-lg transition duration-300"
-          >
-            <div className="text-center">
-              <div className="text-purple-600 text-4xl mb-4">📈</div>
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                View Analytics
-              </h3>
-              <p className="text-gray-600 text-sm">
-                Track performance and insights
-              </p>
-            </div>
-          </Link>
-        </div>
-
         {/* Recent Campaigns */}
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex justify-between items-center mb-6">
@@ -352,85 +331,110 @@ function DashboardContent() {
             </Link>
           </div>
 
-          <div className="space-y-4">
-            {campaigns.map((campaign) => (
-              <div
-                key={campaign.id}
-                className="border border-gray-200 rounded-lg p-4"
+          {campaigns.length > 0 ? (
+            <div className="space-y-4">
+              {campaigns.slice(0, 3).map((campaign) => (
+                <div
+                  key={campaign.id}
+                  className="border border-gray-200 rounded-lg p-4"
+                >
+                  <div className="flex justify-between items-start mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      {campaign.title}
+                    </h3>
+                    <span
+                      className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
+                        campaign.status
+                      )}`}
+                    >
+                      {campaign.status}
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
+                    <div>
+                      <p className="text-sm text-gray-700 font-medium">
+                        Raised
+                      </p>
+                      <p className="font-semibold text-gray-900">
+                        {formatCurrency(campaign.raised)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-700 font-medium">Goal</p>
+                      <p className="font-semibold text-gray-900">
+                        {formatCurrency(campaign.goal)}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-700 font-medium">
+                        Donors
+                      </p>
+                      <p className="font-semibold text-gray-900">
+                        {campaign.donorCount}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-700 font-medium">
+                        Progress
+                      </p>
+                      <p className="font-semibold text-gray-900">
+                        {((campaign.raised / campaign.goal) * 100).toFixed(1)}%
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
+                    <div
+                      className="bg-blue-600 h-2 rounded-full"
+                      style={{
+                        width: `${Math.min(
+                          (campaign.raised / campaign.goal) * 100,
+                          100
+                        )}%`,
+                      }}
+                    ></div>
+                  </div>
+
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-gray-500">
+                      Created: {formatDate(campaign.createdDate)}
+                    </span>
+                    <div className="space-x-2">
+                      <Link
+                        href={`/campaigns/${campaign.id}`}
+                        className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+                      >
+                        View
+                      </Link>
+                      <Link
+                        href={`/my-campaigns/${campaign.id}/edit`}
+                        className="text-green-600 hover:text-green-700 text-sm font-medium"
+                      >
+                        Edit
+                      </Link>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <div className="text-gray-400 text-4xl mb-4">📋</div>
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">
+                No campaigns yet
+              </h3>
+              <p className="text-gray-600 mb-4">
+                Start your fundraising journey by creating your first campaign
+              </p>
+              <Link
+                href="/create-campaign"
+                className="bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition duration-300"
               >
-                <div className="flex justify-between items-start mb-2">
-                  <h3 className="text-lg font-semibold text-gray-900">
-                    {campaign.title}
-                  </h3>
-                  <span
-                    className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
-                      campaign.status
-                    )}`}
-                  >
-                    {campaign.status}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-3">
-                  <div>
-                    <p className="text-sm text-gray-500">Raised</p>
-                    <p className="font-semibold">
-                      {formatCurrency(campaign.raised)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Goal</p>
-                    <p className="font-semibold">
-                      {formatCurrency(campaign.goal)}
-                    </p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Donors</p>
-                    <p className="font-semibold">{campaign.donorCount}</p>
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Progress</p>
-                    <p className="font-semibold">
-                      {((campaign.raised / campaign.goal) * 100).toFixed(1)}%
-                    </p>
-                  </div>
-                </div>
-
-                <div className="w-full bg-gray-200 rounded-full h-2 mb-3">
-                  <div
-                    className="bg-blue-600 h-2 rounded-full"
-                    style={{
-                      width: `${Math.min(
-                        (campaign.raised / campaign.goal) * 100,
-                        100
-                      )}%`,
-                    }}
-                  ></div>
-                </div>
-
-                <div className="flex justify-between items-center">
-                  <span className="text-sm text-gray-500">
-                    Created:{' '}
-                    {new Date(campaign.createdDate).toLocaleDateString()}
-                  </span>
-                  <div className="space-x-2">
-                    <Link
-                      href={`/my-campaigns/${campaign.id}/edit`}
-                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                    >
-                      Edit
-                    </Link>
-                    <Link
-                      href={`/my-campaigns/${campaign.id}/donors`}
-                      className="text-green-600 hover:text-green-700 text-sm font-medium"
-                    >
-                      View Donors
-                    </Link>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+                Create Your First Campaign
+              </Link>
+            </div>
+          )}
         </div>
       </main>
 

@@ -28,11 +28,13 @@ interface LocationData {
 
 interface MapLocationPickerProps {
   onLocationSelect: (location: LocationData) => void;
+  onCancel?: () => void;
   initialLocation?: Location;
 }
 
 export default function MapLocationPicker({
   onLocationSelect,
+  onCancel,
   initialLocation,
 }: MapLocationPickerProps) {
   const mapRef = useRef<HTMLDivElement>(null);
@@ -263,6 +265,12 @@ export default function MapLocationPicker({
     }
   };
 
+  const handleCancel = () => {
+    if (onCancel) {
+      onCancel();
+    }
+  };
+
   const getCurrentLocation = () => {
     if (navigator.geolocation) {
       navigator.geolocation.getCurrentPosition(
@@ -335,7 +343,7 @@ export default function MapLocationPicker({
       <div className="flex justify-end space-x-3">
         <button
           type="button"
-          onClick={() => onLocationSelect({ address: '', lat: 0, lng: 0 })}
+          onClick={handleCancel}
           className="px-4 py-2 text-gray-700 bg-gray-100 rounded hover:bg-gray-200"
         >
           Cancel
