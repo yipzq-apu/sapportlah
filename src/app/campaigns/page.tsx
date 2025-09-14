@@ -237,6 +237,14 @@ export default function CampaignsPage() {
           alert('Failed to remove from favorites');
         }
       } else {
+        // Check if user already has 6 favorites
+        if (favorites.length >= 6) {
+          alert(
+            'You can only have a maximum of 6 favorite campaigns. Please remove some favorites before adding new ones.'
+          );
+          return;
+        }
+
         // Add to favorites
         const response = await fetch('/api/favorites', {
           method: 'POST',
@@ -252,7 +260,14 @@ export default function CampaignsPage() {
         if (response.ok) {
           setFavorites([...favorites, campaignId]);
         } else {
-          alert('Failed to add to favorites');
+          const errorData = await response.json();
+          if (errorData.error.includes('Maximum 6 favorite campaigns')) {
+            alert(
+              'You can only have a maximum of 6 favorite campaigns. Please remove some favorites before adding new ones.'
+            );
+          } else {
+            alert(errorData.error || 'Failed to add to favorites');
+          }
         }
       }
     } catch (error) {

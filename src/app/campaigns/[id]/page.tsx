@@ -82,6 +82,7 @@ export default function CampaignDetailPage() {
   const [isQuestionAnonymous, setIsQuestionAnonymous] = useState(false);
   const [campaignImages, setCampaignImages] = useState<CampaignImage[]>([]);
   const [selectedImageIndex, setSelectedImageIndex] = useState(-1); // Changed from 0 to -1
+  const [userFavorites, setUserFavorites] = useState<number[]>([]);
 
   // Helper variables for user roles
   const isCreator =
@@ -191,8 +192,23 @@ export default function CampaignDetailPage() {
       }
     };
 
+    const fetchFavorites = async () => {
+      if (!user) return;
+
+      try {
+        const response = await fetch(`/api/favorites?userId=${user.id}`);
+        if (response.ok) {
+          const data = await response.json();
+          setUserFavorites(data.favorites || []);
+        }
+      } catch (error) {
+        console.error('Error fetching favorites:', error);
+      }
+    };
+
     if (campaignId) {
       fetchCampaignData();
+      fetchFavorites();
     }
   }, [campaignId, user]);
 
@@ -244,6 +260,14 @@ export default function CampaignDetailPage() {
     // Only donors can donate
     if (user.role !== 'donor') {
       alert('Only donors can make donations to campaigns.');
+      return;
+    }
+
+    // Only allow donations to active campaigns
+    if (campaign?.status !== 'active') {
+      alert(
+        `Cannot donate to a ${campaign?.status} campaign. Only active campaigns accept donations.`
+      );
       return;
     }
 
@@ -418,6 +442,61 @@ export default function CampaignDetailPage() {
     const regex = /^\d+(\.\d{0,2})?$/;
     if (regex.test(value)) {
       setDonationAmount(value);
+    }
+  };
+
+  const toggleFavorite = async (campaignId: number) => {
+    if (!user) {
+      alert('Please log in to add favorites');
+      return;
+    }
+
+    const isFavorited = userFavorites.includes(campaignId);
+
+    try {
+      if (isFavorited) {
+        // Remove from favorites
+        const response = await fetch(
+          `/api/favorites?userId=${user.id}&campaignId=${campaignId}`,
+          {
+            method: 'DELETE',
+          }
+        );
+
+        if (response.ok) {
+          setUserFavorites((prev) => prev.filter((id) => id !== campaignId));
+        } else {
+          alert('Failed to remove from favorites');
+        }
+      } else {
+        // Add to favorites
+        const response = await fetch('/api/favorites', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            userId: user.id,
+            campaignId: campaignId,
+          }),
+        });
+
+        if (response.ok) {
+          setUserFavorites((prev) => [...prev, campaignId]);
+        } else {
+          const errorData = await response.json();
+          if (errorData.error.includes('Maximum 6 favorite campaigns')) {
+            alert(
+              'You can only have a maximum of 6 favorite campaigns. Please remove some favorites before adding new ones.'
+            );
+          } else {
+            alert(errorData.error || 'Failed to add to favorites');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+      alert('Something went wrong. Please try again.');
     }
   };
 
@@ -1004,7 +1083,10 @@ export default function CampaignDetailPage() {
                       onChange={handleDonationAmountChange}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-600 text-gray-900"
                       placeholder="Enter amount (e.g. 10.50)"
-                      disabled={user && user.role !== 'donor'}
+                      disabled={
+                        user &&
+                        (user.role !== 'donor' || campaign.status !== 'active')
+                      }
                     />
                   </div>
 
@@ -1022,7 +1104,10 @@ export default function CampaignDetailPage() {
                       onChange={(e) => setDonationMessage(e.target.value)}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-600 text-gray-900"
                       placeholder="Leave a message of support"
-                      disabled={user && user.role !== 'donor'}
+                      disabled={
+                        user &&
+                        (user.role !== 'donor' || campaign.status !== 'active')
+                      }
                     />
                   </div>
 
@@ -1033,7 +1118,10 @@ export default function CampaignDetailPage() {
                       checked={isAnonymous}
                       onChange={(e) => setIsAnonymous(e.target.checked)}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
-                      disabled={user && user.role !== 'donor'}
+                      disabled={
+                        user &&
+                        (user.role !== 'donor' || campaign.status !== 'active')
+                      }
                     />
                     <label
                       htmlFor="anonymous"
@@ -1045,9 +1133,15 @@ export default function CampaignDetailPage() {
 
                   <button
                     type="submit"
-                    disabled={!user || user.role !== 'donor'}
+                    disabled={
+                      !user ||
+                      user.role !== 'donor' ||
+                      campaign.status !== 'active'
+                    }
                     className={`w-full py-3 px-4 rounded-md font-semibold transition duration-300 ${
-                      user && user.role === 'donor'
+                      user &&
+                      user.role === 'donor' &&
+                      campaign.status === 'active'
                         ? 'bg-blue-600 text-white hover:bg-blue-700'
                         : 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     }`}
@@ -1055,7 +1149,12 @@ export default function CampaignDetailPage() {
                     {!user
                       ? 'Login to Donate'
                       : user.role === 'donor'
-                      ? 'Donate Now'
+                      ? campaign.status === 'active'
+                        ? 'Donate Now'
+                        : `Campaign ${
+                            campaign.status.charAt(0).toUpperCase() +
+                            campaign.status.slice(1)
+                          } - Cannot Donate`
                       : user.role === 'creator'
                       ? 'Creators Cannot Donate'
                       : 'Admins Cannot Donate'}
@@ -1066,7 +1165,9 @@ export default function CampaignDetailPage() {
                   {!user
                     ? 'Please log in as a donor to make a donation to this campaign.'
                     : user.role === 'donor'
-                    ? 'Your donation is secure and will help this campaign reach its goal.'
+                    ? campaign.status === 'active'
+                      ? 'Your donation is secure and will help this campaign reach its goal.'
+                      : `This campaign is ${campaign.status} and not accepting donations.`
                     : 'Only donors can make donations to campaigns.'}
                 </div>
               </div>

@@ -3,9 +3,22 @@ import cloudinary from '@/lib/cloudinary';
 
 export async function POST(request: NextRequest) {
   try {
+    // Check if Cloudinary is properly configured
+    if (
+      !process.env.CLOUDINARY_CLOUD_NAME ||
+      !process.env.CLOUDINARY_API_KEY ||
+      !process.env.CLOUDINARY_API_SECRET
+    ) {
+      console.error('Cloudinary configuration missing');
+      return NextResponse.json(
+        { error: 'File upload service is not properly configured' },
+        { status: 500 }
+      );
+    }
+
     const formData = await request.formData();
     const file = formData.get('file') as File;
-    const fileType = formData.get('type') as string; // Add type parameter
+    const fileType = formData.get('type') as string;
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
@@ -80,7 +93,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(
-      { error: 'Failed to upload file' },
+      { error: 'Failed to upload file. Please try again.' },
       { status: 500 }
     );
   }

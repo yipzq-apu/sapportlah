@@ -28,6 +28,7 @@ export async function GET(request: NextRequest) {
         c.status,
         c.backers_count,
         CONCAT(u.first_name, ' ', u.last_name) as creator_name,
+        u.organization_name as organization_name,
         uf.created_at as favorited_at
       FROM user_favorites uf
       JOIN campaigns c ON uf.campaign_id = c.id
@@ -56,6 +57,7 @@ export async function GET(request: NextRequest) {
         status: campaign.status,
         backersCount: campaign.backers_count,
         creatorName: campaign.creator_name,
+        organizationName: campaign.organization_name,
         favoritedAt: campaign.favorited_at,
       };
     });

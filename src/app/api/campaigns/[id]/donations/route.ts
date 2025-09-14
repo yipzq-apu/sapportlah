@@ -17,41 +17,26 @@ export async function GET(
       );
     }
 
-    const { searchParams } = new URL(request.url);
-    const limit = parseInt(searchParams.get('limit') || '10');
-
-    // Fetch recent donations for the campaign
+    // Fetch latest 5 donations for the campaign
     const donations = (await db.query(
       `SELECT 
         d.id,
         d.amount,
         d.message,
         d.anonymous,
-        d.created_at,
-        CASE 
-          WHEN d.anonymous = 1 THEN 'Anonymous'
-          ELSE CONCAT(u.first_name, ' ', u.last_name)
-        END as donor_name
+        d.created_at as date,
+        CONCAT(u.first_name, ' ', u.last_name) as donorName
       FROM donations d
-      LEFT JOIN users u ON d.user_id = u.id
+      JOIN users u ON d.user_id = u.id
       WHERE d.campaign_id = ? AND d.payment_status = 'completed'
       ORDER BY d.created_at DESC
-      LIMIT ?`,
-      [campaignId, limit]
+      LIMIT 5`,
+      [campaignId]
     )) as RowDataPacket[];
 
-    // Format donations for frontend
-    const formattedDonations = donations.map((donation) => ({
-      id: donation.id.toString(),
-      donorName: donation.donor_name,
-      amount: donation.amount,
-      message: donation.message || '',
-      date: donation.created_at,
-      anonymous: donation.anonymous === 1,
-    }));
-
     return NextResponse.json({
-      donations: formattedDonations,
+      success: true,
+      donations: donations || [],
     });
   } catch (error) {
     console.error('Error fetching donations:', error);

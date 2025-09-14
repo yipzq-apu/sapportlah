@@ -11,6 +11,10 @@ interface User {
   role: 'donor' | 'creator' | 'admin';
   email?: string;
   avatar?: string;
+  profile_image?: string;
+  organization_name?: string;
+  first_name?: string;
+  last_name?: string;
 }
 
 interface NavbarProps {
@@ -183,12 +187,27 @@ export default function Navbar({ user: propUser }: NavbarProps) {
             className="flex items-center space-x-3 p-2 rounded-lg hover:bg-gray-100 transition duration-300"
           >
             <img
-              src={profilePicture}
-              alt={userName}
+              src={
+                user.profile_image ||
+                `https://ui-avatars.com/api/?name=${
+                  user.first_name || user.firstName
+                }&background=3b82f6&color=fff&size=32`
+              }
+              alt={
+                user.organization_name ||
+                `${user.first_name || user.firstName} ${
+                  user.last_name || user.lastName
+                }`
+              }
               className="w-8 h-8 rounded-full object-cover"
             />
             <div className="hidden md:block text-left">
-              <p className="text-sm font-medium text-gray-900">{userName}</p>
+              <p className="text-sm font-medium text-gray-900">
+                {user.organization_name ||
+                  `${user.first_name || user.firstName} ${
+                    user.last_name || user.lastName
+                  }`}
+              </p>
               <p className="text-xs text-gray-500 capitalize">{user.role}</p>
             </div>
             <svg
@@ -212,7 +231,12 @@ export default function Navbar({ user: propUser }: NavbarProps) {
           {isDropdownOpen && (
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
               <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">{userName}</p>
+                <p className="text-sm font-medium text-gray-900">
+                  {user.organization_name ||
+                    `${user.first_name || user.firstName} ${
+                      user.last_name || user.lastName
+                    }`}
+                </p>
                 <p className="text-xs text-gray-500">
                   {user.email || 'No email'}
                 </p>
@@ -368,6 +392,107 @@ export default function Navbar({ user: propUser }: NavbarProps) {
         return '/';
     }
   };
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const userData = localStorage.getItem('userData');
+      if (userData) {
+        const parsedUser = JSON.parse(userData);
+
+        // Fetch complete user data including profile image using userId if available, fallback to email
+        try {
+          const userId = parsedUser.id;
+          const email = parsedUser.email;
+
+          // Prefer userId over email for API calls
+          const queryParam = userId
+            ? `userId=${userId}`
+            : `email=${encodeURIComponent(email)}`;
+          const response = await fetch(`/api/auth/user-data?${queryParam}`);
+
+          if (response.ok) {
+            const data = await response.json();
+            const updatedUser = {
+              ...parsedUser,
+              profile_image: data.user.profile_image,
+              organization_name: data.user.organization_name,
+              first_name: data.user.first_name,
+              last_name: data.user.last_name,
+              email: data.user.email, // Update email from database
+            };
+            setUser(updatedUser);
+
+            // Update localStorage with fresh data
+            localStorage.setItem('userData', JSON.stringify(updatedUser));
+          } else {
+            setUser(parsedUser);
+          }
+        } catch (error) {
+          console.error('Error fetching user data:', error);
+          setUser(parsedUser);
+        }
+      }
+    };
+
+    fetchUserData();
+
+    // Listen for profile updates
+    const handleProfileUpdate = (event: CustomEvent) => {
+      const updatedData = event.detail;
+      setUser((prevUser) =>
+        prevUser
+          ? {
+              ...prevUser,
+              profile_image: updatedData.profile_image,
+              first_name: updatedData.firstName,
+              last_name: updatedData.lastName,
+              firstName: updatedData.firstName,
+              lastName: updatedData.lastName,
+              organization_name: updatedData.organization_name,
+              email: updatedData.email,
+              phone: updatedData.phone,
+              address: updatedData.address,
+              notifications: updatedData.notifications,
+            }
+          : null
+      );
+
+      // Also update localStorage from the event data
+      const userData = localStorage.getItem('userData');
+      if (userData) {
+        const parsedUserData = JSON.parse(userData);
+        localStorage.setItem(
+          'userData',
+          JSON.stringify({
+            ...parsedUserData,
+            firstName: updatedData.firstName,
+            lastName: updatedData.lastName,
+            email: updatedData.email,
+            profile_image: updatedData.profile_image,
+            organization_name: updatedData.organization_name,
+            phone: updatedData.phone,
+            address: updatedData.address,
+            notifications: updatedData.notifications ? 1 : 0,
+            // Keep both field name formats for compatibility
+            first_name: updatedData.firstName,
+            last_name: updatedData.lastName,
+          })
+        );
+      }
+    };
+
+    window.addEventListener(
+      'userProfileUpdated',
+      handleProfileUpdate as EventListener
+    );
+
+    return () => {
+      window.removeEventListener(
+        'userProfileUpdated',
+        handleProfileUpdate as EventListener
+      );
+    };
+  }, []);
 
   return (
     <nav className="bg-white shadow-md">

@@ -87,15 +87,27 @@ export async function POST(
       ]
     )) as any;
 
-    // Update campaign current_amount and backers_count
-    const newCurrentAmount = campaign.current_amount + donationAmount;
+    // Calculate total current amount from all donations for this campaign
+    const totalAmountResult = (await db.query(
+      `SELECT 
+        COALESCE(SUM(amount), 0) as total_amount,
+        COUNT(*) as total_backers
+       FROM donations 
+       WHERE campaign_id = ? AND payment_status = 'completed'`,
+      [campaignId]
+    )) as RowDataPacket[];
+
+    const newCurrentAmount = totalAmountResult[0].total_amount;
+    const newBackersCount = totalAmountResult[0].total_backers;
+
+    // Update campaign with calculated totals
     await db.query(
       `UPDATE campaigns 
        SET current_amount = ?, 
-           backers_count = backers_count + 1,
+           backers_count = ?,
            updated_at = NOW()
        WHERE id = ?`,
-      [newCurrentAmount, campaignId]
+      [newCurrentAmount, newBackersCount, campaignId]
     );
 
     return NextResponse.json(
@@ -110,7 +122,7 @@ export async function POST(
         },
         campaign: {
           current_amount: newCurrentAmount,
-          backers_count: campaign.backers_count + 1,
+          backers_count: newBackersCount,
         },
       },
       { status: 201 }

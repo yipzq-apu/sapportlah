@@ -260,9 +260,9 @@ export default function EditCampaignPage() {
   const handleFileUpload = async (file: File) => {
     if (!canEdit) return;
 
-    // Validate file type before upload
+    // Validate file type before upload - only allow PNG, JPG, JPEG
     const allowedTypes = ['image/png', 'image/jpg', 'image/jpeg'];
-    if (!allowedTypes.includes(file.type)) {
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
       alert('Invalid file type. Only PNG, JPG, and JPEG files are allowed.');
       return;
     }
@@ -316,9 +316,9 @@ export default function EditCampaignPage() {
       return;
     }
 
-    // Validate file type before upload
+    // Validate file type before upload - only allow PNG, JPG, JPEG
     const allowedTypes = ['image/png', 'image/jpg', 'image/jpeg'];
-    if (!allowedTypes.includes(file.type)) {
+    if (!allowedTypes.includes(file.type.toLowerCase())) {
       alert('Invalid file type. Only PNG, JPG, and JPEG files are allowed.');
       return;
     }

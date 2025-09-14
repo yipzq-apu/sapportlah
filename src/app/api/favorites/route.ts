@@ -36,12 +36,25 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { userId, campaignId } = body;
+    const { userId, campaignId } = await request.json();
 
     if (!userId || !campaignId) {
       return NextResponse.json(
         { error: 'User ID and Campaign ID are required' },
+        { status: 400 }
+      );
+    }
+
+    // Check if user already has maximum favorites (6)
+    const existingFavorites = (await db.query(
+      'SELECT COUNT(*) as count FROM user_favorites WHERE user_id = ?',
+      [userId]
+    )) as RowDataPacket[];
+
+    const favoriteCount = existingFavorites[0]?.count || 0;
+    if (favoriteCount >= 6) {
+      return NextResponse.json(
+        { error: 'Maximum 6 favorite campaigns allowed per user' },
         { status: 400 }
       );
     }
@@ -54,8 +67,8 @@ export async function POST(request: NextRequest) {
 
     if (existing.length > 0) {
       return NextResponse.json(
-        { error: 'Campaign already in favorites' },
-        { status: 409 }
+        { error: 'Campaign is already in favorites' },
+        { status: 400 }
       );
     }
 
@@ -65,14 +78,11 @@ export async function POST(request: NextRequest) {
       [userId, campaignId]
     );
 
-    return NextResponse.json(
-      { message: 'Campaign added to favorites' },
-      { status: 201 }
-    );
+    return NextResponse.json({ success: true });
   } catch (error) {
-    console.error('Error adding to favorites:', error);
+    console.error('Add favorite error:', error);
     return NextResponse.json(
-      { error: 'Failed to add to favorites' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

@@ -17,6 +17,7 @@ interface FavoriteCampaign {
   status: string;
   backersCount: number;
   creatorName: string;
+  organizationName?: string;
   favoritedAt: string;
 }
 
@@ -181,114 +182,123 @@ export default function FavoritesPage() {
           <p className="text-lg text-gray-600">
             Keep track of campaigns you're interested in supporting.
           </p>
+          <div className="mt-2 text-sm text-gray-500">
+            {favorites.length}/6 favorites used
+          </div>
+          {favorites.length >= 6 && (
+            <div className="mt-2 text-sm text-orange-600 bg-orange-50 border border-orange-200 rounded-lg p-3">
+              <div className="flex items-center">
+                <span className="mr-2">⚠️</span>
+                <span>
+                  You've reached the maximum of 6 favorite campaigns. Remove
+                  some to add new ones.
+                </span>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Favorites Grid */}
         {favorites.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {favorites.map((campaign) => (
-              <div
-                key={campaign.id}
-                className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition-shadow duration-300"
-              >
-                <div className="relative">
-                  <img
-                    src={campaign.image}
-                    alt={campaign.title}
-                    className="w-full h-48 object-cover"
-                  />
-                  <div className="absolute top-4 right-4">
+            {favorites.map((campaign) => {
+              const percentage = (campaign.raised / campaign.goal) * 100 || 0;
+              const daysLeft = getDaysLeft(campaign.endDate);
+
+              return (
+                <div
+                  key={campaign.id}
+                  className="bg-white rounded-lg shadow-md overflow-hidden hover:shadow-lg transition duration-300 flex flex-col h-full"
+                >
+                  {/* Campaign Image */}
+                  <div className="relative">
+                    <img
+                      src={campaign.image || '/api/placeholder/400/250'}
+                      alt={campaign.title}
+                      className="w-full h-48 object-cover"
+                    />
+                    {/* Remove from favorites button */}
                     <button
                       onClick={() => removeFavorite(campaign.id)}
-                      className="bg-red-600 text-white p-2 rounded-full hover:bg-red-700 transition-colors"
+                      className="absolute top-3 right-3 p-2 rounded-full bg-white/80 hover:bg-white transition duration-200"
                       title="Remove from favorites"
                     >
                       <svg
-                        className="w-4 h-4"
+                        className="w-5 h-5 text-red-500 fill-current"
                         fill="currentColor"
-                        viewBox="0 0 20 20"
+                        viewBox="0 0 24 24"
                       >
                         <path
-                          fillRule="evenodd"
-                          d="M3.172 5.172a4 4 0 015.656 0L10 6.343l1.172-1.171a4 4 0 115.656 5.656L10 17.657l-6.828-6.829a4 4 0 010-5.656z"
-                          clipRule="evenodd"
+                          strokeLinecap="round"
+                          strokeLinejoin="round"
+                          strokeWidth={2}
+                          d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z"
                         />
                       </svg>
                     </button>
                   </div>
-                  <div className="absolute top-4 left-4">
-                    <span
-                      className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
-                        campaign.status
-                      )}`}
-                    >
-                      {campaign.status}
-                    </span>
-                  </div>
-                </div>
 
-                <div className="p-6">
-                  <Link href={`/campaigns/${campaign.id}`}>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2 hover:text-blue-600 transition-colors">
+                  <div className="p-6 flex flex-col flex-1">
+                    {/* Title and Creator */}
+                    <h3 className="text-xl font-semibold text-gray-900 mb-2 line-clamp-1">
                       {campaign.title}
                     </h3>
-                  </Link>
+                    <p className="text-sm text-gray-500 mb-3">
+                      by {campaign.organizationName || campaign.creatorName}
+                    </p>
 
-                  <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                    {campaign.shortDescription}
-                  </p>
-
-                  <div className="mb-4">
-                    <div className="flex justify-between text-sm text-gray-600 mb-1">
-                      <span>Progress</span>
-                      <span>{campaign.progress.toFixed(1)}%</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div
-                        className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                        style={{
-                          width: `${Math.min(campaign.progress, 100)}%`,
-                        }}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-between text-sm mb-4">
-                    <div>
-                      <p className="text-gray-500">Raised</p>
-                      <p className="font-semibold">
-                        {formatCurrency(campaign.raised)}
+                    {/* Description - Fixed height */}
+                    <div className="mb-4 flex-1">
+                      <p className="text-gray-600 line-clamp-2 h-[3rem] overflow-hidden">
+                        {campaign.shortDescription}
                       </p>
                     </div>
-                    <div>
-                      <p className="text-gray-500">Goal</p>
-                      <p className="font-semibold">
-                        {formatCurrency(campaign.goal)}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-gray-500">Days left</p>
-                      <p className="font-semibold">
-                        {getDaysLeft(campaign.endDate)}
-                      </p>
-                    </div>
-                  </div>
 
-                  <div className="flex justify-between items-center">
-                    <div className="text-xs text-gray-500">
-                      <p>By {campaign.creatorName}</p>
-                      <p>{campaign.backersCount} backers</p>
+                    {/* Progress */}
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm text-gray-600 mb-1">
+                        <span>Raised: {formatCurrency(campaign.raised)}</span>
+                        <span>Goal: {formatCurrency(campaign.goal)}</span>
+                      </div>
+                      <div className="w-full bg-gray-200 rounded-full h-2 mb-2">
+                        <div
+                          className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                          style={{ width: `${percentage}%` }}
+                        ></div>
+                      </div>
+                      <div className="flex justify-between text-sm">
+                        <span className="font-semibold text-blue-600">
+                          {percentage.toFixed(1)}% funded
+                        </span>
+                        <span className="text-gray-600">
+                          {daysLeft} days left
+                        </span>
+                      </div>
                     </div>
+
+                    {/* Donor Count */}
+                    <div className="flex items-center text-sm text-gray-600 mb-4">
+                      <svg
+                        className="w-4 h-4 mr-1"
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                      <span>{campaign.backersCount} backers</span>
+                    </div>
+
+                    {/* Action Button - Always at bottom */}
                     <Link
                       href={`/campaigns/${campaign.id}`}
-                      className="bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 transition-colors"
+                      className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-medium mt-auto"
                     >
                       View Campaign
                     </Link>
                   </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-12">
