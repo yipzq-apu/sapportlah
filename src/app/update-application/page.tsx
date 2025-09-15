@@ -32,6 +32,8 @@ export default function UpdateApplicationPage() {
   const [userExists, setUserExists] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [ageError, setAgeError] = useState('');
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [currentPdfUrl, setCurrentPdfUrl] = useState('');
 
   useEffect(() => {
     const emailParam = searchParams.get('email');
@@ -236,6 +238,27 @@ export default function UpdateApplicationPage() {
     setTempAddress('');
   };
 
+  const viewSupportingDocument = (url: string) => {
+    // Convert Cloudinary raw URL to PDF viewable URL
+    let viewableUrl = url;
+
+    // Check if it's a Cloudinary URL and convert to PDF viewer format
+    if (url.includes('cloudinary.com') && url.includes('/raw/upload/')) {
+      // Use Google Docs viewer for better PDF rendering
+      viewableUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
+        url
+      )}&embedded=true`;
+    } else if (url.includes('cloudinary.com') && url.includes('/upload/')) {
+      // For other Cloudinary uploads, use Google Docs viewer
+      viewableUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
+        url
+      )}&embedded=true`;
+    }
+
+    setCurrentPdfUrl(viewableUrl);
+    setShowPdfModal(true);
+  };
+
   if (!email) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
@@ -394,14 +417,17 @@ export default function UpdateApplicationPage() {
                           <span className="font-medium">
                             Document uploaded successfully
                           </span>
-                          <a
-                            href={formData.supportingDocument}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
+                            onClick={() =>
+                              viewSupportingDocument(
+                                formData.supportingDocument
+                              )
+                            }
                             className="ml-2 text-blue-600 hover:text-blue-700 underline"
                           >
                             View
-                          </a>
+                          </button>
                         </div>
                       </div>
                     )}
@@ -635,6 +661,57 @@ export default function UpdateApplicationPage() {
           </form>
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      {showPdfModal && currentPdfUrl && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-4 mx-auto border w-11/12 max-w-6xl h-5/6 shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-medium text-gray-900">
+                Supporting Document
+              </h3>
+              <div className="flex space-x-2">
+                <a
+                  href={
+                    currentPdfUrl.includes('docs.google.com')
+                      ? currentPdfUrl.split('url=')[1]?.split('&')[0]
+                        ? decodeURIComponent(
+                            currentPdfUrl.split('url=')[1].split('&')[0]
+                          )
+                        : currentPdfUrl
+                      : currentPdfUrl
+                  }
+                  download
+                  className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  Download
+                </a>
+                <button
+                  onClick={() => setShowPdfModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="h-full pb-16">
+              {currentPdfUrl.includes('docs.google.com') ? (
+                <iframe
+                  src={currentPdfUrl}
+                  className="w-full h-full border-0"
+                  title="Supporting Document"
+                />
+              ) : (
+                <iframe
+                  src={`${currentPdfUrl}#toolbar=1&navpanes=1&scrollbar=1`}
+                  className="w-full h-full border-0"
+                  title="Supporting Document"
+                />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
