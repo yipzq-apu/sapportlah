@@ -220,7 +220,6 @@ export default function ProfilePage() {
         firstName: formData.firstName,
         lastName: formData.lastName,
         email: formData.email,
-        organizationName: formData.organizationName,
         phone: formData.phone,
         address: formData.address,
         profileImage: formData.avatar,
@@ -275,7 +274,6 @@ export default function ProfilePage() {
                 lastName: formData.lastName,
                 email: formData.email,
                 profile_image: userData.user.profile_image,
-                organization_name: formData.organizationName,
                 phone: formData.phone,
                 address: formData.address,
                 notifications: formData.notifications ? 1 : 0,
@@ -294,7 +292,6 @@ export default function ProfilePage() {
                 profile_image: userData.user.profile_image,
                 firstName: formData.firstName,
                 lastName: formData.lastName,
-                organization_name: formData.organizationName,
                 email: formData.email,
                 phone: formData.phone,
                 address: formData.address,
@@ -450,8 +447,7 @@ export default function ProfilePage() {
                   )}
                 </div>
                 <h2 className="text-2xl font-semibold text-gray-900 mb-1">
-                  {formData.organizationName ||
-                    `${formData.firstName} ${formData.lastName}`}
+                  {`${formData.firstName} ${formData.lastName}`}
                 </h2>
                 <p className="text-gray-500 mb-2">
                   {formData.address || 'No address provided'}
@@ -558,19 +554,6 @@ export default function ProfilePage() {
                         className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-gray-900 placeholder-gray-400"
                         placeholder="Enter your last name"
                         required
-                      />
-                    </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">
-                        Organization Name (Optional)
-                      </label>
-                      <input
-                        type="text"
-                        name="organizationName"
-                        value={formData.organizationName || ''}
-                        onChange={handleInputChange}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-gray-900 placeholder-gray-400"
-                        placeholder="Enter your organization name"
                       />
                     </div>
                     <div>
@@ -752,14 +735,6 @@ export default function ProfilePage() {
                         Last Name
                       </label>
                       <p className="text-gray-900">{user.lastName}</p>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-500 mb-1">
-                        Organization Name
-                      </label>
-                      <p className="text-gray-900">
-                        {user.organizationName || 'Not provided'}
-                      </p>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-500 mb-1">
