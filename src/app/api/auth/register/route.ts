@@ -5,8 +5,6 @@ import { db } from '@/lib/db'; // Adjust import path based on your database setu
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-
     const {
       firstName,
       lastName,
@@ -18,7 +16,9 @@ export async function POST(request: NextRequest) {
       address,
       password,
       role,
-    } = body;
+      organizationName,
+      supportingDocument,
+    } = await request.json();
 
     // Validate required fields
     if (
@@ -58,6 +58,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid ID type' }, { status: 400 });
     }
 
+    // Validate age (must be 18 or older)
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+
+    if (age < 18) {
+      return NextResponse.json(
+        { error: 'You must be at least 18 years old to register' },
+        { status: 400 }
+      );
+    }
+
     // Check if user already exists
     const existingUser = await db.query(
       'SELECT id FROM users WHERE email = ?',
@@ -74,23 +94,23 @@ export async function POST(request: NextRequest) {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 12);
 
-    // Insert new user with pending status
-    await db.query(
-      `INSERT INTO users (
-        email, password, first_name, last_name, phone, date_of_birth,
-        ic_passport_number, ic_passport_type, address, role, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())`,
+    // Insert new user with pending status using correct column names
+    const result = await db.query(
+      `INSERT INTO users (first_name, last_name, email, phone, date_of_birth, ic_passport_type, ic_passport_number, address, password, role, organization_name, supporting_document, status, created_at, updated_at) 
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', NOW(), NOW())`,
       [
-        email,
-        hashedPassword,
         firstName,
         lastName,
-        phone,
+        email,
+        phone || null,
         dateOfBirth,
-        idNumber,
         idType,
+        idNumber,
         address,
+        hashedPassword,
         role,
+        organizationName || null,
+        supportingDocument || null,
       ]
     );
 

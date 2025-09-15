@@ -23,12 +23,14 @@ export async function GET(request: NextRequest) {
     const status = searchParams.get('status');
 
     let query = `
-      SELECT 
+      SELECT
         u.id,
         u.first_name,
         u.last_name,
         u.email,
         u.phone,
+        u.organization_name,
+        u.supporting_document,
         u.role,
         u.status,
         u.created_at,
@@ -38,7 +40,7 @@ export async function GET(request: NextRequest) {
       FROM users u
       LEFT JOIN (
         SELECT user_id, SUM(amount) as total_donations
-        FROM donations 
+        FROM donations
         WHERE payment_status = 'completed'
         GROUP BY user_id
       ) d ON u.id = d.user_id

@@ -15,69 +15,105 @@ export async function POST(request: NextRequest) {
       address,
       password,
       role,
+      organizationName,
+      supportingDocument,
     } = await request.json();
 
-    if (!email || !firstName || !lastName) {
+    // Validate required fields
+    if (
+      !email ||
+      !firstName ||
+      !lastName ||
+      !phone ||
+      !dateOfBirth ||
+      !idType ||
+      !idNumber ||
+      !address ||
+      !role
+    ) {
       return NextResponse.json(
-        { error: 'Missing required fields' },
+        { error: 'All fields are required' },
         { status: 400 }
       );
     }
 
-    // Check if user exists and is rejected
-    const users = await db.query(
-      'SELECT id, status FROM users WHERE email = ?',
-      [email]
-    );
+    // Validate age (must be 18 or older)
+    const today = new Date();
+    const birthDate = new Date(dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
 
-    if (!Array.isArray(users) || users.length === 0) {
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+
+    if (age < 18) {
+      return NextResponse.json(
+        { error: 'You must be at least 18 years old to register' },
+        { status: 400 }
+      );
+    }
+
+    // Check if user exists
+    const existingUser = (await db.query(
+      'SELECT id FROM users WHERE email = ?',
+      [email]
+    )) as any[];
+
+    if (!Array.isArray(existingUser) || existingUser.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const user = users[0] as any;
-    if (user.status !== 'rejected') {
-      return NextResponse.json(
-        { error: 'User is not eligible for application update' },
-        { status: 400 }
-      );
-    }
+    const userId = existingUser[0].id;
 
-    // Prepare update query
+    // Prepare update query with correct column names
     let updateQuery = `
       UPDATE users SET 
-        first_name = ?, last_name = ?, phone = ?, date_of_birth = ?,
-        ic_passport_number = ?, ic_passport_type = ?, address = ?, role = ?,
-        status = 'pending', rejection_reason = NULL, updated_at = NOW()
+        first_name = ?, 
+        last_name = ?, 
+        phone = ?, 
+        date_of_birth = ?, 
+        ic_passport_type = ?, 
+        ic_passport_number = ?, 
+        address = ?, 
+        role = ?, 
+        organization_name = ?, 
+        supporting_document = ?, 
+        status = 'pending', 
+        updated_at = NOW()
     `;
 
-    let updateParams = [
+    let queryParams = [
       firstName,
       lastName,
       phone,
       dateOfBirth,
-      idNumber,
       idType,
+      idNumber,
       address,
       role,
+      organizationName || null,
+      supportingDocument || null,
     ];
 
     // Add password update if provided
     if (password && password.trim()) {
       const hashedPassword = await bcrypt.hash(password, 12);
       updateQuery += ', password = ?';
-      updateParams.push(hashedPassword);
+      queryParams.push(hashedPassword);
     }
 
-    updateQuery += ' WHERE email = ?';
-    updateParams.push(email);
+    updateQuery += ' WHERE id = ?';
+    queryParams.push(userId);
 
-    // Update user data
-    await db.query(updateQuery, updateParams);
+    await db.query(updateQuery, queryParams);
 
     return NextResponse.json({
       success: true,
-      message:
-        'Application updated successfully. Your account is now pending review again.',
+      message: 'Application updated successfully. It will be reviewed again.',
     });
   } catch (error) {
     console.error('Update application error:', error);

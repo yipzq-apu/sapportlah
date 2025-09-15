@@ -1,4 +1,26 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# SapportLah Platform
+
+## Environment Setup
+
+### Cloudinary Configuration
+
+1. Sign up for a free Cloudinary account at https://cloudinary.com/
+2. Get your Cloud Name, API Key, and API Secret from your Cloudinary dashboard
+3. Add these to your `.env.local` file:
+
+```env
+CLOUDINARY_CLOUD_NAME=your_actual_cloud_name
+CLOUDINARY_API_KEY=your_actual_api_key
+CLOUDINARY_API_SECRET=your_actual_api_secret
+```
+
+### Database Configuration
+
+Add your database connection string:
+
+```env
+DATABASE_URL=your_database_connection_string
+```
 
 ## Getting Started
 

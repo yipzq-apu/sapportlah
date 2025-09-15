@@ -1,13 +1,20 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default function ApplicationUpdatedPage() {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-md">
         <Link href="/" className="flex justify-center">
-          <span className="text-2xl font-bold text-blue-600">SapportLah</span>
+          <Image
+            src="/logo.png"
+            alt="SapportLah Logo"
+            width={200}
+            height={60}
+            className="h-12 w-auto"
+          />
         </Link>
       </div>
 

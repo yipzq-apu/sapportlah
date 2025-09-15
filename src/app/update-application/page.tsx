@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import MapLocationPicker from '@/app/components/MapLocationPicker';
+import Image from 'next/image';
 
 export default function UpdateApplicationPage() {
   const searchParams = useSearchParams();
@@ -12,6 +13,7 @@ export default function UpdateApplicationPage() {
   const [formData, setFormData] = useState({
     firstName: '',
     lastName: '',
+    email: '',
     phone: '',
     dateOfBirth: '',
     idType: 'ic' as 'ic' | 'passport',
@@ -20,12 +22,16 @@ export default function UpdateApplicationPage() {
     password: '',
     confirmPassword: '',
     role: 'donor' as 'donor' | 'creator',
+    organizationName: '',
+    supportingDocument: '',
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [tempAddress, setTempAddress] = useState('');
   const [userExists, setUserExists] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [ageError, setAgeError] = useState('');
 
   useEffect(() => {
     const emailParam = searchParams.get('email');
@@ -48,6 +54,7 @@ export default function UpdateApplicationPage() {
         const user = data.user;
 
         setFormData({
+          email: user.email || '',
           firstName: user.first_name || '',
           lastName: user.last_name || '',
           phone: user.phone || '',
@@ -58,6 +65,8 @@ export default function UpdateApplicationPage() {
           password: '',
           confirmPassword: '',
           role: user.role || 'donor',
+          organizationName: user.organization_name || '',
+          supportingDocument: user.supporting_document || '',
         });
         setUserExists(true);
       }
@@ -73,6 +82,83 @@ export default function UpdateApplicationPage() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+
+    // Clear age error when user changes date of birth
+    if (e.target.name === 'dateOfBirth') {
+      setAgeError('');
+    }
+  };
+
+  const validateAge = () => {
+    if (!formData.dateOfBirth) return false;
+
+    const today = new Date();
+    const birthDate = new Date(formData.dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+
+    if (age < 18) {
+      setAgeError('You must be at least 18 years old to register');
+      return false;
+    }
+
+    setAgeError('');
+    return true;
+  };
+
+  const handleFileUpload = async (file: File) => {
+    // Validate file type - only PDF allowed
+    if (file.type !== 'application/pdf') {
+      alert('Invalid file type. Only PDF files are allowed.');
+      return;
+    }
+
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      alert('File size too large. Maximum size is 10MB.');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      uploadFormData.append('type', 'document');
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: uploadFormData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFormData((prev) => ({ ...prev, supportingDocument: data.url }));
+        alert('Document uploaded successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to upload document');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload document. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -86,6 +172,12 @@ export default function UpdateApplicationPage() {
       return;
     }
 
+    // Validate age before submission
+    if (!validateAge()) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const response = await fetch('/api/auth/update-application', {
         method: 'POST',
@@ -93,8 +185,8 @@ export default function UpdateApplicationPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          email,
           ...formData,
+          email,
         }),
       });
 
@@ -164,7 +256,13 @@ export default function UpdateApplicationPage() {
       <div className="sm:mx-auto sm:w-full sm:max-w-2xl">
         <div className="flex justify-center">
           <Link href="/">
-            <span className="text-2xl font-bold text-blue-600">SapportLah</span>
+            <Image
+              src="/logo.png"
+              alt="SapportLah Logo"
+              width={200}
+              height={60}
+              className="h-12 w-auto"
+            />
           </Link>
         </div>
         <h2 className="mt-6 text-center text-3xl font-bold text-gray-900">
@@ -212,7 +310,7 @@ export default function UpdateApplicationPage() {
               <h3 className="text-lg font-medium text-gray-900 mb-4">
                 Personal Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label
                     htmlFor="firstName"
@@ -249,6 +347,74 @@ export default function UpdateApplicationPage() {
                   />
                 </div>
 
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="organizationName"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Organization Name (Optional)
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="organizationName"
+                      name="organizationName"
+                      type="text"
+                      value={formData.organizationName}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      placeholder="Enter your organization name (if applicable)"
+                    />
+                  </div>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Leave blank if registering as an individual
+                  </p>
+                </div>
+
+                {/* Supporting Document Upload - Only show if organization name is filled */}
+                {formData.organizationName && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Supporting Document (Optional)
+                    </label>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleDocumentChange}
+                      disabled={uploading}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 file:text-white file:bg-blue-600 file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4 file:hover:bg-blue-700 file:cursor-pointer disabled:file:bg-gray-400 disabled:file:cursor-not-allowed"
+                    />
+                    <p className="text-sm text-gray-600 mt-1">
+                      Upload organization registration certificate or other
+                      supporting documents (PDF only, max 10MB)
+                    </p>
+                    {formData.supportingDocument && (
+                      <div className="mt-2">
+                        <div className="flex items-center text-sm text-green-700">
+                          <span className="mr-2">📄</span>
+                          <span className="font-medium">
+                            Document uploaded successfully
+                          </span>
+                          <a
+                            href={formData.supportingDocument}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-2 text-blue-600 hover:text-blue-700 underline"
+                          >
+                            View
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {uploading && (
+                      <div className="mt-2 text-center py-2">
+                        <div className="text-blue-700 font-medium text-sm">
+                          Uploading document... Please wait.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div>
                   <label
                     htmlFor="dateOfBirth"
@@ -263,8 +429,24 @@ export default function UpdateApplicationPage() {
                     required
                     value={formData.dateOfBirth}
                     onChange={handleChange}
-                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    onBlur={validateAge}
+                    max={
+                      new Date(
+                        new Date().setFullYear(new Date().getFullYear() - 18)
+                      )
+                        .toISOString()
+                        .split('T')[0]
+                    }
+                    className={`mt-1 appearance-none block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
+                      ageError ? 'border-red-300' : 'border-gray-300'
+                    }`}
                   />
+                  <p className="mt-1 text-sm text-gray-500">
+                    You must be at least 18 years old to register
+                  </p>
+                  {ageError && (
+                    <p className="text-sm text-red-600 mt-1">{ageError}</p>
+                  )}
                 </div>
 
                 <div>
@@ -433,17 +615,21 @@ export default function UpdateApplicationPage() {
 
             <div className="flex flex-col sm:flex-row gap-3">
               <Link
-                href="/account-status"
+                href="/login"
                 className="flex-1 text-center bg-gray-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-gray-700 transition duration-300"
               >
                 Cancel
               </Link>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || uploading}
                 className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50 transition duration-300"
               >
-                {loading ? 'Updating...' : 'Update Application'}
+                {loading
+                  ? 'Updating...'
+                  : uploading
+                  ? 'Uploading document...'
+                  : 'Update Application'}
               </button>
             </div>
           </form>

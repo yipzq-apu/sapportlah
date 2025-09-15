@@ -15,6 +15,7 @@ interface Campaign {
   is_featured: boolean;
   created_at: string;
   creator_name: string;
+  organization_name?: string;
   category_name: string;
 }
 
@@ -423,8 +424,10 @@ export default function FeaturedCampaignsAdminPage() {
                         <h4 className="text-lg font-semibold text-gray-900 truncate">
                           {campaign.title}
                         </h4>
-                        <p className="text-sm text-gray-500">
-                          by {campaign.creator_name} • {campaign.category_name}
+                        <p className="text-sm text-gray-500 mb-2">
+                          by{' '}
+                          {campaign.organization_name || campaign.creator_name}{' '}
+                          • {campaign.category_name}
                         </p>
                       </div>
                       <div className="flex items-center space-x-2 ml-4">

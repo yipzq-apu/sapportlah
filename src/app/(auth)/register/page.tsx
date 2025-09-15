@@ -18,11 +18,15 @@ export default function RegisterPage() {
     password: '',
     confirmPassword: '',
     role: 'donor' as 'donor' | 'creator',
+    organizationName: '',
+    supportingDocument: '', // Add supporting document field
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showMap, setShowMap] = useState(false);
   const [tempAddress, setTempAddress] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [ageError, setAgeError] = useState('');
 
   const handleChange = (
     e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
@@ -31,6 +35,35 @@ export default function RegisterPage() {
       ...formData,
       [e.target.name]: e.target.value,
     });
+
+    // Clear age error when user changes date of birth
+    if (e.target.name === 'dateOfBirth') {
+      setAgeError('');
+    }
+  };
+
+  const validateAge = () => {
+    if (!formData.dateOfBirth) return false;
+
+    const today = new Date();
+    const birthDate = new Date(formData.dateOfBirth);
+    let age = today.getFullYear() - birthDate.getFullYear();
+    const monthDiff = today.getMonth() - birthDate.getMonth();
+
+    if (
+      monthDiff < 0 ||
+      (monthDiff === 0 && today.getDate() < birthDate.getDate())
+    ) {
+      age--;
+    }
+
+    if (age < 18) {
+      setAgeError('You must be at least 18 years old to register');
+      return false;
+    }
+
+    setAgeError('');
+    return true;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -40,6 +73,12 @@ export default function RegisterPage() {
 
     if (formData.password !== formData.confirmPassword) {
       setError('Passwords do not match');
+      setLoading(false);
+      return;
+    }
+
+    // Validate age before submission
+    if (!validateAge()) {
       setLoading(false);
       return;
     }
@@ -100,6 +139,54 @@ export default function RegisterPage() {
     setTempAddress('');
   };
 
+  const handleFileUpload = async (file: File) => {
+    // Validate file type - only PDF allowed
+    if (file.type !== 'application/pdf') {
+      alert('Invalid file type. Only PDF files are allowed.');
+      return;
+    }
+
+    // Validate file size (10MB max)
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    if (file.size > maxSize) {
+      alert('File size too large. Maximum size is 10MB.');
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const uploadFormData = new FormData();
+      uploadFormData.append('file', file);
+      uploadFormData.append('type', 'document'); // Specify document type
+
+      const response = await fetch('/api/upload', {
+        method: 'POST',
+        body: uploadFormData,
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setFormData((prev) => ({ ...prev, supportingDocument: data.url }));
+        alert('Document uploaded successfully!');
+      } else {
+        const errorData = await response.json();
+        alert(errorData.error || 'Failed to upload document');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert('Failed to upload document. Please try again.');
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleDocumentChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleFileUpload(file);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
       <div className="sm:mx-auto sm:w-full sm:max-w-2xl">
@@ -142,7 +229,7 @@ export default function RegisterPage() {
               <h3 className="text-lg font-medium text-gray-900 mb-4">
                 Personal Information
               </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label
                     htmlFor="firstName"
@@ -150,16 +237,18 @@ export default function RegisterPage() {
                   >
                     First Name
                   </label>
-                  <input
-                    id="firstName"
-                    name="firstName"
-                    type="text"
-                    required
-                    value={formData.firstName}
-                    onChange={handleChange}
-                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="Enter your first name"
-                  />
+                  <div className="mt-1">
+                    <input
+                      id="firstName"
+                      name="firstName"
+                      type="text"
+                      required
+                      value={formData.firstName}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      placeholder="Enter your first name"
+                    />
+                  </div>
                 </div>
 
                 <div>
@@ -169,17 +258,87 @@ export default function RegisterPage() {
                   >
                     Last Name
                   </label>
-                  <input
-                    id="lastName"
-                    name="lastName"
-                    type="text"
-                    required
-                    value={formData.lastName}
-                    onChange={handleChange}
-                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-300 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
-                    placeholder="Enter your last name"
-                  />
+                  <div className="mt-1">
+                    <input
+                      id="lastName"
+                      name="lastName"
+                      type="text"
+                      required
+                      value={formData.lastName}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      placeholder="Enter your last name"
+                    />
+                  </div>
                 </div>
+
+                <div className="md:col-span-2">
+                  <label
+                    htmlFor="organizationName"
+                    className="block text-sm font-medium text-gray-700"
+                  >
+                    Organization Name (Optional)
+                  </label>
+                  <div className="mt-1">
+                    <input
+                      id="organizationName"
+                      name="organizationName"
+                      type="text"
+                      value={formData.organizationName}
+                      onChange={handleChange}
+                      className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-400 focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      placeholder="Enter your organization name (if applicable)"
+                    />
+                  </div>
+                  <p className="mt-1 text-sm text-gray-500">
+                    Leave blank if registering as an individual
+                  </p>
+                </div>
+
+                {/* Supporting Document Upload - Only show if organization name is filled */}
+                {formData.organizationName && (
+                  <div className="md:col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Supporting Document (Optional)
+                    </label>
+                    <input
+                      type="file"
+                      accept=".pdf"
+                      onChange={handleDocumentChange}
+                      disabled={uploading}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 file:text-white file:bg-blue-600 file:border-0 file:rounded-md file:px-4 file:py-2 file:mr-4 file:hover:bg-blue-700 file:cursor-pointer disabled:file:bg-gray-400 disabled:file:cursor-not-allowed"
+                    />
+                    <p className="text-sm text-gray-600 mt-1">
+                      Upload organization registration certificate or other
+                      supporting documents (PDF only, max 10MB)
+                    </p>
+                    {formData.supportingDocument && (
+                      <div className="mt-2">
+                        <div className="flex items-center text-sm text-green-700">
+                          <span className="mr-2">📄</span>
+                          <span className="font-medium">
+                            Document uploaded successfully
+                          </span>
+                          <a
+                            href={formData.supportingDocument}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="ml-2 text-blue-600 hover:text-blue-700 underline"
+                          >
+                            View
+                          </a>
+                        </div>
+                      </div>
+                    )}
+                    {uploading && (
+                      <div className="mt-2 text-center py-2">
+                        <div className="text-blue-700 font-medium text-sm">
+                          Uploading document... Please wait.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 <div>
                   <label
@@ -195,8 +354,24 @@ export default function RegisterPage() {
                     required
                     value={formData.dateOfBirth}
                     onChange={handleChange}
-                    className="mt-1 appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                    onBlur={validateAge}
+                    max={
+                      new Date(
+                        new Date().setFullYear(new Date().getFullYear() - 18)
+                      )
+                        .toISOString()
+                        .split('T')[0]
+                    }
+                    className={`mt-1 appearance-none block w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900 ${
+                      ageError ? 'border-red-300' : 'border-gray-300'
+                    }`}
                   />
+                  <p className="mt-1 text-sm text-gray-500">
+                    You must be at least 18 years old to register
+                  </p>
+                  {ageError && (
+                    <p className="text-sm text-red-600 mt-1">{ageError}</p>
+                  )}
                 </div>
 
                 <div>
@@ -452,10 +627,14 @@ export default function RegisterPage() {
             <div>
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || uploading}
                 className="w-full flex justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 disabled:opacity-50"
               >
-                {loading ? 'Creating account...' : 'Create account'}
+                {loading
+                  ? 'Creating account...'
+                  : uploading
+                  ? 'Uploading document...'
+                  : 'Create account'}
               </button>
             </div>
           </form>

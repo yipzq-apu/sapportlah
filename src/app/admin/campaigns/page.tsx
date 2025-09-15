@@ -22,6 +22,7 @@ interface Campaign {
   updated_at: string;
   creator_name: string;
   creator_email: string;
+  organization_name?: string;
   category_name: string;
 }
 
@@ -314,7 +315,10 @@ export default function AdminCampaignsPage() {
                             {campaign.title}
                           </h3>
                           <p className="text-sm text-gray-500 mb-2">
-                            by {campaign.creator_name} • Created{' '}
+                            by{' '}
+                            {campaign.organization_name ||
+                              campaign.creator_name}{' '}
+                            • Created{' '}
                             {new Date(campaign.created_at).toLocaleDateString()}
                           </p>
                           <div className="flex items-center space-x-4 text-sm text-gray-600">

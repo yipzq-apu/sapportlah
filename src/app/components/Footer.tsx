@@ -6,7 +6,7 @@ export default function Footer() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="text-center">
           <p className="text-gray-400">
-            © 2024 SapportLah. All rights reserved.
+            © 2025 SapportLah. All rights reserved.
           </p>
         </div>
       </div>

@@ -17,12 +17,13 @@ export async function GET(request: NextRequest) {
         c.status,
         c.is_featured,
         c.created_at,
+        u.organization_name,
         CONCAT(u.first_name, ' ', u.last_name) as creator_name,
         cat.name as category_name
       FROM campaigns c
       JOIN users u ON c.user_id = u.id
       LEFT JOIN categories cat ON c.category_id = cat.id
-      ORDER BY c.is_featured DESC, c.created_at DESC`
+      ORDER BY c.created_at DESC`
     )) as RowDataPacket[];
 
     return NextResponse.json({

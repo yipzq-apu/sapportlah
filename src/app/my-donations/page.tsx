@@ -14,7 +14,7 @@ interface Donation {
   date: string;
   message: string;
   anonymous: boolean;
-  campaignStatus: 'active' | 'successful' | 'failed';
+  campaignStatus: 'active' | 'successful' | 'failed' | 'cancelled';
   campaignProgress: number;
   campaignGoal: number;
   campaignRaised: number;
@@ -26,6 +26,11 @@ export default function MyDonationsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalDonations, setTotalDonations] = useState(0);
+  const donationsPerPage = 6;
   const [stats, setStats] = useState({
     totalDonated: 0,
     campaignsSupported: 0,
@@ -45,16 +50,43 @@ export default function MyDonationsPage() {
         }
 
         const parsedUser = JSON.parse(userData);
-        setUser(parsedUser);
+
+        // Fetch complete user details from API
+        try {
+          const userResponse = await fetch(
+            `/api/auth/user-data?email=${encodeURIComponent(parsedUser.email)}`
+          );
+          if (userResponse.ok) {
+            const userDetailData = await userResponse.json();
+            setUser(userDetailData.user);
+          } else {
+            // Fallback to basic user data if API fails
+            setUser(parsedUser);
+          }
+        } catch (error) {
+          console.error('Error fetching user details:', error);
+          // Fallback to basic user data
+          setUser(parsedUser);
+        }
+
+        // Build query parameters
+        const params = new URLSearchParams({
+          userId: parsedUser.id,
+          page: currentPage.toString(),
+          limit: donationsPerPage.toString(),
+        });
+
+        if (filter !== 'all') params.append('status', filter);
+        if (searchTerm) params.append('search', searchTerm);
 
         // Fetch donations from backend
-        const response = await fetch(
-          `/api/donations/my-donations?userId=${parsedUser.id}&status=${filter}`
-        );
+        const response = await fetch(`/api/donations/my-donations?${params}`);
 
         if (response.ok) {
           const data = await response.json();
           setDonations(data.donations || []);
+          setTotalPages(data.pagination?.total_pages || 1);
+          setTotalDonations(data.pagination?.total_donations || 0);
           setStats(
             data.stats || {
               totalDonated: 0,
@@ -76,7 +108,53 @@ export default function MyDonationsPage() {
     };
 
     loadData();
-  }, [filter]);
+  }, [filter, searchTerm, currentPage]);
+
+  // Reset to first page when filters change
+  const handleSearchChange = (value: string) => {
+    setSearchTerm(value);
+    setCurrentPage(1);
+  };
+
+  const handleFilterChange = (value: string) => {
+    setFilter(value);
+    setCurrentPage(1);
+  };
+
+  const generatePageNumbers = () => {
+    const pages = [];
+    const maxVisiblePages = 5;
+
+    if (totalPages <= maxVisiblePages) {
+      for (let i = 1; i <= totalPages; i++) {
+        pages.push(i);
+      }
+    } else {
+      if (currentPage <= 3) {
+        for (let i = 1; i <= 4; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      } else if (currentPage >= totalPages - 2) {
+        pages.push(1);
+        pages.push('...');
+        for (let i = totalPages - 3; i <= totalPages; i++) {
+          pages.push(i);
+        }
+      } else {
+        pages.push(1);
+        pages.push('...');
+        for (let i = currentPage - 1; i <= currentPage + 1; i++) {
+          pages.push(i);
+        }
+        pages.push('...');
+        pages.push(totalPages);
+      }
+    }
+
+    return pages;
+  };
 
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('en-MY', {
@@ -105,6 +183,8 @@ export default function MyDonationsPage() {
         return 'text-green-600 bg-green-100';
       case 'failed':
         return 'text-red-600 bg-red-100';
+      case 'cancelled':
+        return 'text-gray-600 bg-gray-100';
       default:
         return 'text-gray-600 bg-gray-100';
     }
@@ -116,15 +196,25 @@ export default function MyDonationsPage() {
       : donations.filter((donation) => donation.campaignStatus === filter);
 
   const generateReceipt = (donation: Donation) => {
-    // Create receipt content
+    // Format receipt ID with database PK
+    const receiptId = `REC-${donation.id.toString().padStart(6, '0')}`;
+
+    // Create receipt content with full donor details
     const receiptContent = `
 DONATION RECEIPT
 ================
 
-Receipt ID: ${donation.id}
+Receipt ID: ${receiptId}
 Date: ${formatDate(donation.date)}
-Donor: ${user?.name || 'Anonymous'}
-Email: ${user?.email}
+Donor: ${
+      user?.organization_name ||
+      `${user?.first_name} ${user?.last_name}` ||
+      'Unknown'
+    }
+Email: ${user?.email || 'N/A'}
+Phone: ${user?.phone || 'N/A'}
+ID Number: ${user?.ic_passport_number || 'N/A'}
+Address: ${user?.address || 'N/A'}
 
 Campaign: ${donation.campaignTitle}
 Donation Amount: ${formatCurrency(donation.amount)}
@@ -141,7 +231,7 @@ Generated on: ${new Date().toLocaleDateString()}
     const url = window.URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `receipt_${donation.id}_${
+    link.download = `receipt_${receiptId}_${
       new Date().toISOString().split('T')[0]
     }.txt`;
     document.body.appendChild(link);
@@ -151,6 +241,9 @@ Generated on: ${new Date().toLocaleDateString()}
   };
 
   const generatePDFReceipt = (donation: Donation) => {
+    // Format receipt ID with database PK
+    const receiptId = `REC-${donation.id.toString().padStart(6, '0')}`;
+
     const htmlContent = `
     <!DOCTYPE html>
     <html>
@@ -221,7 +314,7 @@ Generated on: ${new Date().toLocaleDateString()}
           <table>
             <tr>
               <td><strong>Receipt ID:</strong></td>
-              <td>${donation.id}</td>
+              <td>${receiptId}</td>
             </tr>
             <tr>
               <td><strong>Date:</strong></td>
@@ -229,11 +322,27 @@ Generated on: ${new Date().toLocaleDateString()}
             </tr>
             <tr>
               <td><strong>Donor:</strong></td>
-              <td>${user?.name || 'Anonymous'}</td>
+              <td>${
+                user?.organization_name ||
+                `${user?.first_name} ${user?.last_name}` ||
+                'Unknown'
+              }</td>
             </tr>
             <tr>
               <td><strong>Email:</strong></td>
-              <td>${user?.email || '-'}</td>
+              <td>${user?.email || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Phone:</strong></td>
+              <td>${user?.phone || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>ID Number:</strong></td>
+              <td>${user?.ic_passport_number || 'N/A'}</td>
+            </tr>
+            <tr>
+              <td><strong>Address:</strong></td>
+              <td>${user?.address || 'N/A'}</td>
             </tr>
             <tr>
               <td><strong>Campaign:</strong></td>
@@ -423,35 +532,76 @@ Generated on: ${new Date().toLocaleDateString()}
           </div>
         </div>
 
+        {/* Search Bar */}
+        <div className="bg-white rounded-lg shadow-md p-6 mb-6">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1">
+              <input
+                type="text"
+                placeholder="Search campaigns..."
+                value={searchTerm}
+                onChange={(e) => handleSearchChange(e.target.value)}
+                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-500"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Filter Tabs */}
         <div className="mb-6">
           <div className="border-b border-gray-200">
             <nav className="-mb-px flex space-x-8">
-              {[
+              {/*
                 { key: 'all', label: 'All Donations' },
                 { key: 'active', label: 'Active' },
                 { key: 'successful', label: 'Successful' },
                 { key: 'failed', label: 'Failed' },
-              ].map((tab) => (
-                <button
-                  key={tab.key}
-                  onClick={() => setFilter(tab.key)}
-                  className={`py-2 px-1 border-b-2 font-medium text-sm ${
-                    filter === tab.key
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              ))}
+                { key: 'cancelled', label: 'Cancelled' },
+              */}
+              {['all', 'active', 'successful', 'failed', 'cancelled'].map(
+                (status) => (
+                  <button
+                    key={status}
+                    onClick={() => handleFilterChange(status)}
+                    className={`py-2 px-1 border-b-2 font-medium text-sm ${
+                      filter === status
+                        ? 'border-blue-500 text-blue-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    {
+                      {
+                        all: 'All Donations',
+                        active: 'Active',
+                        successful: 'Successful',
+                        failed: 'Failed',
+                        cancelled: 'Cancelled',
+                      }[status]
+                    }
+                  </button>
+                )
+              )}
             </nav>
           </div>
         </div>
 
+        {/* Results Count */}
+        <div className="mb-6 flex justify-between items-center">
+          <p className="text-gray-600">
+            Showing {(currentPage - 1) * donationsPerPage + 1}-
+            {Math.min(currentPage * donationsPerPage, totalDonations)} of{' '}
+            {totalDonations} donations
+          </p>
+          {totalPages > 1 && (
+            <p className="text-gray-600">
+              Page {currentPage} of {totalPages}
+            </p>
+          )}
+        </div>
+
         {/* Donations List */}
         <div className="space-y-6">
-          {filteredDonations.map((donation) => (
+          {donations.map((donation) => (
             <div
               key={donation.id}
               className="bg-white rounded-lg shadow-md overflow-hidden"
@@ -537,18 +687,11 @@ Generated on: ${new Date().toLocaleDateString()}
                 <div className="flex justify-end items-center">
                   <div className="flex space-x-2">
                     <button
-                      onClick={() => generateReceipt(donation)}
-                      className="text-blue-600 hover:text-blue-700 text-sm font-medium"
-                      title="Download Text Receipt"
-                    >
-                      📄 Receipt
-                    </button>
-                    <button
                       onClick={() => generatePDFReceipt(donation)}
                       className="text-green-600 hover:text-green-700 text-sm font-medium"
                       title="Print/Save PDF Receipt"
                     >
-                      📋 PDF
+                      📋 Receipt
                     </button>
                   </div>
                 </div>
@@ -557,17 +700,86 @@ Generated on: ${new Date().toLocaleDateString()}
           ))}
         </div>
 
-        {filteredDonations.length === 0 && (
+        {/* Pagination */}
+        {totalPages > 1 && (
+          <div className="mt-8 flex justify-center">
+            <nav className="flex items-center space-x-2">
+              {/* Previous Button */}
+              <button
+                onClick={() => setCurrentPage((prev) => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  currentPage === 1
+                    ? 'text-gray-400 cursor-not-allowed'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-100'
+                }`}
+              >
+                Previous
+              </button>
+
+              {/* Page Numbers */}
+              {generatePageNumbers().map((page, index) => (
+                <button
+                  key={index}
+                  onClick={() =>
+                    typeof page === 'number' ? setCurrentPage(page) : null
+                  }
+                  disabled={typeof page !== 'number'}
+                  className={`px-3 py-2 rounded-md text-sm font-medium ${
+                    page === currentPage
+                      ? 'bg-blue-600 text-white'
+                      : typeof page === 'number'
+                      ? 'text-gray-700 hover:text-blue-600 hover:bg-gray-100'
+                      : 'text-gray-400 cursor-default'
+                  }`}
+                >
+                  {page}
+                </button>
+              ))}
+
+              {/* Next Button */}
+              <button
+                onClick={() =>
+                  setCurrentPage((prev) => Math.min(prev + 1, totalPages))
+                }
+                disabled={currentPage === totalPages}
+                className={`px-3 py-2 rounded-md text-sm font-medium ${
+                  currentPage === totalPages
+                    ? 'text-gray-400 cursor-not-allowed'
+                    : 'text-gray-700 hover:text-blue-600 hover:bg-gray-100'
+                }`}
+              >
+                Next
+              </button>
+            </nav>
+          </div>
+        )}
+
+        {donations.length === 0 && !loading && (
           <div className="text-center py-12">
             <div className="text-gray-400 text-6xl mb-4">💝</div>
             <h3 className="text-xl font-semibold text-gray-900 mb-2">
               No donations found
             </h3>
             <p className="text-gray-600 mb-4">
-              {filter === 'all'
+              {searchTerm
+                ? `No donations found for "${searchTerm}"`
+                : filter === 'all'
                 ? "You haven't made any donations yet. Start supporting amazing campaigns!"
                 : `No ${filter} donations found. Try a different filter.`}
             </p>
+            {searchTerm && (
+              <button
+                onClick={() => {
+                  setSearchTerm('');
+                  setFilter('all');
+                  setCurrentPage(1);
+                }}
+                className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700 mr-2"
+              >
+                Clear Search
+              </button>
+            )}
             <Link
               href="/campaigns"
               className="bg-blue-600 text-white px-6 py-3 rounded-lg font-medium hover:bg-blue-700 transition duration-300"

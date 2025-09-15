@@ -9,7 +9,7 @@ export async function GET(request: NextRequest) {
 
     console.log('Fetching featured campaigns with limit:', limit);
 
-    // Fetch featured campaigns with creator information
+    // Single query to fetch featured campaigns with creator information
     const campaigns = (await db.query(
       `SELECT 
         c.id,
@@ -20,6 +20,7 @@ export async function GET(request: NextRequest) {
         c.current_amount,
         c.featured_image,
         c.created_at,
+        u.organization_name,
         CONCAT(u.first_name, ' ', u.last_name) as creator_name
       FROM campaigns c
       JOIN users u ON c.user_id = u.id
@@ -29,34 +30,28 @@ export async function GET(request: NextRequest) {
       [limit]
     )) as RowDataPacket[];
 
-    console.log('Featured campaigns found:', campaigns.length);
+    console.log('Featured campaigns found:', campaigns?.length || 0);
+
+    // Ensure we always return a valid array
+    const validCampaigns = Array.isArray(campaigns) ? campaigns : [];
 
     return NextResponse.json({
-      campaigns: campaigns,
-      total: campaigns.length,
+      success: true,
+      campaigns: validCampaigns,
+      total: validCampaigns.length,
     });
   } catch (error) {
-    console.error('Detailed error in featured campaigns API:');
+    console.error('Featured campaigns API error:', error);
 
-    if (error instanceof Error) {
-      console.error('Error name:', error.name);
-      console.error('Error message:', error.message);
-      console.error('Error code:', (error as any).code);
-      console.error('Full error object:', error);
-
-      return NextResponse.json(
-        { error: 'Failed to fetch featured campaigns', details: error.message },
-        { status: 500 }
-      );
-    } else {
-      console.error('Unknown error:', error);
-      return NextResponse.json(
-        {
-          error: 'Failed to fetch featured campaigns',
-          details: 'Unknown error occurred',
-        },
-        { status: 500 }
-      );
-    }
+    // Always return a valid JSON response, even on error
+    return NextResponse.json(
+      {
+        success: false,
+        error: 'Failed to fetch featured campaigns',
+        campaigns: [],
+        total: 0,
+      },
+      { status: 500 }
+    );
   }
 }
