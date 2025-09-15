@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { RowDataPacket, ResultSetHeader } from 'mysql2';
+import { RowDataPacket } from 'mysql2';
 
 export async function POST(
   request: NextRequest,
@@ -57,7 +57,7 @@ export async function POST(
 
     try {
       // Insert donation
-      const donationResult = (await db.query(
+      const donationResult = await db.query(
         `INSERT INTO donations (
           user_id, campaign_id, amount, message, anonymous, 
           payment_method, payment_status, created_at
@@ -70,9 +70,9 @@ export async function POST(
           anonymous ? 1 : 0,
           paymentMethod,
         ]
-      )) as ResultSetHeader;
+      );
 
-      const donationId = donationResult.insertId;
+      const donationId = (donationResult as any).insertId;
 
       // Insert platform fee
       await db.query(
