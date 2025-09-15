@@ -407,12 +407,6 @@ function DashboardContent() {
                       >
                         View
                       </Link>
-                      <Link
-                        href={`/my-campaigns/${campaign.id}/edit`}
-                        className="text-green-600 hover:text-green-700 text-sm font-medium"
-                      >
-                        Edit
-                      </Link>
                     </div>
                   </div>
                 </div>

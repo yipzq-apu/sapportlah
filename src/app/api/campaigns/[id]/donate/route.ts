@@ -1,30 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { RowDataPacket } from 'mysql2';
+import { RowDataPacket, ResultSetHeader } from 'mysql2';
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const { id } = await params;
-    const campaignId = parseInt(id);
-
-    if (isNaN(campaignId)) {
-      return NextResponse.json(
-        { error: 'Invalid campaign ID' },
-        { status: 400 }
-      );
-    }
-
-    const body = await request.json();
-    const {
-      userId,
-      amount,
-      message,
-      anonymous,
-      paymentMethod = 'online',
-    } = body;
+    const { id: campaignId } = await params;
+    const { userId, amount, message, anonymous, paymentMethod } =
+      await request.json();
 
     // Validate required fields
     if (!userId || !amount) {
@@ -64,73 +49,92 @@ export async function POST(
       );
     }
 
-    // Insert donation record
-    const donationResult = (await db.query(
-      `INSERT INTO donations (
-        user_id,
-        campaign_id,
-        amount,
-        message,
-        anonymous,
-        payment_status,
-        payment_method,
-        created_at,
-        updated_at
-      ) VALUES (?, ?, ?, ?, ?, 'completed', ?, NOW(), NOW())`,
-      [
-        userId,
-        campaignId,
-        donationAmount,
-        message || null,
-        anonymous ? 1 : 0,
-        paymentMethod,
-      ]
-    )) as any;
+    // Calculate platform fee (5% rounded up to 2 decimal places)
+    const platformFeeAmount = Math.ceil(amount * 0.05 * 100) / 100;
 
-    // Calculate total current amount from all donations for this campaign
-    const totalAmountResult = (await db.query(
-      `SELECT 
-        COALESCE(SUM(amount), 0) as total_amount,
-        COUNT(*) as total_backers
-       FROM donations 
-       WHERE campaign_id = ? AND payment_status = 'completed'`,
-      [campaignId]
-    )) as RowDataPacket[];
+    // Begin transaction
+    await db.query('START TRANSACTION');
 
-    const newCurrentAmount = totalAmountResult[0].total_amount;
-    const newBackersCount = totalAmountResult[0].total_backers;
+    try {
+      // Insert donation
+      const donationResult = (await db.query(
+        `INSERT INTO donations (
+          user_id, campaign_id, amount, message, anonymous, 
+          payment_method, payment_status, created_at
+        ) VALUES (?, ?, ?, ?, ?, ?, 'completed', NOW())`,
+        [
+          userId,
+          campaignId,
+          amount,
+          message || null,
+          anonymous ? 1 : 0,
+          paymentMethod,
+        ]
+      )) as ResultSetHeader;
 
-    // Update campaign with calculated totals
-    await db.query(
-      `UPDATE campaigns 
-       SET current_amount = ?, 
-           backers_count = ?,
-           updated_at = NOW()
-       WHERE id = ?`,
-      [newCurrentAmount, newBackersCount, campaignId]
-    );
+      const donationId = donationResult.insertId;
 
-    return NextResponse.json(
-      {
-        message: 'Donation successful',
-        donation: {
-          id: donationResult.insertId,
-          amount: donationAmount,
-          campaign_id: campaignId,
-          user_id: userId,
-          anonymous: anonymous,
+      // Insert platform fee
+      await db.query(
+        `INSERT INTO platform_fees (donation_id, amount) VALUES (?, ?)`,
+        [donationId, platformFeeAmount]
+      );
+
+      // Update campaign amounts
+      await db.query(
+        `UPDATE campaigns SET 
+          current_amount = current_amount + ?,
+          backers_count = (
+            SELECT COUNT(DISTINCT user_id) 
+            FROM donations 
+            WHERE campaign_id = ? AND payment_status = 'completed'
+          ),
+          updated_at = NOW()
+        WHERE id = ?`,
+        [amount, campaignId, campaignId]
+      );
+
+      // Commit transaction
+      await db.query('COMMIT');
+
+      // Calculate total current amount from all donations for this campaign
+      const totalAmountResult = (await db.query(
+        `SELECT 
+          COALESCE(SUM(amount), 0) as total_amount,
+          COUNT(*) as total_backers
+         FROM donations 
+         WHERE campaign_id = ? AND payment_status = 'completed'`,
+        [campaignId]
+      )) as RowDataPacket[];
+
+      const newCurrentAmount = totalAmountResult[0].total_amount;
+      const newBackersCount = totalAmountResult[0].total_backers;
+
+      return NextResponse.json(
+        {
+          message: 'Donation successful',
+          donation: {
+            id: donationId,
+            amount: donationAmount,
+            campaign_id: campaignId,
+            user_id: userId,
+            anonymous: anonymous,
+          },
+          campaign: {
+            current_amount: newCurrentAmount,
+            backers_count: newBackersCount,
+          },
         },
-        campaign: {
-          current_amount: newCurrentAmount,
-          backers_count: newBackersCount,
-        },
-      },
-      { status: 201 }
-    );
+        { status: 201 }
+      );
+    } catch (error) {
+      await db.query('ROLLBACK');
+      throw error;
+    }
   } catch (error) {
     console.error('Error processing donation:', error);
     return NextResponse.json(
-      { error: 'Failed to process donation' },
+      { error: 'Internal server error' },
       { status: 500 }
     );
   }

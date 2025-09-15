@@ -14,6 +14,7 @@ interface Campaign {
   short_description: string;
   goal_amount: number;
   current_amount: number;
+  start_date: string;
   end_date: string;
   featured_image?: string;
   status: string;
@@ -22,8 +23,9 @@ interface Campaign {
   created_at: string;
   creator_name: string;
   creator_email: string;
-  organization_name?: string; // Add organization_name field
+  organization_name?: string;
   user_id?: number;
+  creator_profile_image?: string; // Add creator profile image field
 }
 
 interface Donation {
@@ -284,7 +286,7 @@ export default function CampaignDetailPage() {
         },
         body: JSON.stringify({
           userId: user.id,
-          amount: parseFloat(donationAmount),
+          amount: parseInt(donationAmount), // Convert to integer
           message: donationMessage.trim() || null,
           anonymous: isAnonymous,
           paymentMethod: 'online',
@@ -650,12 +652,20 @@ export default function CampaignDetailPage() {
               </h1>
 
               <div className="flex items-center mb-4">
-                <div className="w-12 h-12 rounded-full bg-gray-300 mr-4 flex items-center justify-center">
-                  <span className="text-gray-600 font-semibold">
-                    {(
-                      campaign.organization_name || campaign.creator_name
-                    )?.charAt(0) || 'U'}
-                  </span>
+                <div className="w-12 h-12 rounded-full bg-gray-300 mr-4 flex items-center justify-center overflow-hidden">
+                  {campaign.creator_profile_image ? (
+                    <img
+                      src={campaign.creator_profile_image}
+                      alt={campaign.organization_name || campaign.creator_name}
+                      className="w-full h-full object-cover"
+                    />
+                  ) : (
+                    <span className="text-gray-600 font-semibold">
+                      {(
+                        campaign.organization_name || campaign.creator_name
+                      )?.charAt(0) || 'U'}
+                    </span>
+                  )}
                 </div>
                 <div>
                   <p className="font-medium text-gray-900">
@@ -679,9 +689,9 @@ export default function CampaignDetailPage() {
                   </p>
                 </div>
                 <div>
-                  <span className="text-gray-500">Created:</span>
+                  <span className="text-gray-500">Start Date:</span>
                   <p className="font-semibold text-gray-900">
-                    {formatDate(campaign.created_at)}
+                    {formatDate(campaign.start_date)}
                   </p>
                 </div>
                 <div>
@@ -975,64 +985,36 @@ export default function CampaignDetailPage() {
 
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            {/* Campaign Management Card for Creator/Admin */}
-            {(isCreator || isAdmin) && (
+            {/* Campaign Management Card for Creator only */}
+            {isCreator && (
               <div className="bg-white rounded-lg shadow-md p-6 mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  {isCreator ? 'Campaign Management' : 'Admin Actions'}
+                  Campaign Management
                 </h3>
                 <div className="space-y-3">
-                  {isCreator && (
-                    <>
-                      <Link
-                        href={`/campaigns/${campaign.id}/edit`}
-                        className="block w-full text-center bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300 font-medium"
-                      >
-                        Edit Campaign
-                      </Link>
-                      <Link
-                        href={`/my-campaigns/${campaign.id}/post-update`}
-                        className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-medium"
-                      >
-                        Post Update
-                      </Link>
-                      <Link
-                        href={`/my-campaigns/${campaign.id}/donors`}
-                        className="block w-full text-center bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition duration-300 font-medium"
-                      >
-                        View Donors ({campaign.backers_count})
-                      </Link>
-                      <div className="text-center">
-                        <span className="text-sm text-gray-600">
-                          Answer questions in the Q&A section below
-                        </span>
-                      </div>
-                    </>
-                  )}
-                  {isAdmin && (
-                    <>
-                      <Link
-                        href={`/admin/campaigns/${campaign.id}`}
-                        className="block w-full text-center bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition duration-300 font-medium"
-                      >
-                        Admin Panel
-                      </Link>
-                      <button
-                        onClick={() => {
-                          // Toggle featured status functionality for admin
-                          console.log(
-                            'Toggle featured status for campaign:',
-                            campaign.id
-                          );
-                        }}
-                        className="w-full bg-yellow-600 text-white py-2 px-4 rounded-md hover:bg-yellow-700 transition duration-300 font-medium"
-                      >
-                        {campaign.is_featured
-                          ? 'Remove Featured'
-                          : 'Make Featured'}
-                      </button>
-                    </>
-                  )}
+                  <Link
+                    href={`/campaigns/${campaign.id}/edit`}
+                    className="block w-full text-center bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300 font-medium"
+                  >
+                    Edit Campaign
+                  </Link>
+                  <Link
+                    href={`/my-campaigns/${campaign.id}/post-update`}
+                    className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-medium"
+                  >
+                    Post Update
+                  </Link>
+                  <Link
+                    href={`/my-campaigns/${campaign.id}/donors`}
+                    className="block w-full text-center bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition duration-300 font-medium"
+                  >
+                    View Donors ({campaign.backers_count})
+                  </Link>
+                  <div className="text-center">
+                    <span className="text-sm text-gray-600">
+                      Answer questions in the Q&A section below
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
@@ -1067,27 +1049,21 @@ export default function CampaignDetailPage() {
                 {/* Donation Form */}
                 <form onSubmit={handleDonate} className="space-y-4">
                   <div>
-                    <label
-                      htmlFor="amount"
-                      className="block text-sm font-medium text-gray-700 mb-1"
-                    >
-                      Donation Amount (MYR)
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Donation Amount (MYR) *
                     </label>
                     <input
                       type="number"
-                      id="amount"
                       min="1"
-                      step="0.01"
-                      required
                       value={donationAmount}
-                      onChange={handleDonationAmountChange}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-600 text-gray-900"
-                      placeholder="Enter amount (e.g. 10.50)"
-                      disabled={
-                        user &&
-                        (user.role !== 'donor' || campaign.status !== 'active')
-                      }
+                      onChange={(e) => setDonationAmount(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
+                      placeholder="e.g. 50"
+                      required
                     />
+                    <p className="text-sm text-gray-600 mt-1">
+                      Enter whole numbers only (minimum: MYR 1)
+                    </p>
                   </div>
 
                   <div>
@@ -1228,7 +1204,7 @@ export default function CampaignDetailPage() {
                       {campaign.status}
                     </span>
                   </div>
-                  {campaign.is_featured && (
+                  {campaign.is_featured === true && (
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-700 font-medium">
                         Featured

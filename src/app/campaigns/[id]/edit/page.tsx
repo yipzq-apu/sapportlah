@@ -218,6 +218,18 @@ export default function EditCampaignPage() {
     return new Date(parseInt(year), parseInt(month) - 1, parseInt(day));
   };
 
+  const formatDateForInput = (dateString: string) => {
+    if (!dateString) return '';
+    const [day, month, year] = dateString.split('/');
+    return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+  };
+
+  const formatDateFromInput = (dateString: string) => {
+    if (!dateString) return '';
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  };
+
   const validateDates = () => {
     const errors: { [key: string]: string } = {};
     const today = new Date();
@@ -449,6 +461,7 @@ export default function EditCampaignPage() {
         },
         body: JSON.stringify({
           ...formData,
+          goal_amount: parseInt(formData.goal_amount), // Convert to integer
           start_date: formatDateForAPI(formData.start_date),
           end_date: formatDateForAPI(formData.end_date),
           userId: user.id,
@@ -535,9 +548,38 @@ export default function EditCampaignPage() {
     }
   };
 
-  const getMinEndDate = () => {
+  const capitalizeStatus = (status: string) => {
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  // Calculate date ranges for validation display
+  const getMinStartDate = () => {
     const date = new Date();
-    date.setDate(date.getDate() + 1);
+    date.setDate(date.getDate() + 3);
+    return date.toISOString().split('T')[0];
+  };
+
+  const getMaxStartDate = () => {
+    const date = new Date();
+    date.setDate(date.getDate() + 10);
+    return date.toISOString().split('T')[0];
+  };
+
+  const getMinEndDate = () => {
+    if (!formData.start_date) return '';
+    const startDate = parseDate(formData.start_date);
+    if (!startDate) return '';
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + 7);
+    return date.toISOString().split('T')[0];
+  };
+
+  const getMaxEndDate = () => {
+    if (!formData.start_date) return '';
+    const startDate = parseDate(formData.start_date);
+    if (!startDate) return '';
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + 60);
     return date.toISOString().split('T')[0];
   };
 
@@ -626,8 +668,8 @@ export default function EditCampaignPage() {
         {/* Status Alert */}
         <div className={`border rounded-lg p-4 mb-6 ${getStatusColor()}`}>
           <div className="flex items-center">
-            <span className="font-medium capitalize">
-              {formData.status} Campaign
+            <span className="font-medium">
+              {capitalizeStatus(formData.status)} Campaign
             </span>
           </div>
           <p className="text-sm mt-1">{getStatusMessage()}</p>
@@ -886,13 +928,15 @@ export default function EditCampaignPage() {
                   name="goal_amount"
                   required
                   min="100"
-                  step="0.01"
                   value={formData.goal_amount}
                   onChange={handleInputChange}
                   disabled={!canEdit}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-400 disabled:bg-gray-100 disabled:cursor-not-allowed"
                   placeholder="e.g. 10000"
                 />
+                <p className="text-sm text-gray-600 mt-1">
+                  Enter whole numbers only (e.g., 10000)
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -901,12 +945,23 @@ export default function EditCampaignPage() {
                     Campaign Start Date *
                   </label>
                   <input
-                    type="text"
+                    type="date"
                     name="start_date"
                     required
-                    placeholder="DD/MM/YYYY"
-                    value={formData.start_date}
-                    onChange={handleInputChange}
+                    min={getMinStartDate()}
+                    max={getMaxStartDate()}
+                    value={formatDateForInput(formData.start_date)}
+                    onChange={(e) => {
+                      const { name, value } = e.target;
+                      setFormData((prev) => ({
+                        ...prev,
+                        [name]: formatDateFromInput(value),
+                      }));
+                      // Clear date errors when user changes dates
+                      if (name === 'start_date' || name === 'end_date') {
+                        setDateErrors((prev) => ({ ...prev, [name]: '' }));
+                      }
+                    }}
                     onBlur={validateDates}
                     disabled={!canEdit}
                     className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed ${
@@ -930,12 +985,23 @@ export default function EditCampaignPage() {
                     Campaign End Date *
                   </label>
                   <input
-                    type="text"
+                    type="date"
                     name="end_date"
                     required
-                    placeholder="DD/MM/YYYY"
-                    value={formData.end_date}
-                    onChange={handleInputChange}
+                    min={getMinEndDate()}
+                    max={getMaxEndDate()}
+                    value={formatDateForInput(formData.end_date)}
+                    onChange={(e) => {
+                      const { name, value } = e.target;
+                      setFormData((prev) => ({
+                        ...prev,
+                        [name]: formatDateFromInput(value),
+                      }));
+                      // Clear date errors when user changes dates
+                      if (name === 'start_date' || name === 'end_date') {
+                        setDateErrors((prev) => ({ ...prev, [name]: '' }));
+                      }
+                    }}
                     onBlur={validateDates}
                     disabled={!canEdit || !formData.start_date}
                     className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 disabled:bg-gray-100 disabled:cursor-not-allowed ${

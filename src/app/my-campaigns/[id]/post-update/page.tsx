@@ -228,7 +228,7 @@ export default function PostUpdatePage() {
                 id="title"
                 value={updateTitle}
                 onChange={(e) => setUpdateTitle(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 text-gray-900 placeholder-gray-400"
                 placeholder="Enter a descriptive title for your update"
                 required
                 maxLength={200}
@@ -251,7 +251,7 @@ export default function PostUpdatePage() {
                 value={updateContent}
                 onChange={(e) => setUpdateContent(e.target.value)}
                 rows={12}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 resize-none"
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition duration-200 resize-none text-gray-900 placeholder-gray-400"
                 placeholder="Share details about your campaign progress, milestones reached, challenges faced, or any important information for your backers..."
                 required
               />

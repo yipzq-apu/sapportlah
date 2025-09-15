@@ -231,13 +231,16 @@ export default function Navbar({ user: propUser }: NavbarProps) {
           {isDropdownOpen && (
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
               <div className="px-4 py-3 border-b border-gray-100">
-                <p className="text-sm font-medium text-gray-900">
+                <p className="text-sm font-medium text-gray-900 truncate">
                   {user.organization_name ||
                     `${user.first_name || user.firstName} ${
                       user.last_name || user.lastName
                     }`}
                 </p>
-                <p className="text-xs text-gray-500">
+                <p
+                  className="text-xs text-gray-500 truncate"
+                  title={user.email || 'No email'}
+                >
                   {user.email || 'No email'}
                 </p>
               </div>
@@ -448,7 +451,6 @@ export default function Navbar({ user: propUser }: NavbarProps) {
               last_name: updatedData.lastName,
               firstName: updatedData.firstName,
               lastName: updatedData.lastName,
-              organization_name: updatedData.organization_name,
               email: updatedData.email,
               phone: updatedData.phone,
               address: updatedData.address,
@@ -469,7 +471,6 @@ export default function Navbar({ user: propUser }: NavbarProps) {
             lastName: updatedData.lastName,
             email: updatedData.email,
             profile_image: updatedData.profile_image,
-            organization_name: updatedData.organization_name,
             phone: updatedData.phone,
             address: updatedData.address,
             notifications: updatedData.notifications ? 1 : 0,

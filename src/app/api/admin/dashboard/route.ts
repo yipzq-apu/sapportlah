@@ -155,35 +155,50 @@ async function getUserStats() {
 
 async function getFinancialStats() {
   try {
-    const [monthlyTrends, financialSummary] = await Promise.all([
-      db.query(
-        `SELECT 
+    // Financial statistics
+    const financialQueries = await Promise.all([
+      // Monthly donation trends
+      db.query(`
+        SELECT 
           DATE_FORMAT(created_at, '%Y-%m') as month,
           COUNT(*) as donation_count,
           SUM(amount) as total_amount
         FROM donations 
-        WHERE payment_status = 'completed' 
-          AND created_at >= DATE_SUB(NOW(), INTERVAL 6 MONTH)
+        WHERE payment_status = 'completed'
+        AND created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
         GROUP BY DATE_FORMAT(created_at, '%Y-%m')
-        ORDER BY month ASC`
-      ) as Promise<RowDataPacket[]>,
+        ORDER BY month DESC
+        LIMIT 12
+      `),
 
-      db.query(
-        `SELECT 
-          AVG(amount) as avgDonation,
-          COUNT(*) as totalDonations,
-          SUM(amount * 0.05) as platformFees
+      // Average donation and total donations
+      db.query(`
+        SELECT 
+          AVG(amount) as avg_donation,
+          COUNT(*) as total_donations
         FROM donations 
-        WHERE payment_status = 'completed'`
-      ) as Promise<RowDataPacket[]>,
+        WHERE payment_status = 'completed'
+      `),
+
+      // Platform fees from platform_fees table
+      db.query(`
+        SELECT SUM(amount) as total_platform_fees
+        FROM platform_fees
+      `),
     ]);
 
-    return {
-      monthlyTrends,
-      avgDonation: parseFloat(financialSummary[0].avgDonation || 0),
-      totalDonations: financialSummary[0].totalDonations,
-      platformFees: parseFloat(financialSummary[0].platformFees || 0),
+    const monthlyTrends = financialQueries[0] as any[];
+    const donationStats = (financialQueries[1] as any[])[0];
+    const platformFeesResult = (financialQueries[2] as any[])[0];
+
+    const financialStats = {
+      monthlyTrends: monthlyTrends,
+      avgDonation: parseFloat(donationStats?.avg_donation || 0),
+      totalDonations: donationStats?.total_donations || 0,
+      platformFees: parseFloat(platformFeesResult?.total_platform_fees || 0),
     };
+
+    return financialStats;
   } catch (error) {
     console.error('Error in getFinancialStats:', error);
     return {
@@ -258,75 +273,75 @@ async function getRecentActivities() {
 
 async function getPendingItems() {
   try {
-    // Limit queries and data to reduce load
-    const [pendingCampaigns, failedDonations] = await Promise.all([
-      db.query(
-        `SELECT 
-          c.id,
-          c.title,
-          c.created_at,
-          CONCAT(u.first_name, ' ', u.last_name) as creator_name,
-          u.email as creator_email
+    // Pending items that need attention
+    const pendingQueries = await Promise.all([
+      // Pending campaigns
+      db.query(`
+        SELECT c.id, c.title, c.created_at, 
+               CONCAT(u.first_name, ' ', u.last_name) as creator_name
         FROM campaigns c
-        JOIN users u ON c.user_id = u.id
+        LEFT JOIN users u ON c.user_id = u.id
         WHERE c.status = 'pending'
-        ORDER BY c.created_at ASC
-        LIMIT 10`
-      ) as Promise<RowDataPacket[]>,
+        ORDER BY c.created_at DESC
+        LIMIT 10
+      `),
 
-      db.query(
-        `SELECT 
-          d.id,
-          d.amount,
-          d.created_at,
-          d.payment_status,
-          CONCAT(u.first_name, ' ', u.last_name) as donor_name,
-          c.title as campaign_title
-        FROM donations d
-        JOIN users u ON d.user_id = u.id
-        JOIN campaigns c ON d.campaign_id = c.id
-        WHERE d.payment_status IN ('failed', 'pending')
-        ORDER BY d.created_at DESC
-        LIMIT 5`
-      ) as Promise<RowDataPacket[]>,
+      // Unanswered questions from contact_us table
+      db.query(`
+        SELECT id, name, email, message, created_at, status
+        FROM contact_us
+        WHERE status != 'resolved'
+        ORDER BY created_at DESC
+        LIMIT 10
+      `),
+
+      // Failed campaigns
+      db.query(`
+        SELECT c.id, c.title, c.created_at,
+               CONCAT(u.first_name, ' ', u.last_name) as creator_name
+        FROM campaigns c
+        LEFT JOIN users u ON c.user_id = u.id
+        WHERE c.status = 'failed'
+        ORDER BY c.created_at DESC
+        LIMIT 10
+      `),
+
+      // Get actual counts
+      db.query(`
+        SELECT 
+          (SELECT COUNT(*) FROM campaigns WHERE status = 'pending') as pendingCampaignsCount,
+          (SELECT COUNT(*) FROM contact_us WHERE status != 'resolved') as unansweredQuestionsCount,
+          (SELECT COUNT(*) FROM campaigns WHERE status = 'failed') as failedCampaignsCount
+      `),
     ]);
 
-    // Simplified query for unanswered questions to reduce complexity
-    const unansweredQuestions = (await db.query(
-      `SELECT 
-        q.id,
-        q.content as question,
-        q.created_at,
-        c.title as campaign_title,
-        CONCAT(u.first_name, ' ', u.last_name) as asker_name
-      FROM comments q
-      JOIN campaigns c ON q.campaign_id = c.id
-      JOIN users u ON q.user_id = u.id
-      WHERE q.parent_id IS NULL 
-      ORDER BY q.created_at DESC
-      LIMIT 10`
-    )) as RowDataPacket[];
+    const pendingCampaigns = pendingQueries[0] as any[];
+    const unansweredQuestions = pendingQueries[1] as any[];
+    const failedCampaigns = pendingQueries[2] as any[];
+    const counts = (pendingQueries[3] as any[])[0];
 
-    return {
+    const pendingItems = {
       pendingCampaigns,
       unansweredQuestions,
-      failedDonations,
+      failedCampaigns,
       counts: {
-        pendingCampaigns: pendingCampaigns.length,
-        unansweredQuestions: unansweredQuestions.length,
-        failedDonations: failedDonations.length,
+        pendingCampaigns: counts.pendingCampaignsCount,
+        unansweredQuestions: counts.unansweredQuestionsCount,
+        failedCampaigns: counts.failedCampaignsCount,
       },
     };
+
+    return pendingItems;
   } catch (error) {
     console.error('Error in getPendingItems:', error);
     return {
       pendingCampaigns: [],
       unansweredQuestions: [],
-      failedDonations: [],
+      failedCampaigns: [],
       counts: {
         pendingCampaigns: 0,
         unansweredQuestions: 0,
-        failedDonations: 0,
+        failedCampaigns: 0,
       },
     };
   }

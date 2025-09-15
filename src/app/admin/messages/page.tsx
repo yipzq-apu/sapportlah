@@ -12,13 +12,6 @@ interface ContactMessage {
   updated_at: string;
 }
 
-interface Pagination {
-  page: number;
-  limit: number;
-  total: number;
-  totalPages: number;
-}
-
 export default function AdminMessagesPage() {
   const [messages, setMessages] = useState<ContactMessage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -27,12 +20,6 @@ export default function AdminMessagesPage() {
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(
     null
   );
-  const [pagination, setPagination] = useState<Pagination>({
-    page: 1,
-    limit: 20,
-    total: 0,
-    totalPages: 0,
-  });
   const [stats, setStats] = useState({
     total: 0,
     new: 0,
@@ -43,15 +30,12 @@ export default function AdminMessagesPage() {
   useEffect(() => {
     fetchMessages();
     fetchStats();
-  }, [filter, pagination.page]);
+  }, [filter]);
 
   const fetchMessages = async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({
-        page: pagination.page.toString(),
-        limit: pagination.limit.toString(),
-      });
+      const params = new URLSearchParams();
 
       if (filter !== 'all') {
         params.append('status', filter);
@@ -60,8 +44,11 @@ export default function AdminMessagesPage() {
       const response = await fetch(`/api/admin/messages?${params}`);
       if (response.ok) {
         const data = await response.json();
-        setMessages(data.messages || []);
-        setPagination(data.pagination);
+        // Filter out resolved messages from display
+        const filteredMessages = (data.messages || []).filter(
+          (message: ContactMessage) => message.status !== 'resolved'
+        );
+        setMessages(filteredMessages);
       } else {
         setError('Failed to load messages');
       }
@@ -181,7 +168,6 @@ export default function AdminMessagesPage() {
             <option value="all">All Messages</option>
             <option value="new">New</option>
             <option value="in progress">In Progress</option>
-            <option value="resolved">Resolved</option>
           </select>
         </div>
       </div>
@@ -296,35 +282,6 @@ export default function AdminMessagesPage() {
           </div>
         )}
       </div>
-
-      {/* Pagination */}
-      {pagination.totalPages > 1 && (
-        <div className="flex justify-center items-center space-x-4 mt-6">
-          <button
-            onClick={() =>
-              setPagination((prev) => ({ ...prev, page: prev.page - 1 }))
-            }
-            disabled={pagination.page === 1}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          >
-            Previous
-          </button>
-
-          <span className="text-sm text-gray-700">
-            Page {pagination.page} of {pagination.totalPages}
-          </span>
-
-          <button
-            onClick={() =>
-              setPagination((prev) => ({ ...prev, page: prev.page + 1 }))
-            }
-            disabled={pagination.page === pagination.totalPages}
-            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 disabled:opacity-50"
-          >
-            Next
-          </button>
-        </div>
-      )}
 
       {/* Message Detail Modal */}
       {selectedMessage && (

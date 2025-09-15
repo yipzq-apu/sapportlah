@@ -32,8 +32,75 @@ export default function AdminLayout({
 
     setUser({
       ...parsedUser,
-      avatar: '/api/placeholder/40/40',
+      name: `${parsedUser.firstName} ${parsedUser.lastName}`,
+      initials: parsedUser.firstName
+        ? parsedUser.firstName.charAt(0).toUpperCase()
+        : 'A',
     });
+
+    // Listen for profile updates
+    const handleProfileUpdate = (event: CustomEvent) => {
+      const updatedData = event.detail;
+      console.log(
+        'Profile update event received in admin layout:',
+        updatedData
+      ); // Debug log
+
+      setUser((prevUser: any) => {
+        if (!prevUser) return null;
+
+        const newUser = {
+          ...prevUser,
+          firstName: updatedData.firstName,
+          lastName: updatedData.lastName,
+          name: `${updatedData.firstName} ${updatedData.lastName}`,
+          initials: updatedData.firstName
+            ? updatedData.firstName.charAt(0).toUpperCase()
+            : 'A',
+          email: updatedData.email,
+        };
+
+        console.log('Updated user state:', newUser); // Debug log
+        return newUser;
+      });
+
+      // Also update localStorage with the new profile data
+      const userData = localStorage.getItem('userData');
+      if (userData) {
+        const parsedUserData = JSON.parse(userData);
+        const updatedUserData = {
+          ...parsedUserData,
+          firstName: updatedData.firstName,
+          lastName: updatedData.lastName,
+          email: updatedData.email,
+          profile_image: updatedData.profile_image,
+          phone: updatedData.phone,
+          address: updatedData.address,
+          notifications: updatedData.notifications ? 1 : 0,
+          // Keep both field name formats for compatibility
+          first_name: updatedData.firstName,
+          last_name: updatedData.lastName,
+        };
+
+        localStorage.setItem('userData', JSON.stringify(updatedUserData));
+        console.log('Updated localStorage:', updatedUserData); // Debug log
+      }
+    };
+
+    // Make sure to add the event listener after initial user setup
+    if (parsedUser.role === 'admin') {
+      window.addEventListener(
+        'userProfileUpdated',
+        handleProfileUpdate as EventListener
+      );
+    }
+
+    return () => {
+      window.removeEventListener(
+        'userProfileUpdated',
+        handleProfileUpdate as EventListener
+      );
+    };
   }, [router]);
 
   const handleLogout = () => {
@@ -71,9 +138,7 @@ export default function AdminLayout({
     },
     { name: 'User Management', href: '/admin/users', icon: '👥' },
     { name: 'Contact Messages', href: '/admin/messages', icon: '💬' },
-    { name: 'Reports', href: '/admin/reports', icon: '📈' },
     { name: 'Profile', href: '/admin/profile', icon: '👤' },
-    { name: 'Settings', href: '/admin/settings', icon: '⚙️' },
   ];
 
   // Add null check for user
@@ -211,11 +276,9 @@ export default function AdminLayout({
             {!sidebarCollapsed ? (
               <>
                 <div className="flex items-center mb-3">
-                  <img
-                    src={user.avatar || '/api/placeholder/40/40'}
-                    alt={user.name}
-                    className="w-8 h-8 rounded-full mr-3"
-                  />
+                  <div className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center mr-3 text-sm font-semibold">
+                    {user.initials}
+                  </div>
                   <div>
                     <p className="text-sm font-medium text-gray-900">
                       {user.name}
@@ -232,12 +295,12 @@ export default function AdminLayout({
               </>
             ) : (
               <div className="flex flex-col items-center space-y-2">
-                <img
-                  src={user.avatar || '/api/placeholder/40/40'}
-                  alt={user.name}
-                  className="w-8 h-8 rounded-full"
+                <div
+                  className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center text-sm font-semibold"
                   title={user.name}
-                />
+                >
+                  {user.initials}
+                </div>
                 <button
                   onClick={handleLogout}
                   className="p-2 text-red-600 hover:bg-red-50 rounded-md transition-colors"

@@ -264,7 +264,7 @@ export default function CreateCampaignPage() {
         return;
       }
 
-      // Create campaign first
+      // Create campaign first with properly formatted goal_amount
       const response = await fetch('/api/campaigns/create', {
         method: 'POST',
         headers: {
@@ -272,6 +272,7 @@ export default function CreateCampaignPage() {
         },
         body: JSON.stringify({
           ...formData,
+          goal_amount: parseInt(formData.goal_amount), // Convert to integer
           userId: user.id,
         }),
       });
@@ -317,7 +318,7 @@ export default function CreateCampaignPage() {
   // Calculate date ranges for validation display
   const getMinStartDate = () => {
     const date = new Date();
-    date.setDate(date.getDate() + 4);
+    date.setDate(date.getDate() + 3);
     return date.toISOString().split('T')[0];
   };
 
@@ -564,12 +565,14 @@ export default function CreateCampaignPage() {
                   name="goal_amount"
                   required
                   min="100"
-                  step="0.01"
                   value={formData.goal_amount}
                   onChange={handleInputChange}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900 placeholder-gray-300"
                   placeholder="e.g. 10000"
                 />
+                <p className="text-sm text-gray-600 mt-1">
+                  Enter whole numbers only (e.g., 10000)
+                </p>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

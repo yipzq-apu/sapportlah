@@ -114,7 +114,7 @@ export async function PATCH(
 
     // Update image caption
     await db.query(
-      'UPDATE campaign_images SET caption = ?, updated_at = NOW() WHERE id = ? AND campaign_id = ?',
+      'UPDATE campaign_images SET caption = ? WHERE id = ? AND campaign_id = ?',
       [caption || null, imageId, campaignId]
     );
 

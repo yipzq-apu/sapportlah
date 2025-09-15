@@ -9,7 +9,6 @@ export async function PUT(request: NextRequest) {
       firstName,
       lastName,
       email,
-      organizationName,
       phone,
       address,
       profileImage,
@@ -23,7 +22,6 @@ export async function PUT(request: NextRequest) {
       firstName,
       lastName,
       email,
-      organizationName,
       phone,
       address,
       profileImage, // Debug log to see what image URL is being sent
@@ -63,13 +61,12 @@ export async function PUT(request: NextRequest) {
       }
     }
 
-    // Build update query with correct column name
+    // Build update query without organization_name
     let updateQuery = `
       UPDATE users SET 
         first_name = ?, 
         last_name = ?, 
         email = ?, 
-        organization_name = ?, 
         phone = ?, 
         address = ?, 
         profile_image = ?, 
@@ -81,7 +78,6 @@ export async function PUT(request: NextRequest) {
       firstName,
       lastName,
       email,
-      organizationName || null,
       phone || null,
       address || null,
       profileImage || null,

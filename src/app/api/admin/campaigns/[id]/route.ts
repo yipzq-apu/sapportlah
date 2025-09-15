@@ -88,13 +88,18 @@ export async function PATCH(
 
     const campaign = campaigns[0] as any;
 
-    // Update campaign status - only update fields that exist in your table
-    const updateQuery =
-      status === 'rejected'
-        ? 'UPDATE campaigns SET status = ?, reason = ?, updated_at = NOW() WHERE id = ?'
-        : 'UPDATE campaigns SET status = ?, reason = NULL, updated_at = NOW() WHERE id = ?';
+    // Update campaign status - fix the parameter mismatch
+    let updateQuery, updateParams;
 
-    const updateParams = [status, status === 'rejected' ? reason : null, id];
+    if (status === 'rejected') {
+      updateQuery =
+        'UPDATE campaigns SET status = ?, reason = ?, updated_at = NOW() WHERE id = ?';
+      updateParams = [status, reason, id];
+    } else {
+      updateQuery =
+        'UPDATE campaigns SET status = ?, reason = NULL, updated_at = NOW() WHERE id = ?';
+      updateParams = [status, id];
+    }
 
     await db.query(updateQuery, updateParams);
 

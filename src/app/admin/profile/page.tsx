@@ -152,6 +152,7 @@ export default function AdminProfilePage() {
         setShowPasswordChange(false);
 
         alert('Profile updated successfully!');
+        window.location.reload();
       } else {
         const errorData = await response.json();
         alert(errorData.error || 'Failed to update profile');
