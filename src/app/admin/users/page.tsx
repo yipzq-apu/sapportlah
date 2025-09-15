@@ -17,6 +17,9 @@ interface User {
   phone?: string;
   organization_name?: string;
   supporting_document?: string;
+  ic_passport_type?: string;
+  ic_passport_number?: string;
+  address?: string;
 }
 
 export default function AdminUsersPage() {
@@ -45,6 +48,8 @@ export default function AdminUsersPage() {
     phone: '',
   });
   const [creating, setCreating] = useState(false);
+  const [showPdfModal, setShowPdfModal] = useState(false);
+  const [currentPdfUrl, setCurrentPdfUrl] = useState('');
 
   useEffect(() => {
     fetchUsers();
@@ -162,9 +167,7 @@ export default function AdminUsersPage() {
         setShowCreateModal(false);
         fetchUsers(); // Refresh user list
         fetchStats(); // Refresh stats
-        alert(
-          `Account created successfully! Temporary password: ${data.tempPassword}`
-        );
+        alert(`Account created successfully!`);
       } else {
         alert(`Error: ${data.error}`);
       }
@@ -174,6 +177,32 @@ export default function AdminUsersPage() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const viewSupportingDocument = (url: string) => {
+    // Convert Cloudinary raw URL to PDF viewable URL
+    let viewableUrl = url;
+
+    // Check if it's a Cloudinary URL and convert to PDF viewer format
+    if (url.includes('cloudinary.com') && url.includes('/raw/upload/')) {
+      // Replace /raw/upload/ with /image/upload/ and add PDF conversion
+      viewableUrl = url
+        .replace('/raw/upload/', '/image/upload/f_auto,q_auto/')
+        .replace(/\.(pdf|PDF)$/, '.pdf');
+
+      // Alternative: Use Google Docs viewer for better PDF rendering
+      viewableUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
+        url
+      )}&embedded=true`;
+    } else if (url.includes('cloudinary.com') && url.includes('/upload/')) {
+      // For other Cloudinary uploads, use Google Docs viewer
+      viewableUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
+        url
+      )}&embedded=true`;
+    }
+
+    setCurrentPdfUrl(viewableUrl);
+    setShowPdfModal(true);
   };
 
   const getStatusColor = (status: string) => {
@@ -364,15 +393,15 @@ export default function AdminUsersPage() {
                       )}
                       {user.supporting_document && (
                         <div className="mt-2">
-                          <a
-                            href={user.supporting_document}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            onClick={() =>
+                              viewSupportingDocument(user.supporting_document!)
+                            }
                             className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700"
                           >
                             <span className="mr-1">📄</span>
                             View Supporting Document
-                          </a>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -398,10 +427,9 @@ export default function AdminUsersPage() {
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                     <div>
                       <div>Joined: {formatDate(user.created_at)}</div>
-                      <div>Last login: {formatDate(user.last_login)}</div>
                       {user.role === 'donor' && user.total_donations && (
                         <div className="text-green-600">
-                          ${user.total_donations} donated
+                          RM{user.total_donations} donated
                         </div>
                       )}
                       {user.role === 'creator' && (
@@ -495,7 +523,7 @@ export default function AdminUsersPage() {
                     required
                     value={createForm.first_name}
                     onChange={handleCreateInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-600 placeholder-gray-400"
                   />
                 </div>
 
@@ -509,7 +537,7 @@ export default function AdminUsersPage() {
                     required
                     value={createForm.last_name}
                     onChange={handleCreateInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-600 placeholder-gray-400"
                   />
                 </div>
 
@@ -523,7 +551,7 @@ export default function AdminUsersPage() {
                     required
                     value={createForm.email}
                     onChange={handleCreateInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-600 placeholder-gray-400"
                   />
                 </div>
 
@@ -535,7 +563,7 @@ export default function AdminUsersPage() {
                     name="role"
                     value={createForm.role}
                     onChange={handleCreateInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-600"
                   >
                     <option value="admin">Admin</option>
                     <option value="creator">Creator</option>
@@ -618,6 +646,39 @@ export default function AdminUsersPage() {
                   </div>
                 )}
 
+                {selectedUser.ic_passport_type && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      ID Type
+                    </label>
+                    <p className="text-sm text-gray-900 capitalize">
+                      {selectedUser.ic_passport_type}
+                    </p>
+                  </div>
+                )}
+
+                {selectedUser.ic_passport_number && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      ID Number
+                    </label>
+                    <p className="text-sm text-gray-900">
+                      {selectedUser.ic_passport_number}
+                    </p>
+                  </div>
+                )}
+
+                {selectedUser.address && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700">
+                      Address
+                    </label>
+                    <p className="text-sm text-gray-900">
+                      {selectedUser.address}
+                    </p>
+                  </div>
+                )}
+
                 <div>
                   <label className="block text-sm font-medium text-gray-700">
                     Role
@@ -650,15 +711,6 @@ export default function AdminUsersPage() {
                   </label>
                   <p className="text-sm text-gray-900">
                     {formatDate(selectedUser.created_at)}
-                  </p>
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">
-                    Last Login
-                  </label>
-                  <p className="text-sm text-gray-900">
-                    {formatDate(selectedUser.last_login)}
                   </p>
                 </div>
 
@@ -733,7 +785,7 @@ export default function AdminUsersPage() {
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500"
+                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-red-500 focus:border-red-500 text-gray-900 placeholder-gray-400"
                 rows={4}
                 placeholder="Enter reason for rejection..."
                 required
@@ -754,6 +806,57 @@ export default function AdminUsersPage() {
                   Reject User
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* PDF Viewer Modal */}
+      {showPdfModal && currentPdfUrl && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-4 mx-auto border w-11/12 max-w-6xl h-5/6 shadow-lg rounded-md bg-white">
+            <div className="flex justify-between items-center p-4 border-b">
+              <h3 className="text-lg font-medium text-gray-900">
+                Supporting Document
+              </h3>
+              <div className="flex space-x-2">
+                <a
+                  href={
+                    currentPdfUrl.includes('docs.google.com')
+                      ? currentPdfUrl.split('url=')[1]?.split('&')[0]
+                        ? decodeURIComponent(
+                            currentPdfUrl.split('url=')[1].split('&')[0]
+                          )
+                        : currentPdfUrl
+                      : currentPdfUrl
+                  }
+                  download
+                  className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700"
+                >
+                  Download
+                </a>
+                <button
+                  onClick={() => setShowPdfModal(false)}
+                  className="text-gray-400 hover:text-gray-600"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+            <div className="h-full pb-16">
+              {currentPdfUrl.includes('docs.google.com') ? (
+                <iframe
+                  src={currentPdfUrl}
+                  className="w-full h-full border-0"
+                  title="Supporting Document"
+                />
+              ) : (
+                <iframe
+                  src={`${currentPdfUrl}#toolbar=1&navpanes=1&scrollbar=1`}
+                  className="w-full h-full border-0"
+                  title="Supporting Document"
+                />
+              )}
             </div>
           </div>
         </div>

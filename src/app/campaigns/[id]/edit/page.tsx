@@ -548,10 +548,14 @@ export default function EditCampaignPage() {
     }
   };
 
+  const capitalizeStatus = (status: string) => {
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
   // Calculate date ranges for validation display
   const getMinStartDate = () => {
     const date = new Date();
-    date.setDate(date.getDate() + 4);
+    date.setDate(date.getDate() + 3);
     return date.toISOString().split('T')[0];
   };
 
@@ -664,8 +668,8 @@ export default function EditCampaignPage() {
         {/* Status Alert */}
         <div className={`border rounded-lg p-4 mb-6 ${getStatusColor()}`}>
           <div className="flex items-center">
-            <span className="font-medium capitalize">
-              {formData.status} Campaign
+            <span className="font-medium">
+              {capitalizeStatus(formData.status)} Campaign
             </span>
           </div>
           <p className="text-sm mt-1">{getStatusMessage()}</p>

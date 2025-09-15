@@ -39,11 +39,11 @@ interface AdminDashboardData {
   pendingItems: {
     pendingCampaigns: Array<any>;
     unansweredQuestions: Array<any>;
-    failedDonations: Array<any>;
+    failedCampaigns: Array<any>;
     counts: {
       pendingCampaigns: number;
       unansweredQuestions: number;
-      failedDonations: number;
+      failedCampaigns: number;
     };
   };
 }
@@ -81,6 +81,23 @@ export default function AdminPage() {
       style: 'currency',
       currency: 'MYR',
     }).format(amount);
+  };
+
+  const truncateText = (text: string, maxLength: number) => {
+    if (text.length <= maxLength) return text;
+    return text.substring(0, maxLength) + '...';
+  };
+
+  const capitalizeStatus = (status: string) => {
+    return status.charAt(0).toUpperCase() + status.slice(1);
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-MY', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric',
+    });
   };
 
   if (loading) {
@@ -185,7 +202,7 @@ export default function AdminPage() {
 
         <div className="bg-white rounded-lg shadow-md p-6">
           <div className="flex items-center">
-            <div className="p-3 rounded-full bg-purple-100 text-purple-600 mr-4">
+            <div className="p-3 rounded-full bg-purple-100 text-purple-600 mr-4 flex-shrink-0">
               <svg
                 className="w-6 h-6"
                 fill="none"
@@ -200,9 +217,12 @@ export default function AdminPage() {
                 />
               </svg>
             </div>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-medium text-gray-500">Total Raised</p>
-              <p className="text-2xl font-bold text-gray-900">
+              <p
+                className="text-2xl font-bold text-gray-900 truncate"
+                title={formatCurrency(platformStats.totalDonationsAmount)}
+              >
                 {formatCurrency(platformStats.totalDonationsAmount)}
               </p>
             </div>
@@ -259,9 +279,9 @@ export default function AdminPage() {
               </span>
             </div>
             <div className="flex justify-between">
-              <span className="text-red-700">Failed Donations</span>
+              <span className="text-red-700">Failed Campaigns</span>
               <span className="font-semibold text-red-900">
-                {pendingItems.counts.failedDonations}
+                {pendingItems.counts.failedCampaigns}
               </span>
             </div>
           </div>
@@ -329,29 +349,31 @@ export default function AdminPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Recent Campaigns
           </h3>
-          <div className="space-y-3">
-            {recentActivities.recentCampaigns.slice(0, 5).map((campaign) => (
+          <div className="space-y-4">
+            {recentActivities.recentCampaigns.map((campaign: any) => (
               <div
                 key={campaign.id}
-                className="flex justify-between items-center"
+                className="border-b border-gray-200 pb-3 last:border-b-0"
               >
-                <div>
-                  <p className="font-medium text-gray-900">{campaign.title}</p>
-                  <p className="text-sm text-gray-500">
-                    by {campaign.creator_name}
-                  </p>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <h4
+                      className="font-medium text-gray-900"
+                      title={campaign.title}
+                    >
+                      {truncateText(campaign.title, 50)}
+                    </h4>
+                    <p className="text-sm text-gray-600">
+                      by {campaign.creator_name}
+                    </p>
+                    <p className="text-sm text-gray-500">
+                      Status: {capitalizeStatus(campaign.status)}
+                    </p>
+                  </div>
+                  <span className="text-xs text-gray-400">
+                    {formatDate(campaign.created_at)}
+                  </span>
                 </div>
-                <span
-                  className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${
-                    campaign.status === 'pending'
-                      ? 'bg-yellow-100 text-yellow-800'
-                      : campaign.status === 'active'
-                      ? 'bg-green-100 text-green-800'
-                      : 'bg-gray-100 text-gray-800'
-                  }`}
-                >
-                  {campaign.status}
-                </span>
               </div>
             ))}
           </div>
@@ -362,27 +384,32 @@ export default function AdminPage() {
           <h3 className="text-lg font-semibold text-gray-900 mb-4">
             Recent Donations
           </h3>
-          <div className="space-y-3">
-            {recentActivities.recentDonations.slice(0, 5).map((donation) => (
+          <div className="space-y-4">
+            {recentActivities.recentDonations.map((donation: any) => (
               <div
                 key={donation.id}
-                className="flex justify-between items-center"
+                className="border-b border-gray-200 pb-3 last:border-b-0"
               >
-                <div>
-                  <p className="font-medium text-gray-900">
-                    {formatCurrency(donation.amount)}
-                  </p>
-                  <p className="text-sm text-gray-500">
-                    {donation.anonymous ? 'Anonymous' : donation.donor_name}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className="text-sm text-gray-600">
-                    {donation.campaign_title}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {new Date(donation.created_at).toLocaleDateString()}
-                  </p>
+                <div className="flex justify-between items-start">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-gray-900">
+                        {donation.anonymous ? 'Anonymous' : donation.donor_name}
+                      </span>
+                      <span className="text-blue-600 font-bold">
+                        {formatCurrency(donation.amount)}
+                      </span>
+                    </div>
+                    <p
+                      className="text-sm text-gray-600"
+                      title={donation.campaign_title}
+                    >
+                      to {truncateText(donation.campaign_title, 40)}
+                    </p>
+                  </div>
+                  <span className="text-xs text-gray-400">
+                    {formatDate(donation.created_at)}
+                  </span>
                 </div>
               </div>
             ))}

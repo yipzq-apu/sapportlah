@@ -985,64 +985,36 @@ export default function CampaignDetailPage() {
 
           {/* Sidebar */}
           <div className="lg:col-span-1">
-            {/* Campaign Management Card for Creator/Admin */}
-            {(isCreator || isAdmin) && (
+            {/* Campaign Management Card for Creator only */}
+            {isCreator && (
               <div className="bg-white rounded-lg shadow-md p-6 mb-6">
                 <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                  {isCreator ? 'Campaign Management' : 'Admin Actions'}
+                  Campaign Management
                 </h3>
                 <div className="space-y-3">
-                  {isCreator && (
-                    <>
-                      <Link
-                        href={`/campaigns/${campaign.id}/edit`}
-                        className="block w-full text-center bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300 font-medium"
-                      >
-                        Edit Campaign
-                      </Link>
-                      <Link
-                        href={`/my-campaigns/${campaign.id}/post-update`}
-                        className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-medium"
-                      >
-                        Post Update
-                      </Link>
-                      <Link
-                        href={`/my-campaigns/${campaign.id}/donors`}
-                        className="block w-full text-center bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition duration-300 font-medium"
-                      >
-                        View Donors ({campaign.backers_count})
-                      </Link>
-                      <div className="text-center">
-                        <span className="text-sm text-gray-600">
-                          Answer questions in the Q&A section below
-                        </span>
-                      </div>
-                    </>
-                  )}
-                  {isAdmin && (
-                    <>
-                      <Link
-                        href={`/admin/campaigns/${campaign.id}`}
-                        className="block w-full text-center bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition duration-300 font-medium"
-                      >
-                        Admin Panel
-                      </Link>
-                      <button
-                        onClick={() => {
-                          // Toggle featured status functionality for admin
-                          console.log(
-                            'Toggle featured status for campaign:',
-                            campaign.id
-                          );
-                        }}
-                        className="w-full bg-yellow-600 text-white py-2 px-4 rounded-md hover:bg-yellow-700 transition duration-300 font-medium"
-                      >
-                        {campaign.is_featured
-                          ? 'Remove Featured'
-                          : 'Make Featured'}
-                      </button>
-                    </>
-                  )}
+                  <Link
+                    href={`/campaigns/${campaign.id}/edit`}
+                    className="block w-full text-center bg-green-600 text-white py-2 px-4 rounded-md hover:bg-green-700 transition duration-300 font-medium"
+                  >
+                    Edit Campaign
+                  </Link>
+                  <Link
+                    href={`/my-campaigns/${campaign.id}/post-update`}
+                    className="block w-full text-center bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-300 font-medium"
+                  >
+                    Post Update
+                  </Link>
+                  <Link
+                    href={`/my-campaigns/${campaign.id}/donors`}
+                    className="block w-full text-center bg-purple-600 text-white py-2 px-4 rounded-md hover:bg-purple-700 transition duration-300 font-medium"
+                  >
+                    View Donors ({campaign.backers_count})
+                  </Link>
+                  <div className="text-center">
+                    <span className="text-sm text-gray-600">
+                      Answer questions in the Q&A section below
+                    </span>
+                  </div>
                 </div>
               </div>
             )}

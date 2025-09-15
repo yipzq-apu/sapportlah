@@ -286,6 +286,16 @@ export default function ProfilePage() {
           }
 
           // Trigger a custom event to notify other components (like Navbar) to refresh
+          console.log('Dispatching profile update event with data:', {
+            profile_image: userData.user.profile_image,
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            email: formData.email,
+            phone: formData.phone,
+            address: formData.address,
+            notifications: formData.notifications,
+          }); // Debug log
+
           window.dispatchEvent(
             new CustomEvent('userProfileUpdated', {
               detail: {
@@ -309,6 +319,9 @@ export default function ProfilePage() {
           confirmPassword: '',
         });
         alert('Profile updated successfully!');
+
+        // Reload the page to ensure all components reflect the changes
+        window.location.reload();
       } else {
         const errorData = await response.json();
         console.error('Profile update failed:', errorData);

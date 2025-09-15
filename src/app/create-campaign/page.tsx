@@ -318,7 +318,7 @@ export default function CreateCampaignPage() {
   // Calculate date ranges for validation display
   const getMinStartDate = () => {
     const date = new Date();
-    date.setDate(date.getDate() + 4);
+    date.setDate(date.getDate() + 3);
     return date.toISOString().split('T')[0];
   };
 

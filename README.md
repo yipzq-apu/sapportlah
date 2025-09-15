@@ -6,7 +6,7 @@
 
 1. Sign up for a free Cloudinary account at https://cloudinary.com/
 2. Get your Cloud Name, API Key, and API Secret from your Cloudinary dashboard
-3. Add these to your `.env.local` file:
+3. Add these to your `.env` file:
 
 ```env
 CLOUDINARY_CLOUD_NAME=your_actual_cloud_name
