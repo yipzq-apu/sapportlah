@@ -85,6 +85,7 @@ export default function CampaignDetailPage() {
   const [campaignImages, setCampaignImages] = useState<CampaignImage[]>([]);
   const [selectedImageIndex, setSelectedImageIndex] = useState(-1); // Changed from 0 to -1
   const [userFavorites, setUserFavorites] = useState<number[]>([]);
+  const [donationId, setDonationId] = useState<number | null>(null);
 
   // Helper variables for user roles
   const isCreator =
@@ -278,6 +279,14 @@ export default function CampaignDetailPage() {
       return;
     }
 
+    if (
+      parseFloat(donationAmount) < 10 ||
+      parseFloat(donationAmount) > 100000
+    ) {
+      alert('Donation amount must be between RM10 and RM100,000');
+      return;
+    }
+
     try {
       const response = await fetch(`/api/campaigns/${campaignId}/donate`, {
         method: 'POST',
@@ -297,41 +306,16 @@ export default function CampaignDetailPage() {
 
       if (response.ok) {
         // Update campaign state with new amounts
-        if (campaign) {
-          setCampaign({
-            ...campaign,
-            current_amount: data.campaign.current_amount,
-            backers_count: data.campaign.backers_count,
-          });
-        }
+        setDonationId(data.donation.id);
 
         // Reset form
         setDonationAmount('');
         setDonationMessage('');
         setIsAnonymous(false);
 
-        // Refresh donations list and updates (backer status may have changed)
-        const donationsResponse = await fetch(
-          `/api/campaigns/${campaignId}/donations`
-        );
-        if (donationsResponse.ok) {
-          const donationsData = await donationsResponse.json();
-          setRecentDonations(donationsData.donations || []);
-        }
-
-        // Refresh updates to check new backer status
-        const url = user
-          ? `/api/campaigns/${campaignId}/updates?userId=${user.id}`
-          : `/api/campaigns/${campaignId}/updates`;
-
-        const updatesResponse = await fetch(url);
-        if (updatesResponse.ok) {
-          const updatesData = await updatesResponse.json();
-          setCampaignUpdates(updatesData.updates || []);
-          setIsBacker(updatesData.isBacker || false);
-        }
-
-        alert('Thank you for your donation! Your support means a lot.');
+        localStorage.setItem('amount', donationAmount.toString());
+        localStorage.setItem('donationId', data.donation.id.toString());
+        router.push(`/campaigns/${campaignId}/payment`);
       } else {
         alert(data.error || 'Failed to process donation. Please try again.');
       }
@@ -340,6 +324,96 @@ export default function CampaignDetailPage() {
       alert('Failed to process donation. Please try again.');
     }
   };
+
+  // const handleDonate = async (e: React.FormEvent) => {
+  //   e.preventDefault();
+
+  //   if (!user) {
+  //     router.push(`/login?returnUrl=/campaigns/${campaignId}`);
+  //     return;
+  //   }
+
+  //   // Only donors can donate
+  //   if (user.role !== 'donor') {
+  //     alert('Only donors can make donations to campaigns.');
+  //     return;
+  //   }
+
+  //   // Only allow donations to active campaigns
+  //   if (campaign?.status !== 'active') {
+  //     alert(
+  //       `Cannot donate to a ${campaign?.status} campaign. Only active campaigns accept donations.`
+  //     );
+  //     return;
+  //   }
+
+  //   if (!donationAmount || parseFloat(donationAmount) <= 0) {
+  //     alert('Please enter a valid donation amount');
+  //     return;
+  //   }
+
+  //   try {
+  //     const response = await fetch(`/api/campaigns/${campaignId}/donate`, {
+  //       method: 'POST',
+  //       headers: {
+  //         'Content-Type': 'application/json',
+  //       },
+  //       body: JSON.stringify({
+  //         userId: user.id,
+  //         amount: parseInt(donationAmount), // Convert to integer
+  //         message: donationMessage.trim() || null,
+  //         anonymous: isAnonymous,
+  //         paymentMethod: 'online',
+  //       }),
+  //     });
+
+  //     const data = await response.json();
+
+  //     if (response.ok) {
+  //       // Update campaign state with new amounts
+  //       if (campaign) {
+  //         setCampaign({
+  //           ...campaign,
+  //           current_amount: data.campaign.current_amount,
+  //           backers_count: data.campaign.backers_count,
+  //         });
+  //       }
+
+  //       // Reset form
+  //       setDonationAmount('');
+  //       setDonationMessage('');
+  //       setIsAnonymous(false);
+
+  //       // Refresh donations list and updates (backer status may have changed)
+  //       const donationsResponse = await fetch(
+  //         `/api/campaigns/${campaignId}/donations`
+  //       );
+  //       if (donationsResponse.ok) {
+  //         const donationsData = await donationsResponse.json();
+  //         setRecentDonations(donationsData.donations || []);
+  //       }
+
+  //       // Refresh updates to check new backer status
+  //       const url = user
+  //         ? `/api/campaigns/${campaignId}/updates?userId=${user.id}`
+  //         : `/api/campaigns/${campaignId}/updates`;
+
+  //       const updatesResponse = await fetch(url);
+  //       if (updatesResponse.ok) {
+  //         const updatesData = await updatesResponse.json();
+  //         setCampaignUpdates(updatesData.updates || []);
+  //         setIsBacker(updatesData.isBacker || false);
+  //       }
+
+  //       alert('Thank you for your donation! Your support means a lot.');
+  //     } else {
+  //       alert(data.error || 'Failed to process donation. Please try again.');
+  //     }
+  //   } catch (error) {
+  //     console.error('Error processing donation:', error);
+  //     alert('Failed to process donation. Please try again.');
+  //   }
+  // };
 
   const handleQuestionSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1055,14 +1129,18 @@ export default function CampaignDetailPage() {
                     <input
                       type="number"
                       min="1"
+                      step="1"
                       value={donationAmount}
-                      onChange={(e) => setDonationAmount(e.target.value)}
+                      onChange={(e) => {
+                        const cleaned = e.target.value.replace(/\D/g, ''); // remove non-digits
+                        setDonationAmount(cleaned);
+                      }}
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-gray-900"
                       placeholder="e.g. 50"
                       required
                     />
                     <p className="text-sm text-gray-600 mt-1">
-                      Enter whole numbers only (minimum: MYR 1)
+                      Enter whole numbers only (RM10 to RM100,000)
                     </p>
                   </div>
 
