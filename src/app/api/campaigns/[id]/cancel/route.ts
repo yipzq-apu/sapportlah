@@ -39,7 +39,7 @@ export async function POST(
     }
 
     // Check if campaign can be cancelled
-    const allowedStatuses = ['pending', 'approved', 'rejected'];
+    const allowedStatuses = ['pending', 'approved', 'rejected', 'active'];
     if (!allowedStatuses.includes(campaign.status)) {
       return NextResponse.json(
         { error: `Cannot cancel campaign with status: ${campaign.status}` },
