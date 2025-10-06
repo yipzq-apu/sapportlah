@@ -25,11 +25,9 @@ export async function POST(req: Request) {
 
   if (event.type === 'payment_intent.succeeded') {
     const paymentIntent = event.data.object as Stripe.PaymentIntent;
-
-    const amount = paymentIntent.amount;
+    const amount = paymentIntent.amount / 100;
     const donationId = paymentIntent.metadata?.donationId;
     const campaignId = paymentIntent.metadata?.campaignId;
-
     // Begin transaction
     await db.query('START TRANSACTION');
 
@@ -42,7 +40,6 @@ export async function POST(req: Request) {
             WHERE id = ?`,
         [donationId]
       );
-
       // Update campaign amounts
       await db.query(
         `UPDATE campaigns SET 
@@ -56,7 +53,6 @@ export async function POST(req: Request) {
         WHERE id = ?`,
         [amount, campaignId, campaignId]
       );
-
       // Commit transaction
       await db.query('COMMIT');
     } catch (error) {

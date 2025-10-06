@@ -72,7 +72,8 @@ export async function PATCH(
         c.*,
         u.email as creator_email,
         u.first_name,
-        u.last_name
+        u.last_name,
+        u.notifications
       FROM campaigns c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.id = ?`,
@@ -103,107 +104,113 @@ export async function PATCH(
 
     await db.query(updateQuery, updateParams);
 
-    // Send email notification to campaign creator
-    try {
-      const isApproved = status === 'approved';
-      const emailSubject = isApproved
-        ? `Great news! Your campaign "${campaign.title}" has been approved!`
-        : `Update needed for your campaign "${campaign.title}"`;
+    // Send email notification to campaign creator only if notifications are enabled
+    if (campaign.notifications === 1) {
+      try {
+        const isApproved = status === 'approved';
+        const emailSubject = isApproved
+          ? `Great news! Your campaign "${campaign.title}" has been approved!`
+          : `Update needed for your campaign "${campaign.title}"`;
 
-      await resend.emails.send({
-        from: 'SapportLah Team <onboarding@resend.dev>',
-        to: campaign.creator_email,
-        subject: emailSubject,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: ${isApproved ? '#059669' : '#dc2626'};">
+        await resend.emails.send({
+          from: 'SapportLah Team <onboarding@resend.dev>',
+          to: campaign.creator_email,
+          subject: emailSubject,
+          html: `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+              <h2 style="color: ${isApproved ? '#059669' : '#dc2626'};">
+                ${
+                  isApproved
+                    ? '🎉 Campaign Approved!'
+                    : '📝 Campaign Review Update'
+                }
+              </h2>
+              
+              <p>Dear ${campaign.first_name} ${campaign.last_name},</p>
+              
               ${
                 isApproved
-                  ? '🎉 Campaign Approved!'
-                  : '📝 Campaign Review Update'
+                  ? `
+                <p>Congratulations! Your campaign <strong>"${
+                  campaign.title
+                }"</strong> has been approved by our review team.</p>
+                
+                <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #059669;">
+                  <h3 style="margin-top: 0; color: #059669;">What happens next?</h3>
+                  <ul style="color: #374151;">
+                    <li>Your campaign will go live on the scheduled start date</li>
+                    <li>You can start sharing your campaign with potential supporters</li>
+                    <li>You'll be able to post updates and answer questions from backers</li>
+                    <li>Track your progress through your creator dashboard</li>
+                  </ul>
+                </div>
+                
+                <p>
+                  <a href="${
+                    process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+                  }/campaigns/${id}" 
+                     style="background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                    View Your Campaign
+                  </a>
+                </p>
+              `
+                  : `
+                <p>Your campaign <strong>"${
+                  campaign.title
+                }"</strong> has been reviewed and requires some updates before it can be approved.</p>
+                
+                <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
+                  <h3 style="margin-top: 0; color: #dc2626;">Review Feedback:</h3>
+                  <p style="color: #374151; font-style: italic;">"${reason}"</p>
+                </div>
+                
+                <div style="background-color: #eff6ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                  <h4 style="margin-top: 0; color: #1d4ed8;">Next Steps:</h4>
+                  <ol style="color: #374151;">
+                    <li>Review the feedback provided above</li>
+                    <li>Make the necessary changes to your campaign</li>
+                    <li>Resubmit your campaign for review</li>
+                  </ol>
+                </div>
+                
+                <p>
+                  <a href="${
+                    process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+                  }/campaigns/${id}/edit" 
+                     style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+                    Edit Your Campaign
+                  </a>
+                </p>
+              `
               }
-            </h2>
-            
-            <p>Dear ${campaign.first_name} ${campaign.last_name},</p>
-            
-            ${
-              isApproved
-                ? `
-              <p>Congratulations! Your campaign <strong>"${
-                campaign.title
-              }"</strong> has been approved by our review team.</p>
               
-              <div style="background-color: #f0fdf4; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #059669;">
-                <h3 style="margin-top: 0; color: #059669;">What happens next?</h3>
-                <ul style="color: #374151;">
-                  <li>Your campaign will go live on the scheduled start date</li>
-                  <li>You can start sharing your campaign with potential supporters</li>
-                  <li>You'll be able to post updates and answer questions from backers</li>
-                  <li>Track your progress through your creator dashboard</li>
-                </ul>
-              </div>
+              <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
               
-              <p>
-                <a href="${
-                  process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-                }/campaigns/${id}" 
-                   style="background-color: #059669; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                  View Your Campaign
-                </a>
+              <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
+              
+              <p style="color: #6b7280; font-size: 14px;">
+                Best regards,<br>
+                The SapportLah Team
               </p>
-            `
-                : `
-              <p>Your campaign <strong>"${
-                campaign.title
-              }"</strong> has been reviewed and requires some updates before it can be approved.</p>
               
-              <div style="background-color: #fef2f2; padding: 20px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #dc2626;">
-                <h3 style="margin-top: 0; color: #dc2626;">Review Feedback:</h3>
-                <p style="color: #374151; font-style: italic;">"${reason}"</p>
-              </div>
-              
-              <div style="background-color: #eff6ff; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                <h4 style="margin-top: 0; color: #1d4ed8;">Next Steps:</h4>
-                <ol style="color: #374151;">
-                  <li>Review the feedback provided above</li>
-                  <li>Make the necessary changes to your campaign</li>
-                  <li>Resubmit your campaign for review</li>
-                </ol>
-              </div>
-              
-              <p>
-                <a href="${
-                  process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-                }/campaigns/${id}/edit" 
-                   style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                  Edit Your Campaign
-                </a>
+              <p style="color: #9ca3af; font-size: 12px;">
+                This is an automated message. Please do not reply to this email.
               </p>
-            `
-            }
-            
-            <p>If you have any questions or need assistance, please don't hesitate to contact our support team.</p>
-            
-            <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 30px 0;">
-            
-            <p style="color: #6b7280; font-size: 14px;">
-              Best regards,<br>
-              The SapportLah Team
-            </p>
-            
-            <p style="color: #9ca3af; font-size: 12px;">
-              This is an automated message. Please do not reply to this email.
-            </p>
-          </div>
-        `,
-      });
+            </div>
+          `,
+        });
 
+        console.log(
+          `Campaign ${status} email sent to: ${campaign.creator_email}`
+        );
+      } catch (emailError) {
+        console.error('Failed to send campaign status email:', emailError);
+        // Don't fail the status update if email fails
+      }
+    } else {
       console.log(
-        `Campaign ${status} email sent to: ${campaign.creator_email}`
+        `Campaign ${status} email not sent - notifications disabled for: ${campaign.creator_email}`
       );
-    } catch (emailError) {
-      console.error('Failed to send campaign status email:', emailError);
-      // Don't fail the status update if email fails
     }
 
     // Fetch updated campaign data

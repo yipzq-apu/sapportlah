@@ -13,7 +13,7 @@
 
 ## Step 2: Configure Environment Variables
 
-Add your Google Maps API key to `.env.local`:
+Add your Google Maps API key to `.env`:
 
 ```
 NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=
