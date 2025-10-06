@@ -36,14 +36,12 @@ export async function GET(request: NextRequest) {
     }
 
     // Get total count for pagination
-    const countQuery = query.replace(
-      'SELECT id, name, email, message, status, created_at, updated_at',
-      'SELECT COUNT(*) as total'
-    );
+    const countQuery = `SELECT COUNT(*) as total FROM contact_us WHERE 1=1`;
     const countResult = await db.query(countQuery, params);
-    const total = Array.isArray(countResult)
-      ? (countResult[0] as any).total
-      : 0;
+    const total =
+      Array.isArray(countResult) && countResult.length > 0
+        ? (countResult[0] as any).total
+        : 0;
 
     // Add ordering and pagination
     query += ` ORDER BY created_at DESC LIMIT ? OFFSET ?`;
