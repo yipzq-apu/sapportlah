@@ -29,8 +29,7 @@ export default function FAQPage() {
     {
       id: '2',
       question: 'Is it free to create a campaign?',
-      answer:
-        'Creating a campaign on SapportLah is free. We only charge a small platform fee on successfully funded campaigns to help maintain and improve our services.',
+      answer: 'Creating a campaign on SapportLah is free.',
       category: 'creators',
     },
     {
@@ -71,8 +70,7 @@ export default function FAQPage() {
     {
       id: '8',
       question: 'What fees does SapportLah charge?',
-      answer:
-        "We charge a 5% platform fee plus payment processing fees (2.9% + SGD 0.30 per transaction) on successful campaigns. No fees are charged if campaigns don't reach their funding goal.",
+      answer: 'We charge 5% + RM 1.00 per donation.',
       category: 'creators',
     },
     {
