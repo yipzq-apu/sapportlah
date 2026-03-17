@@ -101,7 +101,7 @@ npm install ethers@latest
 3. To install Stripe CLI on Windows, download the latest zip file from [GitHub](https://github.com/stripe/stripe-cli/releases)
 4. Unzip the file and open with command line
 5. Run `stripe login` and follow the steps in terminal
-6. Run:
+6. Forward events to your webhook:
 
 ```
 stripe listen --forward-to localhost:3000/api/webhook
