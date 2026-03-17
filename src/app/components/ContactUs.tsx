@@ -13,7 +13,7 @@ export default function ContactUs() {
   const [errorMessage, setErrorMessage] = useState('');
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({
@@ -61,7 +61,7 @@ export default function ContactUs() {
             Get In Touch
           </h2>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Have questions about our platform? We'd love to hear from you.
+            Have questions about our platform? We&apos;d love to hear from you.
           </p>
         </div>
 
