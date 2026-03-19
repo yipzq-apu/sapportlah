@@ -26,7 +26,13 @@ interface Campaign {
   goal_amount?: number;
   current_amount?: number;
   status?: string;
-  [key: string]: any;
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | null
+    | undefined
+    | Record<string, unknown>;
 }
 
 interface Donor {
