@@ -1,59 +1,63 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+type CountResult = {
+  count: number;
+};
+
 export async function GET(request: NextRequest) {
   try {
     // Get total users count
     const totalUsersResult = await db.query(
-      'SELECT COUNT(*) as count FROM users'
+      'SELECT COUNT(*) as count FROM users',
     );
     const totalUsers = Array.isArray(totalUsersResult)
-      ? (totalUsersResult[0] as any)
+      ? (totalUsersResult[0] as CountResult)
       : { count: 0 };
 
     // Get active users count
     const activeUsersResult = await db.query(
       'SELECT COUNT(*) as count FROM users WHERE status = ?',
-      ['active']
+      ['active'],
     );
     const activeUsers = Array.isArray(activeUsersResult)
-      ? (activeUsersResult[0] as any)
+      ? (activeUsersResult[0] as CountResult)
       : { count: 0 };
 
     // Get creators count
     const creatorsResult = await db.query(
       'SELECT COUNT(*) as count FROM users WHERE role = ?',
-      ['creator']
+      ['creator'],
     );
     const creators = Array.isArray(creatorsResult)
-      ? (creatorsResult[0] as any)
+      ? (creatorsResult[0] as CountResult)
       : { count: 0 };
 
     // Get pending users count
     const pendingUsersResult = await db.query(
       'SELECT COUNT(*) as count FROM users WHERE status = ?',
-      ['pending']
+      ['pending'],
     );
     const pendingUsers = Array.isArray(pendingUsersResult)
-      ? (pendingUsersResult[0] as any)
+      ? (pendingUsersResult[0] as CountResult)
       : { count: 0 };
 
     // Get donors count
     const donorsResult = await db.query(
       'SELECT COUNT(*) as count FROM users WHERE role = ?',
-      ['donor']
+      ['donor'],
     );
     const donors = Array.isArray(donorsResult)
-      ? (donorsResult[0] as any)
+      ? (donorsResult[0] as CountResult)
       : { count: 0 };
 
     // Get suspended users count
     const suspendedUsersResult = await db.query(
       'SELECT COUNT(*) as count FROM users WHERE status = ?',
-      ['suspended']
+      ['suspended'],
     );
     const suspendedUsers = Array.isArray(suspendedUsersResult)
-      ? (suspendedUsersResult[0] as any)
+      ? (suspendedUsersResult[0] as CountResult)
       : { count: 0 };
 
     return NextResponse.json({
@@ -68,7 +72,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching user stats:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

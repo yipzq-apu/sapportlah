@@ -1,9 +1,24 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+type CampaignRecord = {
+  user_id: string | number;
+};
+
+type DonorRecord = {
+  donation_id: string;
+  amount: string | number;
+  message: string | null;
+  anonymous: number;
+  donation_date: string;
+  donor_name: string;
+  donor_email: string;
+  donor_id: string | null;
+};
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: campaignId } = await params;
@@ -13,24 +28,24 @@ export async function GET(
     // Verify that the requesting user is the creator of this campaign
     const campaignCheck = await db.query(
       'SELECT user_id FROM campaigns WHERE id = ?',
-      [campaignId]
+      [campaignId],
     );
 
     if (!Array.isArray(campaignCheck) || campaignCheck.length === 0) {
       return NextResponse.json(
         { error: 'Campaign not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    const campaign = campaignCheck[0] as any;
+    const campaign = campaignCheck[0] as CampaignRecord;
     if (campaign.user_id !== parseInt(userId || '0')) {
       return NextResponse.json(
         {
           error:
             'Unauthorized - You can only view donors for your own campaigns',
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -55,22 +70,22 @@ export async function GET(
       LEFT JOIN users u ON d.user_id = u.id
       WHERE d.campaign_id = ?
       ORDER BY d.created_at DESC`,
-      [campaignId]
+      [campaignId],
     );
 
     // Calculate summary statistics
-    const totalDonations = (donors as any[]).length;
-    const totalAmount = (donors as any[]).reduce(
-      (sum, donor) => sum + parseFloat(donor.amount),
-      0
+    const totalDonations = (donors as DonorRecord[]).length;
+    const totalAmount = (donors as DonorRecord[]).reduce(
+      (sum, donor) => sum + parseFloat(String(donor.amount)),
+      0,
     );
-    const anonymousDonors = (donors as any[]).filter(
-      (donor) => donor.anonymous
+    const anonymousDonors = (donors as DonorRecord[]).filter(
+      (donor) => donor.anonymous,
     ).length;
     const uniqueDonors = new Set(
-      (donors as any[])
+      (donors as DonorRecord[])
         .filter((donor) => !donor.anonymous)
-        .map((donor) => donor.donor_id)
+        .map((donor) => donor.donor_id),
     ).size;
 
     return NextResponse.json({
@@ -87,7 +102,7 @@ export async function GET(
     console.error('Error fetching campaign donors:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

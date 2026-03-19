@@ -24,8 +24,20 @@ interface Campaign {
   createdDate: string;
 }
 
+interface User {
+  id: string;
+  email?: string;
+  role: 'donor' | 'creator' | 'admin';
+  firstName?: string;
+  lastName?: string;
+  first_name?: string;
+  last_name?: string;
+  organization_name?: string;
+  profile_image?: string;
+}
+
 export default function MyCampaignsPage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -60,7 +72,7 @@ export default function MyCampaignsPage() {
 
         // Fetch campaigns from backend
         const response = await fetch(
-          `/api/campaigns/my-campaigns?userId=${parsedUser.id}`
+          `/api/campaigns/my-campaigns?userId=${parsedUser.id}`,
         );
 
         if (response.ok) {
@@ -130,7 +142,7 @@ export default function MyCampaignsPage() {
     })
     .sort(
       (a, b) =>
-        new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime()
+        new Date(b.createdDate).getTime() - new Date(a.createdDate).getTime(),
     ); // Latest first
 
   // Pagination
@@ -138,7 +150,7 @@ export default function MyCampaignsPage() {
   const startIndex = (currentPage - 1) * itemsPerPage;
   const paginatedCampaigns = filteredCampaigns.slice(
     startIndex,
-    startIndex + itemsPerPage
+    startIndex + itemsPerPage,
   );
 
   // Reset pagination when filter or search changes
@@ -282,7 +294,7 @@ export default function MyCampaignsPage() {
                   </Link>
                   <span
                     className={`inline-block px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
-                      campaign.status
+                      campaign.status,
                     )}`}
                   >
                     {campaign.status === 'pending'
@@ -291,8 +303,8 @@ export default function MyCampaignsPage() {
                   </span>
                   {campaign.status === 'pending' && (
                     <p className="text-sm text-yellow-600 mt-2">
-                      Your campaign is under review. We'll notify you once it's
-                      approved.
+                      Your campaign is under review. We&apos;ll notify you once
+                      it&apos;s approved.
                     </p>
                   )}
                 </div>
@@ -351,7 +363,7 @@ export default function MyCampaignsPage() {
                   style={{
                     width: `${Math.min(
                       (campaign.raised / campaign.goal) * 100,
-                      100
+                      100,
                     )}%`,
                   }}
                 ></div>
@@ -396,7 +408,7 @@ export default function MyCampaignsPage() {
                   >
                     {page}
                   </button>
-                )
+                ),
               )}
 
               <button
@@ -423,10 +435,10 @@ export default function MyCampaignsPage() {
               {searchQuery
                 ? `No campaigns match "${searchQuery}". Try a different search term.`
                 : filter === 'all'
-                ? "You haven't created any campaigns yet. Start your first campaign!"
-                : filter === 'pending'
-                ? 'No campaigns are pending approval.'
-                : `No ${filter} campaigns found. Try a different filter.`}
+                  ? "You haven't created any campaigns yet. Start your first campaign!"
+                  : filter === 'pending'
+                    ? 'No campaigns are pending approval.'
+                    : `No ${filter} campaigns found. Try a different filter.`}
             </p>
             {searchQuery && (
               <button

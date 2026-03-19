@@ -4,12 +4,22 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 
+interface AdminUser {
+  name: string;
+  initials: string;
+  firstName?: string;
+  lastName?: string;
+  email?: string;
+  role?: string;
+  [key: string]: unknown;
+}
+
 export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<AdminUser | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
@@ -43,10 +53,10 @@ export default function AdminLayout({
       const updatedData = event.detail;
       console.log(
         'Profile update event received in admin layout:',
-        updatedData
+        updatedData,
       ); // Debug log
 
-      setUser((prevUser: any) => {
+      setUser((prevUser: AdminUser | null) => {
         if (!prevUser) return null;
 
         const newUser = {
@@ -91,14 +101,14 @@ export default function AdminLayout({
     if (parsedUser.role === 'admin') {
       window.addEventListener(
         'userProfileUpdated',
-        handleProfileUpdate as EventListener
+        handleProfileUpdate as EventListener,
       );
     }
 
     return () => {
       window.removeEventListener(
         'userProfileUpdated',
-        handleProfileUpdate as EventListener
+        handleProfileUpdate as EventListener,
       );
     };
   }, [router]);

@@ -3,9 +3,17 @@
 import { useState, useEffect } from 'react';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import Link from 'next/link';
+
+interface User {
+  id: string;
+  name: string;
+  role: 'donor' | 'creator';
+  avatar?: string;
+}
 
 export default function AboutPage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     // Check if user is logged in (optional)
@@ -49,8 +57,9 @@ export default function AboutPage() {
                 believe in their vision.
               </p>
               <p className="text-gray-700 text-lg leading-relaxed">
-                We're not just a crowdfunding platform – we're a catalyst for
-                innovation, creativity, and positive change in our communities.
+                We&apos;re not just a crowdfunding platform – we&apos;re a
+                catalyst for innovation, creativity, and positive change in our
+                communities.
               </p>
             </div>
             <div className="text-center">
@@ -172,20 +181,20 @@ export default function AboutPage() {
             <div className="max-w-4xl mx-auto">
               <p className="text-gray-700 text-lg leading-relaxed mb-6">
                 SapportLah was born from a simple belief: that great ideas
-                shouldn't fail due to lack of funding. Founded in 2024, we
+                shouldn&apos;t fail due to lack of funding. Founded in 2024, we
                 started as a small team passionate about democratizing access to
                 capital and empowering creators across all industries.
               </p>
               <p className="text-gray-700 text-lg leading-relaxed mb-6">
-                Today, we've grown into a thriving platform that has helped
+                Today, we&apos;ve grown into a thriving platform that has helped
                 hundreds of creators bring their visions to life, from
                 innovative tech products to artistic endeavors, from social
                 causes to entrepreneurial ventures.
               </p>
               <p className="text-gray-700 text-lg leading-relaxed">
                 Our platform has facilitated millions in funding, but more
-                importantly, we've built a community where dreams become reality
-                through the power of collective support.
+                importantly, we&apos;ve built a community where dreams become
+                reality through the power of collective support.
               </p>
             </div>
           </div>
@@ -220,23 +229,23 @@ export default function AboutPage() {
             Ready to Get Started?
           </h2>
           <p className="text-xl text-gray-600 mb-8 max-w-2xl mx-auto">
-            Whether you're a creator with a brilliant idea or a supporter
+            Whether you&apos;re a creator with a brilliant idea or a supporter
             looking to make a difference, SapportLah is here to help you
             succeed.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <a
+            <Link
               href="/login"
               className="bg-blue-600 text-white px-8 py-3 rounded-lg text-lg font-semibold hover:bg-blue-700 transition duration-300"
             >
               Start a Campaign
-            </a>
-            <a
+            </Link>
+            <Link
               href="/campaigns"
               className="bg-gray-200 text-gray-900 px-8 py-3 rounded-lg text-lg font-semibold hover:bg-gray-300 transition duration-300"
             >
               Explore Campaigns
-            </a>
+            </Link>
           </div>
         </div>
       </main>

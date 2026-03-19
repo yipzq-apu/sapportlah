@@ -13,7 +13,10 @@ const dbConfig = {
 const pool = mysql.createPool(dbConfig);
 
 export const db = {
-  async query(sql: string, params?: any[]) {
+  async query(
+    sql: string,
+    params?: (string | number | boolean | null | undefined)[],
+  ) {
     try {
       // Use query instead of execute to avoid prepared statement issues
       const [rows] = await pool.query(sql, params || []);

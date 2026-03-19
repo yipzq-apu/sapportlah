@@ -13,13 +13,25 @@ interface Campaign {
   creator_email: string;
 }
 
+interface User {
+  id: string;
+  email?: string;
+  role: 'donor' | 'creator' | 'admin';
+  firstName?: string;
+  lastName?: string;
+  first_name?: string;
+  last_name?: string;
+  organization_name?: string;
+  profile_image?: string;
+}
+
 export default function PostUpdatePage() {
   const params = useParams();
   const router = useRouter();
   const campaignId = params.id as string;
 
   const [campaign, setCampaign] = useState<Campaign | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -91,6 +103,11 @@ export default function PostUpdatePage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    if (!user) {
+      alert('User not authenticated');
+      return;
+    }
 
     if (!updateTitle.trim() || !updateContent.trim()) {
       alert('Please fill in all required fields');
@@ -349,8 +366,8 @@ export default function PostUpdatePage() {
           </h3>
           <ul className="space-y-2 text-sm text-blue-800">
             <li>
-              • Be transparent about your progress and any challenges you're
-              facing
+              • Be transparent about your progress and any challenges
+              you&apos;re facing
             </li>
             <li>• Include specific details about how funds are being used</li>
             <li>

@@ -18,7 +18,7 @@ export default function AdminMessagesPage() {
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
   const [selectedMessage, setSelectedMessage] = useState<ContactMessage | null>(
-    null
+    null,
   );
   const [stats, setStats] = useState({
     total: 0,
@@ -46,7 +46,7 @@ export default function AdminMessagesPage() {
         const data = await response.json();
         // Filter out resolved messages from display
         const filteredMessages = (data.messages || []).filter(
-          (message: ContactMessage) => message.status !== 'resolved'
+          (message: ContactMessage) => message.status !== 'resolved',
         );
         setMessages(filteredMessages);
       } else {
@@ -72,7 +72,10 @@ export default function AdminMessagesPage() {
     }
   };
 
-  const updateMessageStatus = async (messageId: number, newStatus: string) => {
+  const updateMessageStatus = async (
+    messageId: number,
+    newStatus: ContactMessage['status'],
+  ) => {
     try {
       const response = await fetch(`/api/admin/messages/${messageId}`, {
         method: 'PATCH',
@@ -88,11 +91,11 @@ export default function AdminMessagesPage() {
             msg.id === messageId
               ? {
                   ...msg,
-                  status: newStatus as any,
+                  status: newStatus,
                   updated_at: new Date().toISOString(),
                 }
-              : msg
-          )
+              : msg,
+          ),
         );
 
         if (selectedMessage?.id === messageId) {
@@ -100,10 +103,10 @@ export default function AdminMessagesPage() {
             prev
               ? {
                   ...prev,
-                  status: newStatus as any,
+                  status: newStatus,
                   updated_at: new Date().toISOString(),
                 }
-              : null
+              : null,
           );
         }
 
@@ -245,7 +248,7 @@ export default function AdminMessagesPage() {
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
                         className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
-                          message.status
+                          message.status,
                         )}`}
                       >
                         {message.status.replace('_', ' ')}
@@ -265,7 +268,10 @@ export default function AdminMessagesPage() {
                         <select
                           value={message.status}
                           onChange={(e) =>
-                            updateMessageStatus(message.id, e.target.value)
+                            updateMessageStatus(
+                              message.id,
+                              e.target.value as ContactMessage['status'],
+                            )
                           }
                           className="text-xs border border-gray-600 rounded px-2 py-1 text-gray-600"
                         >
@@ -325,7 +331,7 @@ export default function AdminMessagesPage() {
                   </label>
                   <span
                     className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
-                      selectedMessage.status
+                      selectedMessage.status,
                     )}`}
                   >
                     {selectedMessage.status.replace('_', ' ')}

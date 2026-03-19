@@ -2,6 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { v2 as cloudinary } from 'cloudinary';
 
+type CampaignImage = {
+  id: string;
+  campaign_id: string;
+  image_url: string;
+  caption?: string | null;
+};
+
 // Configure Cloudinary
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -11,7 +18,7 @@ cloudinary.config({
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; imageId: string }> }
+  { params }: { params: Promise<{ id: string; imageId: string }> },
 ) {
   try {
     const { id: campaignId, imageId } = await params;
@@ -19,14 +26,14 @@ export async function DELETE(
     // Get image details first to extract public_id for Cloudinary deletion
     const images = await db.query(
       'SELECT * FROM campaign_images WHERE id = ? AND campaign_id = ?',
-      [imageId, campaignId]
+      [imageId, campaignId],
     );
 
     if (!Array.isArray(images) || images.length === 0) {
       return NextResponse.json({ error: 'Image not found' }, { status: 404 });
     }
 
-    const image = images[0] as any;
+    const image = images[0] as CampaignImage;
     console.log('Image to delete:', image);
 
     // Extract public_id from Cloudinary URL and delete from Cloudinary first
@@ -44,7 +51,7 @@ export async function DELETE(
         // Split by '/' and find the upload index
         const urlParts = imageUrl.split('/');
         const uploadIndex: number = urlParts.findIndex(
-          (part: string) => part === 'upload'
+          (part: string) => part === 'upload',
         );
 
         if (uploadIndex !== -1 && uploadIndex < urlParts.length - 1) {
@@ -88,7 +95,7 @@ export async function DELETE(
     // Delete from database
     await db.query(
       'DELETE FROM campaign_images WHERE id = ? AND campaign_id = ?',
-      [imageId, campaignId]
+      [imageId, campaignId],
     );
 
     return NextResponse.json({
@@ -99,14 +106,14 @@ export async function DELETE(
     console.error('Error deleting campaign image:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string; imageId: string }> }
+  { params }: { params: Promise<{ id: string; imageId: string }> },
 ) {
   try {
     const { id: campaignId, imageId } = await params;
@@ -115,7 +122,7 @@ export async function PATCH(
     // Update image caption
     await db.query(
       'UPDATE campaign_images SET caption = ? WHERE id = ? AND campaign_id = ?',
-      [caption || null, imageId, campaignId]
+      [caption || null, imageId, campaignId],
     );
 
     return NextResponse.json({
@@ -126,7 +133,7 @@ export async function PATCH(
     console.error('Error updating image caption:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

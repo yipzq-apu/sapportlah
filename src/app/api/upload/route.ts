@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import cloudinary from '@/lib/cloudinary';
 
+type UploadError = {
+  message: string;
+  [key: string]: any;
+};
+
+type UploadResult = {
+  secure_url: string;
+  public_id: string;
+  [key: string]: any;
+};
+
 export async function POST(request: NextRequest) {
   try {
     // Check if Cloudinary is properly configured
@@ -12,7 +23,7 @@ export async function POST(request: NextRequest) {
       console.error('Cloudinary configuration missing');
       return NextResponse.json(
         { error: 'File upload service is not properly configured' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -37,7 +48,7 @@ export async function POST(request: NextRequest) {
           : 'PNG, JPG, or JPEG images only';
       return NextResponse.json(
         { error: `Invalid file type. ${expectedTypes} are allowed.` },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -46,7 +57,7 @@ export async function POST(request: NextRequest) {
     if (file.size > maxSize) {
       return NextResponse.json(
         { error: 'File size too large. Maximum size is 10MB.' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -74,27 +85,33 @@ export async function POST(request: NextRequest) {
             };
 
       cloudinary.uploader
-        .upload_stream(uploadOptions, (error: any, result: any) => {
-          if (error) {
-            console.error('Cloudinary upload error:', error);
-            reject(error);
-          } else {
-            resolve(result);
-          }
-        })
+        .upload_stream(
+          uploadOptions,
+          (
+            error: UploadError | undefined,
+            result: UploadResult | undefined,
+          ) => {
+            if (error) {
+              console.error('Cloudinary upload error:', error);
+              reject(error);
+            } else {
+              resolve(result);
+            }
+          },
+        )
         .end(buffer);
     });
 
     return NextResponse.json({
       success: true,
-      url: (result as any).secure_url,
-      public_id: (result as any).public_id,
+      url: (result as UploadResult).secure_url,
+      public_id: (result as UploadResult).public_id,
     });
   } catch (error) {
     console.error('Upload error:', error);
     return NextResponse.json(
       { error: 'Failed to upload file. Please try again.' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

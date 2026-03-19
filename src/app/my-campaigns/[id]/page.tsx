@@ -6,6 +6,19 @@ import Link from 'next/link';
 import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 
+interface User {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'donor' | 'creator' | 'admin';
+  email?: string;
+  avatar?: string;
+  profile_image?: string;
+  organization_name?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 interface Campaign {
   id: string;
   title: string;
@@ -55,7 +68,7 @@ export default function CreatorCampaignDetailPage() {
   const [recentDonations, setRecentDonations] = useState<Donation[]>([]);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'donations' | 'qna'>('donations');
 
   useEffect(() => {
@@ -400,7 +413,7 @@ Every contribution, no matter the size, brings us closer to transforming these c
                             </div>
                             {donation.message && (
                               <p className="text-gray-600 text-sm mb-1">
-                                "{donation.message}"
+                                &quot;{donation.message}&quot;
                               </p>
                             )}
                             <p className="text-gray-400 text-xs">

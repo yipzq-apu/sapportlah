@@ -24,7 +24,10 @@ class DatabaseConnection {
     });
   }
 
-  async query(text: string, params?: any[]) {
+  async query(
+    text: string,
+    params?: (string | number | boolean | null | undefined)[],
+  ) {
     // Ensure params is always an array and filter out undefined values
     const cleanParams =
       params && Array.isArray(params)

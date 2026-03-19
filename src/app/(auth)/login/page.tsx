@@ -104,8 +104,8 @@ export default function LoginPage() {
       const redirectUrl =
         searchParams.get('returnUrl') || getDefaultRedirect(data.user.role);
       window.location.href = redirectUrl;
-    } catch (err: any) {
-      setError(err.message || 'Login failed. Please try again.');
+    } catch (err: unknown) {
+      setError((err as Error).message || 'Login failed. Please try again.');
     } finally {
       setLoading(false);
     }

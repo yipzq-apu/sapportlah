@@ -1,9 +1,34 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+type CampaignDetail = {
+  id: string;
+  title: string;
+  description: string;
+  short_description: string;
+  goal_amount: number;
+  current_amount: number;
+  start_date: string;
+  end_date: string;
+  featured_image: string;
+  status: string;
+  is_featured: number;
+  backers_count: number;
+  created_at: string;
+  updated_at: string;
+  category_id: string;
+  category_name: string | null;
+  user_id: string;
+  creator_organization_name: string | null;
+  creator_first_name: string;
+  creator_last_name: string;
+  creator_email: string;
+  creator_profile_image: string | null;
+};
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -22,7 +47,7 @@ export async function GET(
        LEFT JOIN users u ON c.user_id = u.id 
        LEFT JOIN categories cat ON c.category_id = cat.id 
        WHERE c.id = ?`,
-      [id]
+      [id],
     );
 
     console.log(campaigns);
@@ -30,11 +55,11 @@ export async function GET(
     if (!Array.isArray(campaigns) || campaigns.length === 0) {
       return NextResponse.json(
         { error: 'Campaign not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    const campaign = campaigns[0] as any;
+    const campaign = campaigns[0] as CampaignDetail;
 
     return NextResponse.json({
       success: true,
@@ -68,7 +93,7 @@ export async function GET(
     console.error('Error fetching campaign:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

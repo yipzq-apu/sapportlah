@@ -5,6 +5,19 @@ import Link from 'next/link';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
+interface User {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'donor' | 'creator' | 'admin';
+  email?: string;
+  avatar?: string;
+  profile_image?: string;
+  organization_name?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 interface FavoriteCampaign {
   id: string;
   title: string;
@@ -22,7 +35,7 @@ interface FavoriteCampaign {
 }
 
 export default function FavoritesPage() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [favorites, setFavorites] = useState<FavoriteCampaign[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -44,7 +57,7 @@ export default function FavoritesPage() {
 
         // Fetch favorites from backend
         const response = await fetch(
-          `/api/favorites/campaigns?userId=${parsedUser.id}`
+          `/api/favorites/campaigns?userId=${parsedUser.id}`,
         );
 
         if (response.ok) {
@@ -101,7 +114,7 @@ export default function FavoritesPage() {
         `/api/favorites?userId=${user.id}&campaignId=${campaignId}`,
         {
           method: 'DELETE',
-        }
+        },
       );
 
       if (response.ok) {
@@ -180,7 +193,7 @@ export default function FavoritesPage() {
             My Favorite Campaigns
           </h1>
           <p className="text-lg text-gray-600">
-            Keep track of campaigns you're interested in supporting.
+            Keep track of campaigns you&apos;re interested in supporting.
           </p>
           <div className="mt-2 text-sm text-gray-500">
             {favorites.length}/6 favorites used
@@ -190,8 +203,8 @@ export default function FavoritesPage() {
               <div className="flex items-center">
                 <span className="mr-2">⚠️</span>
                 <span>
-                  You've reached the maximum of 6 favorite campaigns. Remove
-                  some to add new ones.
+                  You&apos;ve reached the maximum of 6 favorite campaigns.
+                  Remove some to add new ones.
                 </span>
               </div>
             </div>

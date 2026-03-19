@@ -6,6 +6,19 @@ import Link from 'next/link';
 import Navbar from '../../../components/Navbar';
 import Footer from '../../../components/Footer';
 
+interface User {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'donor' | 'creator' | 'admin';
+  email?: string;
+  avatar?: string;
+  profile_image?: string;
+  organization_name?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 interface CampaignForm {
   title: string;
   description: string;
@@ -20,7 +33,7 @@ export default function EditCampaignPage() {
   const params = useParams();
   const router = useRouter();
   const campaignId = params.id as string;
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState<CampaignForm>({
@@ -82,7 +95,7 @@ export default function EditCampaignPage() {
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));

@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+type Campaign = {
+  id: string;
+  title: string;
+  current_amount: number;
+  goal_amount: number;
+};
+
 export async function POST(request: NextRequest) {
   try {
     // Verify the request is from a legitimate cron service
@@ -20,17 +27,17 @@ export async function POST(request: NextRequest) {
     const campaignsToActivate = await db.query(
       `SELECT id, title FROM campaigns 
        WHERE status = 'approved' 
-       AND DATE(start_date) = CURDATE()`
+       AND DATE(start_date) = CURDATE()`,
     );
 
     if (Array.isArray(campaignsToActivate) && campaignsToActivate.length > 0) {
       for (const campaign of campaignsToActivate) {
         await db.query(
           'UPDATE campaigns SET status = ?, updated_at = NOW() WHERE id = ?',
-          ['active', (campaign as any).id]
+          ['active', (campaign as Campaign).id],
         );
         activatedCount++;
-        console.log(`Activated campaign: ${(campaign as any).title}`);
+        console.log(`Activated campaign: ${(campaign as Campaign).title}`);
       }
     }
 
@@ -44,18 +51,18 @@ export async function POST(request: NextRequest) {
        FROM campaigns 
        WHERE status = 'active' 
        AND DATE(end_date) = ?`,
-      [yesterdayStr]
+      [yesterdayStr],
     );
 
     if (Array.isArray(campaignsToComplete) && campaignsToComplete.length > 0) {
       for (const campaign of campaignsToComplete) {
-        const c = campaign as any;
+        const c = campaign as Campaign;
         const newStatus =
           c.current_amount >= c.goal_amount ? 'successful' : 'failed';
 
         await db.query(
           'UPDATE campaigns SET status = ?, updated_at = NOW() WHERE id = ?',
-          [newStatus, c.id]
+          [newStatus, c.id],
         );
         completedCount++;
         console.log(`Completed campaign: ${c.title} - Status: ${newStatus}`);
@@ -78,7 +85,7 @@ export async function POST(request: NextRequest) {
     console.error('Error in automated campaign status update:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

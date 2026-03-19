@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+type CampaignRecord = {
+  id: string;
+  user_id: string;
+  status: string;
+};
+
 export async function PUT(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -22,22 +28,22 @@ export async function PUT(
     // Check if campaign exists and user owns it
     const campaigns = await db.query(
       'SELECT id, user_id, status FROM campaigns WHERE id = ?',
-      [id]
+      [id],
     );
 
     if (!Array.isArray(campaigns) || campaigns.length === 0) {
       return NextResponse.json(
         { error: 'Campaign not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    const campaign = campaigns[0] as any;
+    const campaign = campaigns[0] as CampaignRecord;
 
     if (campaign.user_id !== userId) {
       return NextResponse.json(
         { error: 'Unauthorized to edit this campaign' },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -48,7 +54,7 @@ export async function PUT(
           error:
             'Campaign can only be edited while in pending or rejected status',
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -66,7 +72,7 @@ export async function PUT(
     if (startDate < minStartDate || startDate > maxStartDate) {
       return NextResponse.json(
         { error: 'Start date must be between 3-10 days from today' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -79,7 +85,7 @@ export async function PUT(
     if (endDate < minEndDate || endDate > maxEndDate) {
       return NextResponse.json(
         { error: 'End date must be between 7-60 days after start date' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -112,7 +118,7 @@ export async function PUT(
         featured_image,
         newStatus,
         id,
-      ]
+      ],
     );
 
     const message =
@@ -128,7 +134,7 @@ export async function PUT(
     console.error('Error updating campaign:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

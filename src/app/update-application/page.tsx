@@ -49,7 +49,7 @@ export default function UpdateApplicationPage() {
   const fetchUserData = async (userEmail: string) => {
     try {
       const response = await fetch(
-        `/api/auth/user-data?email=${encodeURIComponent(userEmail)}`
+        `/api/auth/user-data?email=${encodeURIComponent(userEmail)}`,
       );
       if (response.ok) {
         const data = await response.json();
@@ -78,7 +78,7 @@ export default function UpdateApplicationPage() {
   };
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     setFormData({
       ...formData,
@@ -200,8 +200,12 @@ export default function UpdateApplicationPage() {
 
       // Redirect to success page
       window.location.href = '/application-updated';
-    } catch (err: any) {
-      setError(err.message || 'Update failed. Please try again.');
+    } catch (err: unknown) {
+      const error =
+        err instanceof Error
+          ? err
+          : new Error('Update failed. Please try again.');
+      setError(error.message || 'Update failed. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -246,12 +250,12 @@ export default function UpdateApplicationPage() {
     if (url.includes('cloudinary.com') && url.includes('/raw/upload/')) {
       // Use Google Docs viewer for better PDF rendering
       viewableUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
-        url
+        url,
       )}&embedded=true`;
     } else if (url.includes('cloudinary.com') && url.includes('/upload/')) {
       // For other Cloudinary uploads, use Google Docs viewer
       viewableUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
-        url
+        url,
       )}&embedded=true`;
     }
 
@@ -421,7 +425,7 @@ export default function UpdateApplicationPage() {
                             type="button"
                             onClick={() =>
                               viewSupportingDocument(
-                                formData.supportingDocument
+                                formData.supportingDocument,
                               )
                             }
                             className="ml-2 text-blue-600 hover:text-blue-700 underline"
@@ -458,7 +462,7 @@ export default function UpdateApplicationPage() {
                     onBlur={validateAge}
                     max={
                       new Date(
-                        new Date().setFullYear(new Date().getFullYear() - 18)
+                        new Date().setFullYear(new Date().getFullYear() - 18),
                       )
                         .toISOString()
                         .split('T')[0]
@@ -654,8 +658,8 @@ export default function UpdateApplicationPage() {
                 {loading
                   ? 'Updating...'
                   : uploading
-                  ? 'Uploading document...'
-                  : 'Update Application'}
+                    ? 'Uploading document...'
+                    : 'Update Application'}
               </button>
             </div>
           </form>
@@ -676,7 +680,7 @@ export default function UpdateApplicationPage() {
                     currentPdfUrl.includes('docs.google.com')
                       ? currentPdfUrl.split('url=')[1]?.split('&')[0]
                         ? decodeURIComponent(
-                            currentPdfUrl.split('url=')[1].split('&')[0]
+                            currentPdfUrl.split('url=')[1].split('&')[0],
                           )
                         : currentPdfUrl
                       : currentPdfUrl

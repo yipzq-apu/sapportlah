@@ -3,8 +3,21 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
+interface User {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'donor' | 'creator' | 'admin';
+  email?: string;
+  avatar?: string;
+  profile_image?: string;
+  organization_name?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 export default function HeroSection() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     // Check if user is logged in

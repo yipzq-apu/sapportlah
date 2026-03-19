@@ -65,7 +65,7 @@ export default function FeaturedCampaignsAdminPage() {
 
   const toggleFeaturedStatus = async (
     campaignId: number,
-    currentStatus: boolean
+    currentStatus: boolean,
   ) => {
     try {
       const response = await fetch('/api/admin/campaigns/featured', {
@@ -85,8 +85,8 @@ export default function FeaturedCampaignsAdminPage() {
           campaigns.map((campaign) =>
             campaign.id === campaignId
               ? { ...campaign, is_featured: !currentStatus }
-              : campaign
-          )
+              : campaign,
+          ),
         );
 
         const action = !currentStatus ? 'added to' : 'removed from';
@@ -113,7 +113,7 @@ export default function FeaturedCampaignsAdminPage() {
   };
 
   const handleFeaturedFilterChange = (
-    filterType: 'featured' | 'notFeatured'
+    filterType: 'featured' | 'notFeatured',
   ) => {
     setFilters((prev) => ({
       ...prev,
@@ -318,7 +318,7 @@ export default function FeaturedCampaignsAdminPage() {
                     cancelled: 'Cancelled',
                   }).map(([key, label]) => {
                     const count = campaigns.filter(
-                      (c) => c.status === key
+                      (c) => c.status === key,
                     ).length;
                     return (
                       <label key={key} className="flex items-center">
@@ -329,7 +329,7 @@ export default function FeaturedCampaignsAdminPage() {
                           }
                           onChange={() =>
                             handleStatusFilterChange(
-                              key as keyof typeof filters.status
+                              key as keyof typeof filters.status,
                             )
                           }
                           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
@@ -339,16 +339,16 @@ export default function FeaturedCampaignsAdminPage() {
                             key === 'active'
                               ? 'text-green-700'
                               : key === 'pending'
-                              ? 'text-yellow-700'
-                              : key === 'approved'
-                              ? 'text-blue-700'
-                              : key === 'successful'
-                              ? 'text-green-700'
-                              : key === 'rejected' ||
-                                key === 'failed' ||
-                                key === 'cancelled'
-                              ? 'text-red-700'
-                              : 'text-gray-700'
+                                ? 'text-yellow-700'
+                                : key === 'approved'
+                                  ? 'text-blue-700'
+                                  : key === 'successful'
+                                    ? 'text-green-700'
+                                    : key === 'rejected' ||
+                                        key === 'failed' ||
+                                        key === 'cancelled'
+                                      ? 'text-red-700'
+                                      : 'text-gray-700'
                           }`}
                         >
                           {label} ({count})
@@ -366,7 +366,9 @@ export default function FeaturedCampaignsAdminPage() {
                 Showing {filteredCampaigns.length} of {campaigns.length}{' '}
                 campaigns
                 {searchTerm && (
-                  <span className="ml-1">(filtered by "{searchTerm}")</span>
+                  <span className="ml-1">
+                    (filtered by &quot;{searchTerm}&quot;)
+                  </span>
                 )}
               </div>
               <div className="flex space-x-2">
@@ -458,16 +460,16 @@ export default function FeaturedCampaignsAdminPage() {
                             campaign.status === 'active'
                               ? 'bg-green-100 text-green-800'
                               : campaign.status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : campaign.status === 'approved'
-                              ? 'bg-blue-100 text-blue-800'
-                              : campaign.status === 'successful'
-                              ? 'bg-green-100 text-green-800'
-                              : campaign.status === 'rejected' ||
-                                campaign.status === 'failed' ||
-                                campaign.status === 'cancelled'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-800'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : campaign.status === 'approved'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : campaign.status === 'successful'
+                                    ? 'bg-green-100 text-green-800'
+                                    : campaign.status === 'rejected' ||
+                                        campaign.status === 'failed' ||
+                                        campaign.status === 'cancelled'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-gray-100 text-gray-800'
                           }`}
                         >
                           {capitalizeStatus(campaign.status)}
@@ -486,7 +488,7 @@ export default function FeaturedCampaignsAdminPage() {
                     >
                       {truncateText(
                         campaign.short_description || campaign.description,
-                        150
+                        150,
                       )}
                     </p>
 
@@ -507,7 +509,7 @@ export default function FeaturedCampaignsAdminPage() {
                             style={{
                               width: `${getProgressPercentage(
                                 campaign.current_amount,
-                                campaign.goal_amount
+                                campaign.goal_amount,
                               )}%`,
                             }}
                           />
@@ -526,7 +528,7 @@ export default function FeaturedCampaignsAdminPage() {
                           onClick={() =>
                             toggleFeaturedStatus(
                               campaign.id,
-                              campaign.is_featured
+                              campaign.is_featured,
                             )
                           }
                           disabled={!campaign.is_featured && !canAddMore}
@@ -534,8 +536,8 @@ export default function FeaturedCampaignsAdminPage() {
                             campaign.is_featured
                               ? 'bg-red-100 text-red-700 hover:bg-red-200'
                               : canAddMore
-                              ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
-                              : 'bg-gray-100 text-gray-400 cursor-not-allowed'
+                                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200'
+                                : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                           }`}
                           title={
                             !campaign.is_featured && !canAddMore
@@ -566,10 +568,10 @@ export default function FeaturedCampaignsAdminPage() {
               {searchTerm
                 ? `No campaigns match "${searchTerm}" with the current filters`
                 : filters.featured.featured && !filters.featured.notFeatured
-                ? 'No not featured campaigns available'
-                : !filters.featured.featured && filters.featured.notFeatured
-                ? 'No featured campaigns available'
-                : 'No campaigns available'}
+                  ? 'No not featured campaigns available'
+                  : !filters.featured.featured && filters.featured.notFeatured
+                    ? 'No featured campaigns available'
+                    : 'No campaigns available'}
             </p>
             {searchTerm && (
               <button

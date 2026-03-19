@@ -20,9 +20,24 @@ interface Donation {
   campaignRaised: number;
 }
 
+interface User {
+  id: string;
+  email?: string;
+  role: 'donor' | 'creator' | 'admin';
+  firstName?: string;
+  lastName?: string;
+  first_name?: string;
+  last_name?: string;
+  organization_name?: string;
+  phone?: string;
+  ic_passport_number?: string;
+  address?: string;
+  profile_image?: string;
+}
+
 export default function MyDonationsPage() {
   const [donations, setDonations] = useState<Donation[]>([]);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [filter, setFilter] = useState('all');
@@ -54,7 +69,7 @@ export default function MyDonationsPage() {
         // Fetch complete user details from API
         try {
           const userResponse = await fetch(
-            `/api/auth/user-data?email=${encodeURIComponent(parsedUser.email)}`
+            `/api/auth/user-data?email=${encodeURIComponent(parsedUser.email)}`,
           );
           if (userResponse.ok) {
             const userDetailData = await userResponse.json();
@@ -93,7 +108,7 @@ export default function MyDonationsPage() {
               campaignsSupported: 0,
               averageDonation: 0,
               totalDonations: 0,
-            }
+            },
           );
         } else {
           const errorData = await response.json();
@@ -579,7 +594,7 @@ Generated on: ${new Date().toLocaleDateString()}
                       }[status]
                     }
                   </button>
-                )
+                ),
               )}
             </nav>
           </div>
@@ -630,7 +645,7 @@ Generated on: ${new Date().toLocaleDateString()}
                       </h3>
                       <span
                         className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
-                          donation.campaignStatus
+                          donation.campaignStatus,
                         )}`}
                       >
                         {donation.campaignStatus}
@@ -667,7 +682,7 @@ Generated on: ${new Date().toLocaleDateString()}
                     {donation.message && (
                       <div className="bg-gray-50 rounded-lg p-3 mb-4">
                         <p className="text-sm text-gray-600 italic">
-                          "{donation.message}"
+                          &quot;{donation.message}&quot;
                         </p>
                       </div>
                     )}
@@ -729,8 +744,8 @@ Generated on: ${new Date().toLocaleDateString()}
                     page === currentPage
                       ? 'bg-blue-600 text-white'
                       : typeof page === 'number'
-                      ? 'text-gray-700 hover:text-blue-600 hover:bg-gray-100'
-                      : 'text-gray-400 cursor-default'
+                        ? 'text-gray-700 hover:text-blue-600 hover:bg-gray-100'
+                        : 'text-gray-400 cursor-default'
                   }`}
                 >
                   {page}
@@ -765,8 +780,8 @@ Generated on: ${new Date().toLocaleDateString()}
               {searchTerm
                 ? `No donations found for "${searchTerm}"`
                 : filter === 'all'
-                ? "You haven't made any donations yet. Start supporting amazing campaigns!"
-                : `No ${filter} donations found. Try a different filter.`}
+                  ? "You haven't made any donations yet. Start supporting amazing campaigns!"
+                  : `No ${filter} donations found. Try a different filter.`}
             </p>
             {searchTerm && (
               <button

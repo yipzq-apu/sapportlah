@@ -32,14 +32,47 @@ interface AdminDashboardData {
     platformFees: number;
   };
   recentActivities: {
-    recentCampaigns: Array<any>;
-    recentDonations: Array<any>;
-    recentUsers: Array<any>;
+    recentCampaigns: Array<{
+      id: number;
+      title: string;
+      creator_name: string;
+      status: string;
+      created_at: string;
+    }>;
+    recentDonations: Array<{
+      id: number;
+      donor_name: string;
+      anonymous: boolean;
+      amount: number;
+      campaign_title: string;
+      created_at: string;
+    }>;
+    recentUsers: Array<{
+      id: number;
+      name: string;
+      email: string;
+      role: string;
+      created_at: string;
+    }>;
   };
   pendingItems: {
-    pendingCampaigns: Array<any>;
-    unansweredQuestions: Array<any>;
-    failedCampaigns: Array<any>;
+    pendingCampaigns: Array<{
+      id: number;
+      title: string;
+      creator_name: string;
+      created_at: string;
+    }>;
+    unansweredQuestions: Array<{
+      id: number;
+      question: string;
+      created_at: string;
+    }>;
+    failedCampaigns: Array<{
+      id: number;
+      title: string;
+      creator_name: string;
+      created_at: string;
+    }>;
     counts: {
       pendingCampaigns: number;
       unansweredQuestions: number;
@@ -50,7 +83,7 @@ interface AdminDashboardData {
 
 export default function AdminPage() {
   const [dashboardData, setDashboardData] = useState<AdminDashboardData | null>(
-    null
+    null,
   );
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -350,7 +383,7 @@ export default function AdminPage() {
             Recent Campaigns
           </h3>
           <div className="space-y-4">
-            {recentActivities.recentCampaigns.map((campaign: any) => (
+            {recentActivities.recentCampaigns.map((campaign) => (
               <div
                 key={campaign.id}
                 className="border-b border-gray-200 pb-3 last:border-b-0"
@@ -385,7 +418,7 @@ export default function AdminPage() {
             Recent Donations
           </h3>
           <div className="space-y-4">
-            {recentActivities.recentDonations.map((donation: any) => (
+            {recentActivities.recentDonations.map((donation) => (
               <div
                 key={donation.id}
                 className="border-b border-gray-200 pb-3 last:border-b-0"

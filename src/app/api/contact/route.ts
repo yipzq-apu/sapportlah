@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
+type QueryParam = string | number;
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -11,7 +13,7 @@ export async function POST(request: NextRequest) {
     if (!name || !email || !message) {
       return NextResponse.json(
         { error: 'Name, email, and message are required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -20,7 +22,7 @@ export async function POST(request: NextRequest) {
     if (!emailRegex.test(email)) {
       return NextResponse.json(
         { error: 'Invalid email format' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -28,7 +30,7 @@ export async function POST(request: NextRequest) {
     if (message.length < 10) {
       return NextResponse.json(
         { error: 'Message must be at least 10 characters long' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -42,18 +44,18 @@ export async function POST(request: NextRequest) {
         created_at, 
         updated_at
       ) VALUES (?, ?, ?, 'new', NOW(), NOW())`,
-      [name, email, message]
+      [name, email, message],
     );
 
     return NextResponse.json(
       { message: 'Thank you for your message! We will get back to you soon.' },
-      { status: 201 }
+      { status: 201 },
     );
   } catch (error) {
     console.error('Contact form error:', error);
     return NextResponse.json(
       { error: 'Failed to send message. Please try again.' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -68,7 +70,7 @@ export async function GET(request: NextRequest) {
 
     // Build query conditions
     let whereClause = '';
-    let queryParams: any[] = [];
+    const queryParams: QueryParam[] = [];
 
     if (status) {
       whereClause = 'WHERE status = ?';
@@ -88,13 +90,13 @@ export async function GET(request: NextRequest) {
       ${whereClause}
       ORDER BY created_at DESC 
       LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
+      [...queryParams, limit, offset],
     )) as RowDataPacket[];
 
     // Get total count
     const totalResult = (await db.query(
       `SELECT COUNT(*) as total FROM contact_us ${whereClause}`,
-      queryParams
+      queryParams,
     )) as RowDataPacket[];
 
     const total = totalResult[0].total;
@@ -113,7 +115,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching contact messages:', error);
     return NextResponse.json(
       { error: 'Failed to fetch contact messages' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
