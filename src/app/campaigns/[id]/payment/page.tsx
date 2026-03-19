@@ -8,6 +8,19 @@ import { loadStripe } from '@stripe/stripe-js';
 import Navbar from '../../../components/Navbar';
 import Footer from '../../../components/Footer';
 
+interface User {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'donor' | 'creator' | 'admin';
+  email?: string;
+  avatar?: string;
+  profile_image?: string;
+  organization_name?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 if (!process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY) {
   throw new Error('NEXT_PUBLIC_STRIPE_PUBLIC_KEY is not defined');
 }
@@ -17,7 +30,7 @@ const stripePromise = loadStripe(process.env.NEXT_PUBLIC_STRIPE_PUBLIC_KEY);
 export default function Payment() {
   const [totalAmount, setTotalAmount] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     try {

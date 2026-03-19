@@ -2,9 +2,13 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
+type DatabaseInsertResult = {
+  insertId: number | string;
+};
+
 export async function POST(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id: campaignId } = await params;
@@ -15,7 +19,7 @@ export async function POST(
     if (!userId || !amount) {
       return NextResponse.json(
         { error: 'User ID and amount are required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -24,20 +28,20 @@ export async function POST(
     if (isNaN(donationAmount) || donationAmount <= 0) {
       return NextResponse.json(
         { error: 'Invalid donation amount' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Check if campaign exists and is active
     const campaigns = (await db.query(
       'SELECT id, status, goal_amount, current_amount FROM campaigns WHERE id = ?',
-      [campaignId]
+      [campaignId],
     )) as RowDataPacket[];
 
     if (campaigns.length === 0) {
       return NextResponse.json(
         { error: 'Campaign not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -45,7 +49,7 @@ export async function POST(
     if (campaign.status !== 'active') {
       return NextResponse.json(
         { error: 'Campaign is not accepting donations' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -69,15 +73,15 @@ export async function POST(
           message || null,
           anonymous ? 1 : 0,
           paymentMethod,
-        ]
+        ],
       );
 
-      const donationId = (donationResult as any).insertId;
+      const donationId = (donationResult as DatabaseInsertResult).insertId;
 
       // Insert platform fee
       await db.query(
         `INSERT INTO platform_fees (donation_id, amount) VALUES (?, ?)`,
-        [donationId, platformFeeAmount]
+        [donationId, platformFeeAmount],
       );
 
       // Commit transaction
@@ -94,7 +98,7 @@ export async function POST(
             anonymous: anonymous,
           },
         },
-        { status: 201 }
+        { status: 201 },
       );
     } catch (error) {
       await db.query('ROLLBACK');
@@ -104,7 +108,7 @@ export async function POST(
     console.error('Error processing donation:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

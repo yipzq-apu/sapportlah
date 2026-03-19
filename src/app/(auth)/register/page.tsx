@@ -31,7 +31,7 @@ export default function RegisterPage() {
   const [currentPdfUrl, setCurrentPdfUrl] = useState('');
 
   const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     setFormData({
       ...formData,
@@ -102,8 +102,10 @@ export default function RegisterPage() {
 
       // Redirect to success page
       window.location.href = '/registration-success';
-    } catch (err: any) {
-      setError(err.message || 'Registration failed. Please try again.');
+    } catch (err: unknown) {
+      setError(
+        (err as Error).message || 'Registration failed. Please try again.',
+      );
     } finally {
       setLoading(false);
     }
@@ -197,12 +199,12 @@ export default function RegisterPage() {
     if (url.includes('cloudinary.com') && url.includes('/raw/upload/')) {
       // Use Google Docs viewer for better PDF rendering
       viewableUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
-        url
+        url,
       )}&embedded=true`;
     } else if (url.includes('cloudinary.com') && url.includes('/upload/')) {
       // For other Cloudinary uploads, use Google Docs viewer
       viewableUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
-        url
+        url,
       )}&embedded=true`;
     }
 
@@ -346,7 +348,7 @@ export default function RegisterPage() {
                             type="button"
                             onClick={() =>
                               viewSupportingDocument(
-                                formData.supportingDocument
+                                formData.supportingDocument,
                               )
                             }
                             className="ml-2 text-blue-600 hover:text-blue-700 underline"
@@ -383,7 +385,7 @@ export default function RegisterPage() {
                     onBlur={validateAge}
                     max={
                       new Date(
-                        new Date().setFullYear(new Date().getFullYear() - 18)
+                        new Date().setFullYear(new Date().getFullYear() - 18),
                       )
                         .toISOString()
                         .split('T')[0]
@@ -659,8 +661,8 @@ export default function RegisterPage() {
                 {loading
                   ? 'Creating account...'
                   : uploading
-                  ? 'Uploading document...'
-                  : 'Create account'}
+                    ? 'Uploading document...'
+                    : 'Create account'}
               </button>
             </div>
           </form>
@@ -681,7 +683,7 @@ export default function RegisterPage() {
                     currentPdfUrl.includes('docs.google.com')
                       ? currentPdfUrl.split('url=')[1]?.split('&')[0]
                         ? decodeURIComponent(
-                            currentPdfUrl.split('url=')[1].split('&')[0]
+                            currentPdfUrl.split('url=')[1].split('&')[0],
                           )
                         : currentPdfUrl
                       : currentPdfUrl

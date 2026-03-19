@@ -5,6 +5,19 @@ import Link from 'next/link';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
+interface User {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'donor' | 'creator' | 'admin';
+  email?: string;
+  avatar?: string;
+  profile_image?: string;
+  organization_name?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 interface Campaign {
   id: string;
   title: string;
@@ -25,7 +38,7 @@ interface DashboardStats {
 }
 
 function DashboardContent() {
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,7 +58,7 @@ function DashboardContent() {
 
         // Fetch dashboard data from backend
         const response = await fetch(
-          `/api/dashboard/creator?creatorId=${parsedUser.id}`
+          `/api/dashboard/creator?creatorId=${parsedUser.id}`,
         );
 
         if (response.ok) {
@@ -58,7 +71,7 @@ function DashboardContent() {
               totalRaised: 0,
               totalDonors: 0,
               pendingQuestions: 0,
-            }
+            },
           );
         } else {
           console.error('Failed to fetch dashboard data');
@@ -344,7 +357,7 @@ function DashboardContent() {
                     </h3>
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
-                        campaign.status
+                        campaign.status,
                       )}`}
                     >
                       {campaign.status}
@@ -390,7 +403,7 @@ function DashboardContent() {
                       style={{
                         width: `${Math.min(
                           (campaign.raised / campaign.goal) * 100,
-                          100
+                          100,
                         )}%`,
                       }}
                     ></div>

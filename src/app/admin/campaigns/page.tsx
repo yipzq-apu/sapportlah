@@ -29,7 +29,7 @@ export default function AdminCampaignsPage() {
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectionReason, setRejectionReason] = useState('');
   const [campaignToReject, setCampaignToReject] = useState<Campaign | null>(
-    null
+    null,
   );
 
   useEffect(() => {
@@ -77,7 +77,7 @@ export default function AdminCampaignsPage() {
             reason: rejectionReason.trim(),
             reviewedBy: 'admin',
           }),
-        }
+        },
       );
 
       const data = await response.json();
@@ -88,11 +88,11 @@ export default function AdminCampaignsPage() {
           prev.map((campaign) =>
             campaign.id === campaignToReject.id
               ? { ...campaign, status: 'rejected' }
-              : campaign
-          )
+              : campaign,
+          ),
         );
         alert(
-          'Campaign rejected successfully! Creator has been notified via email.'
+          'Campaign rejected successfully! Creator has been notified via email.',
         );
         setShowRejectModal(false);
         setCampaignToReject(null);
@@ -109,7 +109,7 @@ export default function AdminCampaignsPage() {
 
   const updateCampaignStatus = async (
     campaignId: number,
-    newStatus: string
+    newStatus: string,
   ) => {
     // Add confirmation dialog for approval
     if (newStatus === 'approved') {
@@ -138,11 +138,11 @@ export default function AdminCampaignsPage() {
           prev.map((campaign) =>
             campaign.id === campaignId
               ? { ...campaign, status: newStatus }
-              : campaign
-          )
+              : campaign,
+          ),
         );
         alert(
-          `Campaign ${newStatus} successfully! Creator has been notified via email.`
+          `Campaign ${newStatus} successfully! Creator has been notified via email.`,
         );
       } else {
         console.error('API Error:', data);
@@ -272,7 +272,9 @@ export default function AdminCampaignsPage() {
           <div className="text-sm text-gray-600">
             Showing {filteredCampaigns.length} of {campaigns.length} campaigns
             {searchTerm && (
-              <span className="ml-1">(filtered by "{searchTerm}")</span>
+              <span className="ml-1">
+                (filtered by &quot;{searchTerm}&quot;)
+              </span>
             )}
           </div>
         </div>
@@ -325,16 +327,16 @@ export default function AdminCampaignsPage() {
                             campaign.status === 'active'
                               ? 'bg-green-100 text-green-800'
                               : campaign.status === 'pending'
-                              ? 'bg-yellow-100 text-yellow-800'
-                              : campaign.status === 'approved'
-                              ? 'bg-blue-100 text-blue-800'
-                              : campaign.status === 'successful'
-                              ? 'bg-green-100 text-green-800'
-                              : campaign.status === 'rejected' ||
-                                campaign.status === 'failed' ||
-                                campaign.status === 'cancelled'
-                              ? 'bg-red-100 text-red-800'
-                              : 'bg-gray-100 text-gray-800'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : campaign.status === 'approved'
+                                  ? 'bg-blue-100 text-blue-800'
+                                  : campaign.status === 'successful'
+                                    ? 'bg-green-100 text-green-800'
+                                    : campaign.status === 'rejected' ||
+                                        campaign.status === 'failed' ||
+                                        campaign.status === 'cancelled'
+                                      ? 'bg-red-100 text-red-800'
+                                      : 'bg-gray-100 text-gray-800'
                           }`}
                         >
                           {capitalizeStatus(campaign.status)}
@@ -353,7 +355,7 @@ export default function AdminCampaignsPage() {
                     >
                       {truncateText(
                         campaign.short_description || campaign.description,
-                        150
+                        150,
                       )}
                     </p>
 
@@ -374,7 +376,7 @@ export default function AdminCampaignsPage() {
                             style={{
                               width: `${getProgressPercentage(
                                 campaign.current_amount,
-                                campaign.goal_amount
+                                campaign.goal_amount,
                               )}%`,
                             }}
                           />
@@ -574,8 +576,9 @@ export default function AdminCampaignsPage() {
 
               <p className="text-sm text-gray-600 mb-4">
                 You are about to reject the campaign{' '}
-                <strong>"{campaignToReject.title}"</strong>. Please provide a
-                reason for rejection that will be sent to the campaign creator.
+                <strong>&quot;{campaignToReject.title}&quot;</strong>. Please
+                provide a reason for rejection that will be sent to the campaign
+                creator.
               </p>
 
               <textarea

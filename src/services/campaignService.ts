@@ -1,6 +1,12 @@
 import { queryService } from '../database';
 import { Campaign, CampaignFilters } from '../database/models/Campaign';
 
+type QueryValue = string | number | boolean | null | undefined;
+
+interface CountResult {
+  total: number;
+}
+
 export class CampaignService {
   async getAllCampaigns(filters: CampaignFilters = {}) {
     const {
@@ -13,7 +19,7 @@ export class CampaignService {
     } = filters;
 
     let query = `
-      SELECT 
+      SELECT
         c.*,
         CONCAT(u.first_name, ' ', u.last_name) as creator_name,
         u.email as creator_email
@@ -22,7 +28,7 @@ export class CampaignService {
       WHERE c.status = ?
     `;
 
-    const params: any[] = [status];
+    const params: QueryValue[] = [status];
 
     // Add search filter
     if (search) {
@@ -58,7 +64,7 @@ export class CampaignService {
       FROM campaigns c
       WHERE c.status = ?
     `;
-    const countParams: any[] = [status];
+    const countParams: QueryValue[] = [status];
 
     if (search) {
       countQuery += ` AND (c.title LIKE ? OR c.description LIKE ? OR c.short_description LIKE ?)`;
@@ -76,7 +82,7 @@ export class CampaignService {
     }
 
     const countResult = await queryService.customQuery(countQuery, countParams);
-    const total = (countResult as any[])[0]?.total || 0;
+    const total = (countResult as unknown as CountResult[])[0]?.total || 0;
 
     return {
       campaigns,
@@ -101,7 +107,7 @@ export class CampaignService {
     `;
 
     const campaigns = await queryService.customQuery(query, [id]);
-    return (campaigns as any[])[0] || null;
+    return (campaigns as unknown as Campaign[])[0] || null;
   }
 
   async getFeaturedCampaigns(limit = 3) {

@@ -15,10 +15,10 @@ interface Campaign {
 export default function CampaignStatusUpdaterPage() {
   const [loading, setLoading] = useState(false);
   const [campaignsToActivate, setCampaignsToActivate] = useState<Campaign[]>(
-    []
+    [],
   );
   const [campaignsToComplete, setCampaignsToComplete] = useState<Campaign[]>(
-    []
+    [],
   );
   const [lastUpdate, setLastUpdate] = useState<string>('');
 
@@ -50,7 +50,7 @@ export default function CampaignStatusUpdaterPage() {
         const data = await response.json();
         setLastUpdate(new Date().toLocaleString());
         alert(
-          `Status update completed!\nActivated: ${data.updates.activatedToday}\nCompleted: ${data.updates.completedYesterday}`
+          `Status update completed!\nActivated: ${data.updates.activatedToday}\nCompleted: ${data.updates.completedYesterday}`,
         );
         fetchPendingUpdates(); // Refresh the list
       } else {
@@ -309,8 +309,8 @@ export default function CampaignStatusUpdaterPage() {
             • <strong>Automatic:</strong> Daily at 12:00 AM UTC via cron job
           </li>
           <li>
-            • <strong>Manual:</strong> Available anytime via the "Manual Update"
-            button
+            • <strong>Manual:</strong> Available anytime via the &quot;Manual
+            Update&quot; button
           </li>
           <li>
             • <strong>Approved → Active:</strong> When start_date is reached

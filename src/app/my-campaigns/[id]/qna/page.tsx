@@ -16,10 +16,22 @@ interface Question {
   anonymous: boolean;
 }
 
+interface User {
+  id: string;
+  email?: string;
+  role: 'donor' | 'creator' | 'admin';
+  firstName?: string;
+  lastName?: string;
+  first_name?: string;
+  last_name?: string;
+  organization_name?: string;
+  profile_image?: string;
+}
+
 export default function CampaignQnAPage() {
   const params = useParams();
   const campaignId = params.id as string;
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
@@ -115,8 +127,8 @@ export default function CampaignQnAPage() {
         prev.map((q) =>
           q.id === questionId
             ? { ...q, answer, dateAnswered: new Date().toISOString() }
-            : q
-        )
+            : q,
+        ),
       );
 
       // Clear answer text

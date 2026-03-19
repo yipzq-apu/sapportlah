@@ -121,7 +121,7 @@ export default function FAQPage() {
     setOpenItems((prev) =>
       prev.includes(itemId)
         ? prev.filter((id) => id !== itemId)
-        : [...prev, itemId]
+        : [...prev, itemId],
     );
   };
 
@@ -148,8 +148,8 @@ export default function FAQPage() {
             Frequently Asked Questions
           </h1>
           <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-            Find answers to common questions about using SapportLah. Can't find
-            what you're looking for? Contact our support team.
+            Find answers to common questions about using SapportLah. Can&apos;t
+            find what you&apos;re looking for? Contact our support team.
           </p>
         </div>
 
@@ -222,8 +222,8 @@ export default function FAQPage() {
             Still have questions?
           </h2>
           <p className="text-gray-600 mb-6">
-            Our support team is here to help. Get in touch and we'll respond as
-            soon as possible.
+            Our support team is here to help. Get in touch and we&apos;ll
+            respond as soon as possible.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a

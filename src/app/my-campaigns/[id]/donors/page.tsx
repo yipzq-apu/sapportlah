@@ -6,6 +6,29 @@ import Link from 'next/link';
 import Navbar from '../../../components/Navbar';
 import Footer from '../../../components/Footer';
 
+interface User {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'donor' | 'creator' | 'admin';
+  email?: string;
+  avatar?: string;
+  profile_image?: string;
+  organization_name?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+interface Campaign {
+  id: string | number;
+  title: string;
+  description?: string;
+  goal_amount?: number;
+  current_amount?: number;
+  status?: string;
+  [key: string]: any;
+}
+
 interface Donor {
   donation_id: number;
   amount: number;
@@ -29,11 +52,11 @@ export default function CampaignDonorsPage() {
   const router = useRouter();
   const campaignId = params.id as string;
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [donors, setDonors] = useState<Donor[]>([]);
   const [summary, setSummary] = useState<DonorSummary | null>(null);
   const [loading, setLoading] = useState(true);
-  const [campaign, setCampaign] = useState<any>(null);
+  const [campaign, setCampaign] = useState<Campaign | null>(null);
 
   useEffect(() => {
     const loadData = async () => {
@@ -72,7 +95,7 @@ export default function CampaignDonorsPage() {
 
         // Fetch donors
         const donorsResponse = await fetch(
-          `/api/campaigns/${campaignId}/donors?userId=${parsedUser.id}`
+          `/api/campaigns/${campaignId}/donors?userId=${parsedUser.id}`,
         );
 
         if (donorsResponse.ok) {
@@ -276,7 +299,7 @@ export default function CampaignDonorsPage() {
                 No donations yet
               </h3>
               <p className="text-gray-600">
-                Your campaign hasn't received any donations yet. Share your
+                Your campaign hasn&apos;t received any donations yet. Share your
                 campaign to start receiving support!
               </p>
               <div className="mt-6">

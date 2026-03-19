@@ -5,6 +5,13 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+type UserRecord = {
+  id: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const { email } = await request.json();
@@ -16,7 +23,7 @@ export async function POST(request: NextRequest) {
     // Check if user exists
     const users = await db.query(
       'SELECT id, first_name, last_name, email FROM users WHERE email = ?',
-      [email]
+      [email],
     );
 
     if (!Array.isArray(users) || users.length === 0) {
@@ -28,7 +35,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    const user = users[0] as any;
+    const user = users[0] as UserRecord;
 
     // Generate reset token
     const resetToken = crypto.randomBytes(32).toString('hex');
@@ -37,7 +44,7 @@ export async function POST(request: NextRequest) {
     // Store reset token in database
     await db.query(
       'UPDATE users SET reset_token = ?, reset_token_expiry = ? WHERE id = ?',
-      [resetToken, resetTokenExpiry, user.id]
+      [resetToken, resetTokenExpiry, user.id],
     );
 
     // Send reset email
@@ -93,7 +100,7 @@ export async function POST(request: NextRequest) {
       console.error('Failed to send password reset email:', emailError);
       return NextResponse.json(
         { error: 'Failed to send reset email. Please try again later.' },
-        { status: 500 }
+        { status: 500 },
       );
     }
 
@@ -105,7 +112,7 @@ export async function POST(request: NextRequest) {
     console.error('Error in forgot password:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

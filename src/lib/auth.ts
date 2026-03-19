@@ -4,13 +4,21 @@ import jwt from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-secret-key';
 const SALT_ROUNDS = 12;
 
+interface TokenPayload {
+  userId: number;
+  email: string;
+  role?: string;
+  iat?: number;
+  exp?: number;
+}
+
 export async function hashPassword(password: string): Promise<string> {
   return await bcrypt.hash(password, SALT_ROUNDS);
 }
 
 export async function verifyPassword(
   password: string,
-  hashedPassword: string
+  hashedPassword: string,
 ): Promise<boolean> {
   return await bcrypt.compare(password, hashedPassword);
 }
@@ -18,14 +26,14 @@ export async function verifyPassword(
 export function generateToken(
   userId: number,
   email: string,
-  role?: string
+  role?: string,
 ): string {
   return jwt.sign({ userId, email, role }, JWT_SECRET, { expiresIn: '7d' });
 }
 
-export function verifyToken(token: string): any {
+export function verifyToken(token: string): TokenPayload {
   try {
-    return jwt.verify(token, JWT_SECRET);
+    return jwt.verify(token, JWT_SECRET) as TokenPayload;
   } catch (error) {
     throw new Error('Invalid token');
   }

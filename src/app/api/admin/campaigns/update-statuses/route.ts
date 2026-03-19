@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+interface CountResult {
+  count: number;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const currentDate = new Date();
@@ -14,7 +18,7 @@ export async function POST(request: NextRequest) {
       WHERE status = 'approved' 
       AND DATE(start_date) <= ?
     `,
-      [currentDateString]
+      [currentDateString],
     );
 
     // Update campaigns to 'successful' when the day AFTER end_date is reached and goal is met
@@ -26,7 +30,7 @@ export async function POST(request: NextRequest) {
       AND DATE(end_date) < ?
       AND current_amount >= goal_amount
     `,
-      [currentDateString]
+      [currentDateString],
     );
 
     // Update campaigns to 'failed' when the day AFTER end_date is reached and goal is not met
@@ -38,7 +42,7 @@ export async function POST(request: NextRequest) {
       AND DATE(end_date) < ?
       AND current_amount < goal_amount
     `,
-      [currentDateString]
+      [currentDateString],
     );
 
     // Get counts of updated campaigns
@@ -47,7 +51,7 @@ export async function POST(request: NextRequest) {
       SELECT COUNT(*) as count FROM campaigns 
       WHERE status = 'active' AND DATE(start_date) = ?
     `,
-      [currentDateString]
+      [currentDateString],
     );
 
     const completedCount = await db.query(
@@ -56,7 +60,7 @@ export async function POST(request: NextRequest) {
       WHERE (status = 'successful' OR status = 'failed') 
       AND DATE(end_date) = DATE_SUB(?, INTERVAL 1 DAY)
     `,
-      [currentDateString]
+      [currentDateString],
     );
 
     return NextResponse.json({
@@ -64,10 +68,10 @@ export async function POST(request: NextRequest) {
       message: 'Campaign statuses updated successfully',
       updates: {
         activatedToday: Array.isArray(activeCount)
-          ? (activeCount[0] as any).count
+          ? (activeCount[0] as CountResult).count
           : 0,
         completedYesterday: Array.isArray(completedCount)
-          ? (completedCount[0] as any).count
+          ? (completedCount[0] as CountResult).count
           : 0,
       },
     });
@@ -75,7 +79,7 @@ export async function POST(request: NextRequest) {
     console.error('Error updating campaign statuses:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -92,7 +96,7 @@ export async function GET(request: NextRequest) {
       WHERE status = 'approved' 
       AND DATE(start_date) <= ?
     `,
-      [currentDate]
+      [currentDate],
     );
 
     // Show campaigns that will complete the day AFTER their end_date
@@ -107,7 +111,7 @@ export async function GET(request: NextRequest) {
       WHERE status = 'active' 
       AND DATE(end_date) < ?
     `,
-      [currentDate]
+      [currentDate],
     );
 
     return NextResponse.json({
@@ -121,7 +125,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching campaigns for status update:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

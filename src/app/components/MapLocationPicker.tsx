@@ -3,9 +3,13 @@
 import { useState, useEffect, useRef } from 'react';
 
 // Global flag to track if Google Maps API is loaded
+interface GoogleMapsApi {
+  maps: Record<string, any>;
+}
+
 declare global {
   interface Window {
-    google: any;
+    google: GoogleMapsApi;
     googleMapsLoading: boolean;
     googleMapsLoadPromise: Promise<void> | null;
   }
@@ -17,7 +21,7 @@ interface Location {
 }
 
 interface LocationData {
-  address: string;
+  address?: string;
   lat: number;
   lng: number;
   city?: string;
@@ -27,7 +31,15 @@ interface LocationData {
 }
 
 interface MapLocationPickerProps {
-  onLocationSelect: (location: LocationData) => void;
+  onLocationSelect: (location: {
+    address: string;
+    lat: number;
+    lng: number;
+    city?: string;
+    state?: string;
+    postalCode?: string;
+    country?: string;
+  }) => void;
   onCancel?: () => void;
   initialLocation?: Location;
 }
@@ -40,8 +52,8 @@ export default function MapLocationPicker({
   const mapRef = useRef<HTMLDivElement>(null);
   const [map, setMap] = useState<google.maps.Map | null>(null);
   const [marker, setMarker] = useState<google.maps.Marker | null>(null);
-  const [selectedLocation, setSelectedLocation] = useState<Location | null>(
-    initialLocation || null
+  const [selectedLocation, setSelectedLocation] = useState<LocationData | null>(
+    initialLocation || null,
   );
   const [address, setAddress] = useState('');
   const [loading, setLoading] = useState(true);
@@ -78,7 +90,7 @@ export default function MapLocationPicker({
 
       // Check if script already exists
       const existingScript = document.querySelector(
-        'script[src*="maps.googleapis.com"]'
+        'script[src*="maps.googleapis.com"]',
       );
       if (existingScript) {
         // Script exists but Google Maps might not be ready yet
@@ -118,7 +130,7 @@ export default function MapLocationPicker({
           };
 
           document.head.appendChild(script);
-        }
+        },
       );
     });
   };
@@ -239,28 +251,27 @@ export default function MapLocationPicker({
           state,
           postalCode,
           country,
-        } as any);
+        });
       }
     } catch (error) {
       console.error('Geocoding error:', error);
       // Fallback to coordinates if geocoding fails
       setAddress(
-        `Location: ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`
+        `Location: ${location.lat.toFixed(6)}, ${location.lng.toFixed(6)}`,
       );
     }
   };
 
   const handleConfirmLocation = () => {
     if (selectedLocation) {
-      const locationData = selectedLocation as any;
       onLocationSelect({
-        address: locationData.address || address,
+        address: selectedLocation.address || address || 'Selected Location',
         lat: selectedLocation.lat,
         lng: selectedLocation.lng,
-        city: locationData.city || '',
-        state: locationData.state || '',
-        postalCode: locationData.postalCode || '',
-        country: locationData.country || '',
+        city: selectedLocation.city || '',
+        state: selectedLocation.state || '',
+        postalCode: selectedLocation.postalCode || '',
+        country: selectedLocation.country || '',
       });
     }
   };
@@ -283,7 +294,7 @@ export default function MapLocationPicker({
         },
         (error) => {
           console.error('Geolocation error:', error);
-        }
+        },
       );
     }
   };

@@ -6,6 +6,25 @@ import Link from 'next/link';
 import Navbar from '../../../components/Navbar';
 import Footer from '../../../components/Footer';
 
+interface User {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'donor' | 'creator' | 'admin';
+  email?: string;
+  avatar?: string;
+  profile_image?: string;
+  organization_name?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
+interface CampaignImageApiResponse {
+  id: number;
+  image_url: string;
+  caption: string;
+}
+
 interface CampaignForm {
   title: string;
   description: string;
@@ -34,7 +53,7 @@ export default function EditCampaignPage() {
   const router = useRouter();
   const campaignId = params.id as string;
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [campaignImages, setCampaignImages] = useState<CampaignImage[]>([]);
   const [loading, setLoading] = useState(true);
@@ -93,7 +112,7 @@ export default function EditCampaignPage() {
               'User does not own this campaign:',
               campaign.user_id,
               'vs',
-              parsedUser.id
+              parsedUser.id,
             );
             router.push('/unauthorized');
             return;
@@ -118,7 +137,7 @@ export default function EditCampaignPage() {
           console.error(
             'Failed to fetch campaign:',
             campaignResponse.status,
-            campaignResponse.statusText
+            campaignResponse.statusText,
           );
           const errorData = await campaignResponse.text();
           console.error('Error response:', errorData);
@@ -133,27 +152,27 @@ export default function EditCampaignPage() {
         } else {
           console.error(
             'Failed to fetch categories:',
-            categoriesResponse.status
+            categoriesResponse.status,
           );
         }
 
         // Fetch campaign images
         const imagesResponse = await fetch(
-          `/api/campaigns/${campaignId}/media`
+          `/api/campaigns/${campaignId}/media`,
         );
         if (imagesResponse.ok) {
           const imagesData = await imagesResponse.json();
           setCampaignImages(
-            imagesData.images?.map((img: any) => ({
+            imagesData.images?.map((img: CampaignImageApiResponse) => ({
               id: img.id,
               url: img.image_url,
               caption: img.caption || '',
-            })) || []
+            })) || [],
           );
         } else {
           console.log(
             'No campaign images or failed to fetch:',
-            imagesResponse.status
+            imagesResponse.status,
           );
           // Don't fail completely if images can't be loaded
           setCampaignImages([]);
@@ -161,7 +180,7 @@ export default function EditCampaignPage() {
       } catch (error) {
         console.error('Error loading campaign data:', error);
         alert(
-          'Failed to load campaign data. Please check your connection and try again.'
+          'Failed to load campaign data. Please check your connection and try again.',
         );
       } finally {
         setLoading(false);
@@ -174,7 +193,7 @@ export default function EditCampaignPage() {
   const canEdit =
     formData.status === 'pending' || formData.status === 'rejected';
   const canCancel = ['pending', 'approved', 'rejected', 'active'].includes(
-    formData.status
+    formData.status,
   );
 
   // Add debugging for edit permissions
@@ -185,7 +204,7 @@ export default function EditCampaignPage() {
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     if (!canEdit) return;
 
@@ -377,7 +396,7 @@ export default function EditCampaignPage() {
   };
 
   const handleCampaignImageChange = (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -389,7 +408,7 @@ export default function EditCampaignPage() {
   const updateImageCaption = (imageId: number, caption: string) => {
     if (!canEdit) return;
     setCampaignImages((prev) =>
-      prev.map((img) => (img.id === imageId ? { ...img, caption } : img))
+      prev.map((img) => (img.id === imageId ? { ...img, caption } : img)),
     );
   };
 
@@ -408,7 +427,7 @@ export default function EditCampaignPage() {
     // For existing images, confirm deletion
     if (
       !confirm(
-        'Are you sure you want to delete this image? This action cannot be undone.'
+        'Are you sure you want to delete this image? This action cannot be undone.',
       )
     ) {
       return;
@@ -420,7 +439,7 @@ export default function EditCampaignPage() {
         `/api/campaigns/${campaignId}/images/${imageId}`,
         {
           method: 'DELETE',
-        }
+        },
       );
 
       if (response.ok) {
@@ -464,7 +483,7 @@ export default function EditCampaignPage() {
           goal_amount: parseInt(formData.goal_amount), // Convert to integer
           start_date: formatDateForAPI(formData.start_date),
           end_date: formatDateForAPI(formData.end_date),
-          userId: user.id,
+          userId: user!.id,
         }),
       });
 
@@ -491,7 +510,7 @@ export default function EditCampaignPage() {
 
         // Update captions for existing images
         const existingImages = campaignImages.filter(
-          (image) => image.id <= 1000000
+          (image) => image.id <= 1000000,
         );
         for (const image of existingImages) {
           await fetch(`/api/campaigns/${campaignId}/images/${image.id}`, {
@@ -528,7 +547,7 @@ export default function EditCampaignPage() {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          userId: user.id,
+          userId: user!.id,
         }),
       });
 
@@ -675,8 +694,8 @@ export default function EditCampaignPage() {
           <p className="text-sm mt-1">{getStatusMessage()}</p>
           {!canEdit && (
             <p className="text-sm mt-2 font-medium text-red-600">
-              ⚠️ Editing is only allowed while campaign status is "pending" or
-              "rejected"
+              ⚠️ Editing is only allowed while campaign status is
+              &quot;pending&quot; or &quot;rejected&quot;
             </p>
           )}
         </div>
@@ -1062,8 +1081,8 @@ export default function EditCampaignPage() {
                     ? 'Resubmitting...'
                     : 'Saving Changes...'
                   : formData.status === 'rejected'
-                  ? 'Resubmit Campaign'
-                  : 'Save Changes'}
+                    ? 'Resubmit Campaign'
+                    : 'Save Changes'}
               </button>
             )}
           </div>

@@ -6,6 +6,18 @@ import { useSearchParams } from 'next/navigation';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
+interface User {
+  id: string;
+  email?: string;
+  role: 'donor' | 'creator' | 'admin';
+  firstName?: string;
+  lastName?: string;
+  first_name?: string;
+  last_name?: string;
+  organization_name?: string;
+  profile_image?: string;
+}
+
 export default function PaymentSuccess() {
   // Use the `useSearchParams` hook to access search parameters
   const searchParams = useSearchParams();
@@ -13,7 +25,7 @@ export default function PaymentSuccess() {
   // Access the `amount` query parameter from searchParams
   const amount = searchParams?.get('amount');
   const [error, setError] = useState<string | null>(null);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
 
   useEffect(() => {
     try {

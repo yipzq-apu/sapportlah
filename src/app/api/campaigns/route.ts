@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { RowDataPacket } from 'mysql2';
 
+type QueryParam = string | number;
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -22,8 +24,8 @@ export async function GET(request: NextRequest) {
     const offset = (page - 1) * limit;
 
     // Build query conditions
-    let whereConditions = ['c.status = ?'];
-    let queryParams: any[] = [status];
+    const whereConditions = ['c.status = ?'];
+    const queryParams: QueryParam[] = [status];
 
     if (categoryId && categoryId !== 'all') {
       whereConditions.push('c.category_id = ?');
@@ -65,7 +67,7 @@ export async function GET(request: NextRequest) {
       WHERE ${whereClause}
       ORDER BY c.created_at DESC
       LIMIT ? OFFSET ?`,
-      [...queryParams, limit, offset]
+      [...queryParams, limit, offset],
     )) as RowDataPacket[];
 
     // Get total count for pagination
@@ -74,7 +76,7 @@ export async function GET(request: NextRequest) {
       FROM campaigns c 
       JOIN users u ON c.user_id = u.id 
       WHERE ${whereClause}`,
-      queryParams
+      queryParams,
     )) as RowDataPacket[];
 
     const total = totalResult[0].total;
@@ -94,7 +96,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching campaigns:', error);
     return NextResponse.json(
       { error: 'Failed to fetch campaigns' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

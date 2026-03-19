@@ -6,8 +6,8 @@ import Image from 'next/image';
 
 interface User {
   id: string;
-  firstName: string;
-  lastName: string;
+  firstName?: string;
+  lastName?: string;
   role: 'donor' | 'creator' | 'admin';
   email?: string;
   avatar?: string;
@@ -456,7 +456,7 @@ export default function Navbar({ user: propUser }: NavbarProps) {
               address: updatedData.address,
               notifications: updatedData.notifications,
             }
-          : null
+          : null,
       );
 
       // Also update localStorage from the event data
@@ -477,20 +477,20 @@ export default function Navbar({ user: propUser }: NavbarProps) {
             // Keep both field name formats for compatibility
             first_name: updatedData.firstName,
             last_name: updatedData.lastName,
-          })
+          }),
         );
       }
     };
 
     window.addEventListener(
       'userProfileUpdated',
-      handleProfileUpdate as EventListener
+      handleProfileUpdate as EventListener,
     );
 
     return () => {
       window.removeEventListener(
         'userProfileUpdated',
-        handleProfileUpdate as EventListener
+        handleProfileUpdate as EventListener,
       );
     };
   }, []);

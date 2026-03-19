@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       LEFT JOIN categories cat ON c.category_id = cat.id
     `;
 
-    const params: any[] = [];
+    const params: string[] = [];
     if (status && status !== 'all') {
       query += ' WHERE c.status = ?';
       params.push(status);
@@ -36,7 +36,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching campaigns:', error);
     return NextResponse.json(
       { error: 'Internal server error.' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

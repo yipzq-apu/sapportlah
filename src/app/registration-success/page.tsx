@@ -32,8 +32,8 @@ export default function RegistrationSuccessPage() {
             <div className="border border-green-200 bg-green-50 rounded-lg p-4 mb-6">
               <p className="text-gray-700 text-sm leading-relaxed">
                 Your account has been created successfully and is now under
-                review. You'll receive an email notification once your account
-                is approved.
+                review. You&apos;ll receive an email notification once your
+                account is approved.
               </p>
             </div>
 
@@ -42,7 +42,7 @@ export default function RegistrationSuccessPage() {
               <ul className="text-left space-y-1">
                 <li>• Our team will review your application</li>
                 <li>
-                  • You'll receive an email notification about the decision
+                  • You&apos;ll receive an email notification about the decision
                 </li>
                 <li>• This process typically takes 1-3 business days</li>
                 <li>

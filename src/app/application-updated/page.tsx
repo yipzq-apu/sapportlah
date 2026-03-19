@@ -32,8 +32,8 @@ export default function ApplicationUpdatedPage() {
             <div className="border border-green-200 bg-green-50 rounded-lg p-4 mb-6">
               <p className="text-gray-700 text-sm leading-relaxed">
                 Your application has been updated successfully and is now under
-                review again. You'll receive an email notification once your
-                account is approved.
+                review again. You&apos;ll receive an email notification once
+                your account is approved.
               </p>
             </div>
 
@@ -42,7 +42,7 @@ export default function ApplicationUpdatedPage() {
               <ul className="text-left space-y-1">
                 <li>• Our team will review your updated application</li>
                 <li>
-                  • You'll receive an email notification about the decision
+                  • You&apos;ll receive an email notification about the decision
                 </li>
                 <li>• This process typically takes 1-3 business days</li>
                 <li>

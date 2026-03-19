@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+type UpdateResult = {
+  affectedRows: number;
+};
+
 export async function GET(request: NextRequest) {
   try {
     // Verify cron secret to prevent unauthorized access
@@ -13,7 +17,7 @@ export async function GET(request: NextRequest) {
     const currentDateString = currentDate.toISOString().split('T')[0];
 
     console.log(
-      `[CRON] Starting campaign status update for ${currentDateString}`
+      `[CRON] Starting campaign status update for ${currentDateString}`,
     );
 
     // Update campaigns to 'active' when start_date is reached
@@ -24,7 +28,7 @@ export async function GET(request: NextRequest) {
       WHERE status = 'approved' 
       AND DATE(start_date) <= ?
     `,
-      [currentDateString]
+      [currentDateString],
     );
 
     // Update campaigns to 'successful' when the day AFTER end_date is reached and goal is met
@@ -36,7 +40,7 @@ export async function GET(request: NextRequest) {
       AND DATE(end_date) < ?
       AND current_amount >= goal_amount
     `,
-      [currentDateString]
+      [currentDateString],
     );
 
     // Update campaigns to 'failed' when the day AFTER end_date is reached and goal is not met
@@ -48,13 +52,13 @@ export async function GET(request: NextRequest) {
       AND DATE(end_date) < ?
       AND current_amount < goal_amount
     `,
-      [currentDateString]
+      [currentDateString],
     );
 
     const updates = {
-      activated: (activatedResult as any).affectedRows || 0,
-      successful: (successfulResult as any).affectedRows || 0,
-      failed: (failedResult as any).affectedRows || 0,
+      activated: (activatedResult as UpdateResult).affectedRows || 0,
+      successful: (successfulResult as UpdateResult).affectedRows || 0,
+      failed: (failedResult as UpdateResult).affectedRows || 0,
     };
 
     console.log(`[CRON] Campaign status update completed:`, updates);
@@ -68,7 +72,7 @@ export async function GET(request: NextRequest) {
     console.error('[CRON] Error updating campaign statuses:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

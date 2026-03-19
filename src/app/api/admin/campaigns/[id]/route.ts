@@ -4,9 +4,24 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+interface Campaign {
+  id: string;
+  status: string;
+  title: string;
+  creator_email: string;
+  first_name: string;
+  last_name: string;
+  notifications: number;
+  category_id: string;
+  user_id: string;
+  category_name?: string;
+  creator_name?: string;
+  reason?: string;
+}
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -23,13 +38,13 @@ export async function GET(
       LEFT JOIN categories cat ON c.category_id = cat.id
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.id = ?`,
-      [id]
+      [id],
     );
 
     if (!Array.isArray(campaigns) || campaigns.length === 0) {
       return NextResponse.json(
         { error: 'Campaign not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -38,14 +53,14 @@ export async function GET(
     console.error('Error fetching campaign:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -55,14 +70,14 @@ export async function PATCH(
     if (!status || !['approved', 'rejected'].includes(status)) {
       return NextResponse.json(
         { error: 'Invalid status. Must be "approved" or "rejected"' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     if (status === 'rejected' && !reason) {
       return NextResponse.json(
         { error: 'Reason is required for rejection' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -77,17 +92,17 @@ export async function PATCH(
       FROM campaigns c
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.id = ?`,
-      [id]
+      [id],
     );
 
     if (!Array.isArray(campaigns) || campaigns.length === 0) {
       return NextResponse.json(
         { error: 'Campaign not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    const campaign = campaigns[0] as any;
+    const campaign = campaigns[0] as Campaign;
 
     // Update campaign status - fix the parameter mismatch
     let updateQuery, updateParams;
@@ -201,7 +216,7 @@ export async function PATCH(
         });
 
         console.log(
-          `Campaign ${status} email sent to: ${campaign.creator_email}`
+          `Campaign ${status} email sent to: ${campaign.creator_email}`,
         );
       } catch (emailError) {
         console.error('Failed to send campaign status email:', emailError);
@@ -209,7 +224,7 @@ export async function PATCH(
       }
     } else {
       console.log(
-        `Campaign ${status} email not sent - notifications disabled for: ${campaign.creator_email}`
+        `Campaign ${status} email not sent - notifications disabled for: ${campaign.creator_email}`,
       );
     }
 
@@ -224,19 +239,19 @@ export async function PATCH(
       LEFT JOIN categories cat ON c.category_id = cat.id
       LEFT JOIN users u ON c.user_id = u.id
       WHERE c.id = ?`,
-      [id]
+      [id],
     );
 
     return NextResponse.json({
       success: true,
       message: `Campaign ${status} successfully`,
-      campaign: (updatedCampaigns as any[])[0],
+      campaign: (updatedCampaigns as Campaign[])[0],
     });
   } catch (error) {
     console.error('Error updating campaign status:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

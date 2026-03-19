@@ -117,7 +117,8 @@ export default function AccountStatusPage() {
                   <ul className="mt-2 text-left space-y-1">
                     <li>• Our team will review your application</li>
                     <li>
-                      • You'll receive an email notification about the decision
+                      • You&apos;ll receive an email notification about the
+                      decision
                     </li>
                     <li>• This process typically takes 1-3 business days</li>
                   </ul>
@@ -150,7 +151,7 @@ export default function AccountStatusPage() {
                 {status === 'rejected' && (
                   <Link
                     href={`/update-application?email=${encodeURIComponent(
-                      email
+                      email,
                     )}&reason=${encodeURIComponent(reason)}`}
                     className="bg-green-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-green-700 transition duration-300"
                   >

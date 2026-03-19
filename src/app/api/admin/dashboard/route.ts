@@ -33,7 +33,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching admin dashboard data:', error);
     return NextResponse.json(
       { error: 'Failed to fetch dashboard data' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -46,7 +46,7 @@ async function getPlatformStats() {
         (SELECT COUNT(*) FROM campaigns) as totalCampaigns,
         (SELECT COUNT(*) FROM campaigns WHERE status = 'active') as activeCampaigns,
         (SELECT COUNT(*) FROM users) as totalUsers,
-        (SELECT COALESCE(SUM(amount), 0) FROM donations WHERE payment_status = 'completed') as totalDonationsAmount`
+        (SELECT COALESCE(SUM(amount), 0) FROM donations WHERE payment_status = 'completed') as totalDonationsAmount`,
     )) as RowDataPacket[];
 
     return {
@@ -75,13 +75,13 @@ async function getCampaignStats() {
           status,
           COUNT(*) as count
         FROM campaigns 
-        GROUP BY status`
+        GROUP BY status`,
       ) as Promise<RowDataPacket[]>,
 
       db.query(
         `SELECT 
           (SELECT COUNT(*) FROM campaigns WHERE is_featured = 1) as featuredCount,
-          (SELECT COUNT(*) FROM campaigns WHERE current_amount >= goal_amount) as successfulCampaigns`
+          (SELECT COUNT(*) FROM campaigns WHERE current_amount >= goal_amount) as successfulCampaigns`,
       ) as Promise<RowDataPacket[]>,
     ]);
 
@@ -96,7 +96,7 @@ async function getCampaignStats() {
         COUNT(*) as count
       FROM campaigns 
       WHERE status IN ('active', 'completed')
-      GROUP BY progress_level`
+      GROUP BY progress_level`,
     )) as RowDataPacket[];
 
     return {
@@ -125,14 +125,14 @@ async function getUserStats() {
           role,
           COUNT(*) as count
         FROM users 
-        GROUP BY role`
+        GROUP BY role`,
       ) as Promise<RowDataPacket[]>,
 
       db.query(
         `SELECT 
           (SELECT COUNT(*) FROM users WHERE created_at >= DATE_SUB(NOW(), INTERVAL 1 MONTH)) as newUsersThisMonth,
           (SELECT COUNT(DISTINCT user_id) FROM donations WHERE payment_status = 'completed') as activeDonors,
-          (SELECT COUNT(DISTINCT user_id) FROM campaigns) as activeCreators`
+          (SELECT COUNT(DISTINCT user_id) FROM campaigns) as activeCreators`,
       ) as Promise<RowDataPacket[]>,
     ]);
 
@@ -187,9 +187,9 @@ async function getFinancialStats() {
       `),
     ]);
 
-    const monthlyTrends = financialQueries[0] as any[];
-    const donationStats = (financialQueries[1] as any[])[0];
-    const platformFeesResult = (financialQueries[2] as any[])[0];
+    const monthlyTrends = financialQueries[0] as RowDataPacket[];
+    const donationStats = (financialQueries[1] as RowDataPacket[])[0];
+    const platformFeesResult = (financialQueries[2] as RowDataPacket[])[0];
 
     const financialStats = {
       monthlyTrends: monthlyTrends,
@@ -224,7 +224,7 @@ async function getRecentActivities() {
         FROM campaigns c
         JOIN users u ON c.user_id = u.id
         ORDER BY c.created_at DESC
-        LIMIT 5`
+        LIMIT 5`,
       ) as Promise<RowDataPacket[]>,
 
       db.query(
@@ -240,7 +240,7 @@ async function getRecentActivities() {
         JOIN campaigns c ON d.campaign_id = c.id
         WHERE d.payment_status = 'completed'
         ORDER BY d.created_at DESC
-        LIMIT 5`
+        LIMIT 5`,
       ) as Promise<RowDataPacket[]>,
 
       db.query(
@@ -252,7 +252,7 @@ async function getRecentActivities() {
           created_at
         FROM users
         ORDER BY created_at DESC
-        LIMIT 5`
+        LIMIT 5`,
       ) as Promise<RowDataPacket[]>,
     ]);
 
@@ -315,10 +315,10 @@ async function getPendingItems() {
       `),
     ]);
 
-    const pendingCampaigns = pendingQueries[0] as any[];
-    const unansweredQuestions = pendingQueries[1] as any[];
-    const failedCampaigns = pendingQueries[2] as any[];
-    const counts = (pendingQueries[3] as any[])[0];
+    const pendingCampaigns = pendingQueries[0] as RowDataPacket[];
+    const unansweredQuestions = pendingQueries[1] as RowDataPacket[];
+    const failedCampaigns = pendingQueries[2] as RowDataPacket[];
+    const counts = (pendingQueries[3] as RowDataPacket[])[0];
 
     const pendingItems = {
       pendingCampaigns,

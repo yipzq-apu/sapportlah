@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
       WHERE 1=1
     `;
 
-    const params: any[] = [];
+    const params: (string | number)[] = [];
 
     // Add status filter
     if (status && status !== 'all') {
@@ -40,7 +40,7 @@ export async function GET(request: NextRequest) {
     const countResult = await db.query(countQuery, params);
     const total =
       Array.isArray(countResult) && countResult.length > 0
-        ? (countResult[0] as any).total
+        ? (countResult[0] as { total: number }).total
         : 0;
 
     // Add ordering and pagination
@@ -62,7 +62,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching messages:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

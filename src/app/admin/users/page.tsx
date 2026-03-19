@@ -89,8 +89,8 @@ export default function AdminUsersPage() {
 
   const updateUserStatus = async (
     userId: number,
-    newStatus: string,
-    reason?: string
+    newStatus: User['status'],
+    reason?: string,
   ) => {
     try {
       const response = await fetch(`/api/admin/users/${userId}`, {
@@ -108,8 +108,8 @@ export default function AdminUsersPage() {
         const data = await response.json();
         setUsers((prev) =>
           prev.map((user) =>
-            user.id === userId ? { ...user, status: newStatus as any } : user
-          )
+            user.id === userId ? { ...user, status: newStatus } : user,
+          ),
         );
         fetchStats(); // Refresh stats
         alert(`User status updated to ${newStatus} successfully!`);
@@ -192,12 +192,12 @@ export default function AdminUsersPage() {
 
       // Alternative: Use Google Docs viewer for better PDF rendering
       viewableUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
-        url
+        url,
       )}&embedded=true`;
     } else if (url.includes('cloudinary.com') && url.includes('/upload/')) {
       // For other Cloudinary uploads, use Google Docs viewer
       viewableUrl = `https://docs.google.com/viewer?url=${encodeURIComponent(
-        url
+        url,
       )}&embedded=true`;
     }
 
@@ -244,7 +244,7 @@ export default function AdminUsersPage() {
   };
 
   const handleCreateInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>,
   ) => {
     const { name, value } = e.target;
     setCreateForm((prev) => ({ ...prev, [name]: value }));
@@ -409,7 +409,7 @@ export default function AdminUsersPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getRoleColor(
-                        user.role
+                        user.role,
                       )}`}
                     >
                       {user.role}
@@ -418,7 +418,7 @@ export default function AdminUsersPage() {
                   <td className="px-6 py-4 whitespace-nowrap">
                     <span
                       className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
-                        user.status
+                        user.status,
                       )}`}
                     >
                       {user.status}
@@ -574,7 +574,7 @@ export default function AdminUsersPage() {
                 <div className="bg-yellow-50 border border-yellow-200 rounded-md p-3">
                   <p className="text-sm text-yellow-700">
                     <strong>Note:</strong> A temporary password will be
-                    generated and sent to the user's email. They will be
+                    generated and sent to the user&apos;s email. They will be
                     required to change it on first login.
                   </p>
                 </div>
@@ -685,7 +685,7 @@ export default function AdminUsersPage() {
                   </label>
                   <span
                     className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getRoleColor(
-                      selectedUser.role
+                      selectedUser.role,
                     )}`}
                   >
                     {selectedUser.role}
@@ -698,7 +698,7 @@ export default function AdminUsersPage() {
                   </label>
                   <span
                     className={`inline-flex px-2 py-1 text-xs font-medium rounded-full capitalize ${getStatusColor(
-                      selectedUser.status
+                      selectedUser.status,
                     )}`}
                   >
                     {selectedUser.status}
@@ -825,7 +825,7 @@ export default function AdminUsersPage() {
                     currentPdfUrl.includes('docs.google.com')
                       ? currentPdfUrl.split('url=')[1]?.split('&')[0]
                         ? decodeURIComponent(
-                            currentPdfUrl.split('url=')[1].split('&')[0]
+                            currentPdfUrl.split('url=')[1].split('&')[0],
                           )
                         : currentPdfUrl
                       : currentPdfUrl

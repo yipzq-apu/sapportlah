@@ -5,6 +5,19 @@ import { useRouter } from 'next/navigation';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
+interface User {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'donor' | 'creator' | 'admin';
+  email?: string;
+  avatar?: string;
+  profile_image?: string;
+  organization_name?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 interface CampaignForm {
   title: string;
   description: string;
@@ -28,7 +41,7 @@ interface CampaignImage {
 
 export default function CreateCampaignPage() {
   const router = useRouter();
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -80,7 +93,7 @@ export default function CreateCampaignPage() {
   const handleInputChange = (
     e: React.ChangeEvent<
       HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
-    >
+    >,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
@@ -227,7 +240,7 @@ export default function CreateCampaignPage() {
   };
 
   const handleCampaignImageChange = (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const file = e.target.files?.[0];
     if (file) {
@@ -239,7 +252,7 @@ export default function CreateCampaignPage() {
 
   const updateImageCaption = (index: number, caption: string) => {
     setCampaignImages((prev) =>
-      prev.map((img, i) => (i === index ? { ...img, caption } : img))
+      prev.map((img, i) => (i === index ? { ...img, caption } : img)),
     );
   };
 
@@ -308,7 +321,7 @@ export default function CreateCampaignPage() {
         }
 
         alert(
-          'Campaign created successfully! It will be reviewed before going live.'
+          'Campaign created successfully! It will be reviewed before going live.',
         );
         router.push('/my-campaigns');
       } else {

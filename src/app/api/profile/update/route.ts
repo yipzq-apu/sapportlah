@@ -2,6 +2,15 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
+type UserRecord = {
+  id: string;
+  password: string;
+};
+
+type ProfileRecord = {
+  profile_image: string | null;
+};
+
 export async function PUT(request: NextRequest) {
   try {
     const {
@@ -47,7 +56,7 @@ export async function PUT(request: NextRequest) {
 
     // If changing password, verify current password
     if (currentPassword && newPassword) {
-      const user = users[0] as any;
+      const user = users[0] as UserRecord;
       const passwordMatch = await bcrypt.compare(
         currentPassword,
         user.password
@@ -63,18 +72,18 @@ export async function PUT(request: NextRequest) {
 
     // Build update query without organization_name
     let updateQuery = `
-      UPDATE users SET 
-        first_name = ?, 
-        last_name = ?, 
-        email = ?, 
-        phone = ?, 
-        address = ?, 
-        profile_image = ?, 
-        notifications = ?, 
+      UPDATE users SET
+        first_name = ?,
+        last_name = ?,
+        email = ?,
+        phone = ?,
+        address = ?,
+        profile_image = ?,
+        notifications = ?,
         updated_at = NOW()
     `;
 
-    let queryParams = [
+    const queryParams = [
       firstName,
       lastName,
       email,
@@ -109,7 +118,7 @@ export async function PUT(request: NextRequest) {
 
     console.log(
       'Updated profile_image in database:',
-      (verifyResult as any[])[0]?.profile_image
+      (verifyResult as ProfileRecord[])[0]?.profile_image
     );
 
     return NextResponse.json({

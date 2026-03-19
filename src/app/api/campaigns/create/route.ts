@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
+type DatabaseInsertResult = {
+  insertId: number | string;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const {
@@ -27,7 +31,7 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         { error: 'Missing required fields' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -45,7 +49,7 @@ export async function POST(request: NextRequest) {
     if (startDate < minStartDate || startDate > maxStartDate) {
       return NextResponse.json(
         { error: 'Start date must be between 3-10 days from today' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -58,7 +62,7 @@ export async function POST(request: NextRequest) {
     if (endDate < minEndDate || endDate > maxEndDate) {
       return NextResponse.json(
         { error: 'End date must be between 7-60 days after start date' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -79,10 +83,10 @@ export async function POST(request: NextRequest) {
         start_date,
         end_date,
         featured_image,
-      ]
+      ],
     );
 
-    const campaignId = (result as any).insertId;
+    const campaignId = (result as DatabaseInsertResult).insertId;
 
     return NextResponse.json({
       success: true,
@@ -93,7 +97,7 @@ export async function POST(request: NextRequest) {
     console.error('Error creating campaign:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

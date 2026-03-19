@@ -2,6 +2,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 
+type UserRecord = {
+  id: string;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const {
@@ -33,7 +37,7 @@ export async function POST(request: NextRequest) {
     ) {
       return NextResponse.json(
         { error: 'All fields are required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -53,15 +57,15 @@ export async function POST(request: NextRequest) {
     if (age < 18) {
       return NextResponse.json(
         { error: 'You must be at least 18 years old to register' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Check if user exists
     const existingUser = (await db.query(
       'SELECT id FROM users WHERE email = ?',
-      [email]
-    )) as any[];
+      [email],
+    )) as UserRecord[];
 
     if (!Array.isArray(existingUser) || existingUser.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
@@ -86,7 +90,7 @@ export async function POST(request: NextRequest) {
         updated_at = NOW()
     `;
 
-    let queryParams = [
+    const queryParams = [
       firstName,
       lastName,
       phone,
@@ -119,7 +123,7 @@ export async function POST(request: NextRequest) {
     console.error('Update application error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

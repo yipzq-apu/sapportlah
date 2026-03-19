@@ -6,6 +6,19 @@ import Link from 'next/link';
 import Navbar from '../../../components/Navbar';
 import Footer from '../../../components/Footer';
 
+interface User {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'donor' | 'creator' | 'admin';
+  email?: string;
+  avatar?: string;
+  profile_image?: string;
+  organization_name?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 interface CampaignUpdate {
   id: number;
   title: string;
@@ -26,7 +39,7 @@ export default function CampaignUpdatesPage() {
   const router = useRouter();
   const campaignId = params.id as string;
 
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [updates, setUpdates] = useState<CampaignUpdate[]>([]);
   const [loading, setLoading] = useState(true);
   const [posting, setPosting] = useState(false);
@@ -42,7 +55,8 @@ export default function CampaignUpdatesPage() {
       // Set temporary user for testing
       setUser({
         id: 'temp-creator',
-        name: 'Temporary Creator',
+        firstName: 'Temporary',
+        lastName: 'Creator',
         email: 'creator@temp.com',
         role: 'creator',
       });
@@ -85,7 +99,7 @@ export default function CampaignUpdatesPage() {
   }, [campaignId]);
 
   const handleInputChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
   ) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));

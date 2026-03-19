@@ -4,9 +4,17 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+type UserRecord = {
+  id: string;
+  status: string;
+  email: string;
+  first_name: string;
+  last_name: string;
+};
+
 export async function GET(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -42,7 +50,7 @@ export async function GET(
         GROUP BY user_id
       ) c ON u.id = c.user_id
       WHERE u.id = ?`,
-      [id]
+      [id],
     );
 
     if (!Array.isArray(users) || users.length === 0) {
@@ -54,14 +62,14 @@ export async function GET(
     console.error('Error fetching user:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ id: string }> },
 ) {
   try {
     const { id } = await params;
@@ -70,7 +78,7 @@ export async function PATCH(
     if (!status) {
       return NextResponse.json(
         { error: 'Status is required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -83,18 +91,18 @@ export async function PATCH(
     // Check if user exists and get user details
     const existingUser = await db.query(
       'SELECT id, status, email, first_name, last_name FROM users WHERE id = ?',
-      [id]
+      [id],
     );
 
     if (!Array.isArray(existingUser) || existingUser.length === 0) {
       return NextResponse.json({ error: 'User not found' }, { status: 404 });
     }
 
-    const user = existingUser[0] as any;
+    const user = existingUser[0] as UserRecord;
 
     // Update user status
     let updateQuery = 'UPDATE users SET status = ?, updated_at = NOW()';
-    let updateParams = [status];
+    const updateParams = [status];
 
     // Add rejection reason if status is rejected
     if (status === 'rejected' && rejection_reason) {
@@ -191,7 +199,7 @@ export async function PATCH(
         GROUP BY user_id
       ) c ON u.id = c.user_id
       WHERE u.id = ?`,
-      [id]
+      [id],
     );
 
     return NextResponse.json({
@@ -203,7 +211,7 @@ export async function PATCH(
     console.error('Error updating user status:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

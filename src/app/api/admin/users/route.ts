@@ -5,6 +5,12 @@ import { Resend } from 'resend';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 
+type DatabaseInsertResult = {
+  insertId: number | string;
+};
+
+type QueryParam = string | number;
+
 function generatePassword(length = 12) {
   const charset =
     'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*';
@@ -55,7 +61,7 @@ export async function GET(request: NextRequest) {
       WHERE 1=1
     `;
 
-    const params: any[] = [];
+    const params: QueryParam[] = [];
 
     // Add search filter
     if (search && search.trim()) {
@@ -88,7 +94,7 @@ export async function GET(request: NextRequest) {
     console.error('Error fetching users:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
@@ -101,7 +107,7 @@ export async function POST(request: NextRequest) {
     if (!first_name || !last_name || !email || !role) {
       return NextResponse.json(
         { error: 'First name, last name, email, and role are required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -109,20 +115,20 @@ export async function POST(request: NextRequest) {
     if (!['donor', 'creator', 'admin'].includes(role)) {
       return NextResponse.json(
         { error: 'Invalid role specified' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Check if user already exists
     const existingUsers = await db.query(
       'SELECT id FROM users WHERE email = ?',
-      [email]
+      [email],
     );
 
     if (Array.isArray(existingUsers) && existingUsers.length > 0) {
       return NextResponse.json(
         { error: 'User with this email already exists' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -136,7 +142,7 @@ export async function POST(request: NextRequest) {
     const result = await db.query(
       `INSERT INTO users (first_name, last_name, email, password, role, status, created_at, updated_at) 
        VALUES (?, ?, ?, ?, ?, 'active', NOW(), NOW())`,
-      [first_name, last_name, email, hashedPassword, role]
+      [first_name, last_name, email, hashedPassword, role],
     );
 
     // Send welcome email with login credentials
@@ -176,8 +182,8 @@ export async function POST(request: NextRequest) {
                 role === 'creator'
                   ? 'creating fundraising campaigns'
                   : role === 'donor'
-                  ? 'supporting amazing campaigns'
-                  : 'managing the platform'
+                    ? 'supporting amazing campaigns'
+                    : 'managing the platform'
               }.</p>
             </div>
             
@@ -217,7 +223,7 @@ export async function POST(request: NextRequest) {
       success: true,
       message: 'User created successfully with auto-generated password',
       user: {
-        id: (result as any).insertId,
+        id: (result as DatabaseInsertResult).insertId,
         first_name,
         last_name,
         email,
@@ -230,7 +236,7 @@ export async function POST(request: NextRequest) {
     console.error('Error creating user:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

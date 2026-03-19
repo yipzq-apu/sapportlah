@@ -5,6 +5,19 @@ import Link from 'next/link';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 
+interface User {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'donor' | 'creator' | 'admin';
+  email?: string;
+  avatar?: string;
+  profile_image?: string;
+  organization_name?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 interface Campaign {
   id: number;
   user_id: number;
@@ -35,7 +48,7 @@ export default function CampaignsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
@@ -228,7 +241,7 @@ export default function CampaignsPage() {
           `/api/favorites?userId=${user.id}&campaignId=${campaignId}`,
           {
             method: 'DELETE',
-          }
+          },
         );
 
         if (response.ok) {
@@ -240,7 +253,7 @@ export default function CampaignsPage() {
         // Check if user already has 6 favorites
         if (favorites.length >= 6) {
           alert(
-            'You can only have a maximum of 6 favorite campaigns. Please remove some favorites before adding new ones.'
+            'You can only have a maximum of 6 favorite campaigns. Please remove some favorites before adding new ones.',
           );
           return;
         }
@@ -263,7 +276,7 @@ export default function CampaignsPage() {
           const errorData = await response.json();
           if (errorData.error.includes('Maximum 6 favorite campaigns')) {
             alert(
-              'You can only have a maximum of 6 favorite campaigns. Please remove some favorites before adding new ones.'
+              'You can only have a maximum of 6 favorite campaigns. Please remove some favorites before adding new ones.',
             );
           } else {
             alert(errorData.error || 'Failed to add to favorites');
@@ -348,7 +361,7 @@ export default function CampaignsPage() {
             {campaigns.map((campaign) => {
               const percentage = calculatePercentage(
                 campaign.current_amount,
-                campaign.goal_amount
+                campaign.goal_amount,
               );
               const daysLeft = getDaysLeft(campaign.end_date);
               const isFavorited = favorites.includes(campaign.id);
@@ -502,8 +515,8 @@ export default function CampaignsPage() {
                     page === currentPage
                       ? 'bg-blue-600 text-white'
                       : typeof page === 'number'
-                      ? 'text-gray-700 hover:text-blue-600 hover:bg-gray-100'
-                      : 'text-gray-400 cursor-default'
+                        ? 'text-gray-700 hover:text-blue-600 hover:bg-gray-100'
+                        : 'text-gray-400 cursor-default'
                   }`}
                 >
                   {page}

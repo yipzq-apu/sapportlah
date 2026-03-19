@@ -11,35 +11,40 @@ export async function PUT(request: NextRequest) {
     if (!userId || !firstName || !lastName || !email) {
       return NextResponse.json(
         { error: 'Missing required fields' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     // Check if user exists and is admin
     const users = await db.query(
       'SELECT id, email, password, role FROM users WHERE id = ? AND role = ?',
-      [userId, 'admin']
+      [userId, 'admin'],
     );
 
     if (!Array.isArray(users) || users.length === 0) {
       return NextResponse.json(
         { error: 'Admin user not found' },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
-    const user = users[0] as any;
+    const user = users[0] as {
+      id: string | number;
+      email: string;
+      password: string;
+      role: string;
+    };
 
     // If password change is requested, verify current password
     if (currentPassword && newPassword) {
       const isValidPassword = await bcrypt.compare(
         currentPassword,
-        user.password
+        user.password,
       );
       if (!isValidPassword) {
         return NextResponse.json(
           { error: 'Current password is incorrect' },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -49,13 +54,13 @@ export async function PUT(request: NextRequest) {
       // Update user with new password
       await db.query(
         'UPDATE users SET first_name = ?, last_name = ?, email = ?, password = ?, updated_at = NOW() WHERE id = ?',
-        [firstName, lastName, email, hashedNewPassword, userId]
+        [firstName, lastName, email, hashedNewPassword, userId],
       );
     } else {
       // Update user without password change
       await db.query(
         'UPDATE users SET first_name = ?, last_name = ?, email = ?, updated_at = NOW() WHERE id = ?',
-        [firstName, lastName, email, userId]
+        [firstName, lastName, email, userId],
       );
     }
 
@@ -67,7 +72,7 @@ export async function PUT(request: NextRequest) {
     console.error('Error updating admin profile:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

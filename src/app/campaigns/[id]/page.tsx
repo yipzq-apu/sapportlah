@@ -7,6 +7,19 @@ import Navbar from '../../components/Navbar';
 import Footer from '../../components/Footer';
 import QuestionAnswerItem from '../../components/QuestionAnswerItem';
 
+interface User {
+  id: string;
+  firstName?: string;
+  lastName?: string;
+  role: 'donor' | 'creator' | 'admin';
+  email?: string;
+  avatar?: string;
+  profile_image?: string;
+  organization_name?: string;
+  first_name?: string;
+  last_name?: string;
+}
+
 interface Campaign {
   id: number;
   title: string;
@@ -24,7 +37,7 @@ interface Campaign {
   creator_name: string;
   creator_email: string;
   organization_name?: string;
-  user_id?: number;
+  user_id?: string;
   creator_profile_image?: string; // Add creator profile image field
 }
 
@@ -74,9 +87,9 @@ export default function CampaignDetailPage() {
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [user, setUser] = useState<any>(null);
+  const [user, setUser] = useState<User | null>(null);
   const [activeTab, setActiveTab] = useState<'donations' | 'qna' | 'updates'>(
-    'donations'
+    'donations',
   );
   const [campaignUpdates, setCampaignUpdates] = useState<CampaignUpdate[]>([]);
   const [isBacker, setIsBacker] = useState(false);
@@ -88,13 +101,14 @@ export default function CampaignDetailPage() {
   const [donationId, setDonationId] = useState<number | null>(null);
 
   // Helper variables for user roles
-  const isCreator =
+  const isCreator = !!(
     user &&
     user.role === 'creator' &&
     campaign &&
-    (user.email === campaign.creator_email || user.id === campaign.user_id);
-  const isAdmin = user && user.role === 'admin';
-  const isDonor = user && user.role === 'donor';
+    (user.email === campaign.creator_email || user.id === campaign.user_id)
+  );
+  const isAdmin = !!(user && user.role === 'admin');
+  const isDonor = !!(user && user.role === 'donor');
   const canEditCampaign = isCreator && campaign?.status === 'pending';
 
   // Check if user is logged in (simplified - no token auth)
@@ -269,7 +283,7 @@ export default function CampaignDetailPage() {
     // Only allow donations to active campaigns
     if (campaign?.status !== 'active') {
       alert(
-        `Cannot donate to a ${campaign?.status} campaign. Only active campaigns accept donations.`
+        `Cannot donate to a ${campaign?.status} campaign. Only active campaigns accept donations.`,
       );
       return;
     }
@@ -445,7 +459,7 @@ export default function CampaignDetailPage() {
 
         // Refresh questions list
         const questionsResponse = await fetch(
-          `/api/campaigns/${campaignId}/questions`
+          `/api/campaigns/${campaignId}/questions`,
         );
         if (questionsResponse.ok) {
           const data = await questionsResponse.json();
@@ -481,13 +495,13 @@ export default function CampaignDetailPage() {
             answer: answer.trim(),
             creatorId: user.id,
           }),
-        }
+        },
       );
 
       if (response.ok) {
         // Refresh questions list
         const questionsResponse = await fetch(
-          `/api/campaigns/${campaignId}/questions`
+          `/api/campaigns/${campaignId}/questions`,
         );
         if (questionsResponse.ok) {
           const data = await questionsResponse.json();
@@ -505,7 +519,7 @@ export default function CampaignDetailPage() {
   };
 
   const handleDonationAmountChange = (
-    e: React.ChangeEvent<HTMLInputElement>
+    e: React.ChangeEvent<HTMLInputElement>,
   ) => {
     const value = e.target.value;
     // Allow empty string for clearing the field
@@ -536,7 +550,7 @@ export default function CampaignDetailPage() {
           `/api/favorites?userId=${user.id}&campaignId=${campaignId}`,
           {
             method: 'DELETE',
-          }
+          },
         );
 
         if (response.ok) {
@@ -563,7 +577,7 @@ export default function CampaignDetailPage() {
           const errorData = await response.json();
           if (errorData.error.includes('Maximum 6 favorite campaigns')) {
             alert(
-              'You can only have a maximum of 6 favorite campaigns. Please remove some favorites before adding new ones.'
+              'You can only have a maximum of 6 favorite campaigns. Please remove some favorites before adding new ones.',
             );
           } else {
             alert(errorData.error || 'Failed to add to favorites');
@@ -612,7 +626,7 @@ export default function CampaignDetailPage() {
 
   const percentage = calculatePercentage(
     campaign.current_amount,
-    campaign.goal_amount
+    campaign.goal_amount,
   );
   const daysLeft = getDaysLeft(campaign.end_date);
 
@@ -858,7 +872,7 @@ export default function CampaignDetailPage() {
                               </div>
                               {donation.message && (
                                 <p className="text-gray-600 text-sm mb-1">
-                                  "{donation.message}"
+                                  &quot;{donation.message}&quot;
                                 </p>
                               )}
                               <p className="text-gray-400 text-xs">
@@ -902,8 +916,8 @@ export default function CampaignDetailPage() {
                           />
                         </svg>
                         <span className="text-sm font-medium text-green-800">
-                          You're a backer! You can see exclusive updates marked
-                          with 🔒
+                          You&apos;re a backer! You can see exclusive updates
+                          marked with 🔒
                         </span>
                       </div>
                     </div>
@@ -954,7 +968,7 @@ export default function CampaignDetailPage() {
                         No updates yet
                       </h3>
                       <p className="text-gray-600">
-                        The campaign creator hasn't posted any updates yet.
+                        The campaign creator hasn&apos;t posted any updates yet.
                         Check back later!
                       </p>
                       {!user && (
@@ -1159,7 +1173,7 @@ export default function CampaignDetailPage() {
                       className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500 placeholder-gray-600 text-gray-900"
                       placeholder="Leave a message of support"
                       disabled={
-                        user &&
+                        !!user &&
                         (user.role !== 'donor' || campaign.status !== 'active')
                       }
                     />
@@ -1173,7 +1187,7 @@ export default function CampaignDetailPage() {
                       onChange={(e) => setIsAnonymous(e.target.checked)}
                       className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
                       disabled={
-                        user &&
+                        !!user &&
                         (user.role !== 'donor' || campaign.status !== 'active')
                       }
                     />
@@ -1203,15 +1217,15 @@ export default function CampaignDetailPage() {
                     {!user
                       ? 'Login to Donate'
                       : user.role === 'donor'
-                      ? campaign.status === 'active'
-                        ? 'Donate Now'
-                        : `Campaign ${
-                            campaign.status.charAt(0).toUpperCase() +
-                            campaign.status.slice(1)
-                          } - Cannot Donate`
-                      : user.role === 'creator'
-                      ? 'Creators Cannot Donate'
-                      : 'Admins Cannot Donate'}
+                        ? campaign.status === 'active'
+                          ? 'Donate Now'
+                          : `Campaign ${
+                              campaign.status.charAt(0).toUpperCase() +
+                              campaign.status.slice(1)
+                            } - Cannot Donate`
+                        : user.role === 'creator'
+                          ? 'Creators Cannot Donate'
+                          : 'Admins Cannot Donate'}
                   </button>
                 </form>
 
@@ -1219,10 +1233,10 @@ export default function CampaignDetailPage() {
                   {!user
                     ? 'Please log in as a donor to make a donation to this campaign.'
                     : user.role === 'donor'
-                    ? campaign.status === 'active'
-                      ? 'Your donation is secure and will help this campaign reach its goal.'
-                      : `This campaign is ${campaign.status} and not accepting donations.`
-                    : 'Only donors can make donations to campaigns.'}
+                      ? campaign.status === 'active'
+                        ? 'Your donation is secure and will help this campaign reach its goal.'
+                        : `This campaign is ${campaign.status} and not accepting donations.`
+                      : 'Only donors can make donations to campaigns.'}
                 </div>
               </div>
             )}

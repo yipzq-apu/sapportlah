@@ -3,6 +3,17 @@ import { db } from '@/lib/db';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
+type UserRecord = {
+  id: string;
+  email: string;
+  password: string;
+  first_name: string;
+  last_name: string;
+  role: string;
+  status: string;
+  rejection_reason?: string;
+};
+
 export async function POST(request: NextRequest) {
   try {
     const { email, password } = await request.json();
@@ -10,7 +21,7 @@ export async function POST(request: NextRequest) {
     if (!email || !password) {
       return NextResponse.json(
         { error: 'Email and password are required' },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -18,24 +29,24 @@ export async function POST(request: NextRequest) {
     const users = await db.query(
       `SELECT id, email, password, first_name, last_name, role, status, rejection_reason 
        FROM users WHERE email = ?`,
-      [email]
+      [email],
     );
 
     if (!Array.isArray(users) || users.length === 0) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
-    const user = users[0] as any;
+    const user = users[0] as UserRecord;
 
     // Verify password
     const isValidPassword = await bcrypt.compare(password, user.password);
     if (!isValidPassword) {
       return NextResponse.json(
         { error: 'Invalid email or password' },
-        { status: 401 }
+        { status: 401 },
       );
     }
 
@@ -48,7 +59,7 @@ export async function POST(request: NextRequest) {
             'Your account is still under review. Please wait for admin approval.',
           status: 'pending',
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -61,7 +72,7 @@ export async function POST(request: NextRequest) {
           status: 'rejected',
           email: user.email,
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -72,14 +83,14 @@ export async function POST(request: NextRequest) {
           message: 'Your account has been suspended. Please contact support.',
           status: 'suspended',
         },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
     if (user.status !== 'active') {
       return NextResponse.json(
         { error: 'Account access denied' },
-        { status: 403 }
+        { status: 403 },
       );
     }
 
@@ -91,7 +102,7 @@ export async function POST(request: NextRequest) {
         role: user.role,
       },
       process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '7d' }
+      { expiresIn: '7d' },
     );
 
     // Return user data without password
@@ -113,7 +124,7 @@ export async function POST(request: NextRequest) {
     console.error('Login error:', error);
     return NextResponse.json(
       { error: 'Internal server error' },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

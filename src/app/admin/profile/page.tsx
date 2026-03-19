@@ -111,7 +111,14 @@ export default function AdminProfilePage() {
     setSaving(true);
 
     try {
-      const updateData: any = {
+      const updateData: {
+        userId: string | undefined;
+        firstName: string;
+        lastName: string;
+        email: string;
+        currentPassword?: string;
+        newPassword?: string;
+      } = {
         userId: user?.id,
         firstName: formData.firstName,
         lastName: formData.lastName,
