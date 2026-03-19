@@ -3,13 +3,25 @@ import cloudinary from '@/lib/cloudinary';
 
 type UploadError = {
   message: string;
-  [key: string]: any;
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | null
+    | undefined
+    | Record<string, unknown>;
 };
 
 type UploadResult = {
   secure_url: string;
   public_id: string;
-  [key: string]: any;
+  [key: string]:
+    | string
+    | number
+    | boolean
+    | null
+    | undefined
+    | Record<string, unknown>;
 };
 
 export async function POST(request: NextRequest) {

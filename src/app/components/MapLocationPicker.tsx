@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 
 // Global flag to track if Google Maps API is loaded
 interface GoogleMapsApi {
-  maps: Record<string, any>;
+  maps: Record<string, unknown>;
 }
 
 declare global {
